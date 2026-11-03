@@ -83,13 +83,14 @@
   const MOLECULE = { H: 'H2', N: 'N2', O: 'O2', F: 'F2', Cl: 'Cl2', Br: 'Br2', I: 'I2' };
   const GAS_COLOR = { H: '#2a2c3a', He: '#2c2a24', N: '#1b2230', O: '#1e3040', F: '#555a2c', Ne: '#3a241f', Cl: '#6c8530', Ar: '#2a2233', Br: '#8a3a18', I: '#6a3f96', Kr: '#1f2c33', Xe: '#242a44', Rn: '#33242a', Hg: '#2c3036', Na: '#6c6a24', S: '#a07a20' };
   const METAL_CATS = new Set(['alkali', 'alkaline', 'tm', 'post', 'ln', 'an']);
+  const METALLIC_METALLOIDS = new Set(['Ge', 'Sb']); // 준금속이지만 금속처럼 가열하면 산화물이 된다.
 
   for (const e of SL.ELEMENTS) {
     const multi = MOLECULE[e.sym] ? 2 : 1;
     family({
       key: e.sym, fx: MOLECULE[e.sym] || e.sym, name: e.name, M: e.M * multi, rho: e.rho, mp: e.mp, bp: e.bp, subl: e.mp == null, k: e.k,
       c: Math.round(25000 / e.M), color: ELEMENT_COLORS[e.sym] || CAT_COLOR[e.cat], gasColor: GAS_COLOR[e.sym], cat: 'element', flow: 3,
-      metal: METAL_CATS.has(e.cat) ? e.sym : undefined, radioactive: e.radioactive, predicted: e.predicted, tags: { el: e.sym, z: e.z, elCat: e.cat },
+      metal: METAL_CATS.has(e.cat) || METALLIC_METALLOIDS.has(e.sym) ? e.sym : undefined, radioactive: e.radioactive, predicted: e.predicted, tags: { el: e.sym, z: e.z, elCat: e.cat },
     });
   }
   // 기체 원소는 액체로도 쓸 수 있게 목록에 노출한다.
@@ -146,16 +147,18 @@
 
   // ---- 이온 화합물 ----
   // [키, 이름, 전하, 원소, 허용 음이온(생략하면 전부)]
+  // 잘 쓰이지 않고 반응도 거의 없는 화합물은 만들지 않는다. 금속을 가열하거나 물에 넣었을 때 생기는 산화물·수산화물만 남긴다.
   const OXCL = 'O Cl'.split(' ');
-  const RE = 'O Cl NO3 SO4 OH F'.split(' ');
+  const OX_ONLY = ['O'];
+  const RE = ['O', 'OH'];
   const CATIONS = [
     ['Li', '리튬', 1, 'Li'], ['Na', '나트륨', 1, 'Na'], ['K', '칼륨', 1, 'K'], ['Rb', '루비듐', 1, 'Rb'], ['Cs', '세슘', 1, 'Cs'], ['NH4', '암모늄', 1, null],
-    ['Be', '베릴륨', 2, 'Be', 'O Cl OH SO4'.split(' ')], ['Mg', '마그네슘', 2, 'Mg'], ['Ca', '칼슘', 2, 'Ca'], ['Sr', '스트론튬', 2, 'Sr'], ['Ba', '바륨', 2, 'Ba'],
+    ['Be', '베릴륨', 2, 'Be', OX_ONLY], ['Mg', '마그네슘', 2, 'Mg'], ['Ca', '칼슘', 2, 'Ca'], ['Sr', '스트론튬', 2, 'Sr'], ['Ba', '바륨', 2, 'Ba'],
     ['Al', '알루미늄', 3, 'Al'], ['Cr3', '크로뮴(III)', 3, 'Cr'], ['Mn2', '망가니즈(II)', 2, 'Mn'], ['Fe2', '철(II)', 2, 'Fe'], ['Fe3', '철(III)', 3, 'Fe'], ['Co2', '코발트(II)', 2, 'Co'], ['Ni2', '니켈(II)', 2, 'Ni'],
     ['Cu2', '구리(II)', 2, 'Cu'], ['Zn', '아연', 2, 'Zn'], ['Ag', '은', 1, 'Ag'], ['Cd', '카드뮴', 2, 'Cd'], ['Sn2', '주석(II)', 2, 'Sn'], ['Pb2', '납(II)', 2, 'Pb'], ['Hg2', '수은(II)', 2, 'Hg'],
-    ['Au3', '금(III)', 3, 'Au', OXCL], ['Pd2', '팔라듐(II)', 2, 'Pd', OXCL], ['Mn4', '망가니즈(IV)', 4, 'Mn', ['O']], ['Ti4', '타이타늄(IV)', 4, 'Ti', OXCL], ['V5', '바나듐(V)', 5, 'V', ['O']], ['Mo6', '몰리브데넘(VI)', 6, 'Mo', ['O']],
-    ['W6', '텅스텐(VI)', 6, 'W', ['O']], ['Zr4', '지르코늄(IV)', 4, 'Zr', OXCL], ['Hf4', '하프늄(IV)', 4, 'Hf', ['O']], ['Nb5', '나이오븀(V)', 5, 'Nb', ['O']], ['Ta5', '탄탈럼(V)', 5, 'Ta', ['O']], ['Ge4', '저마늄(IV)', 4, 'Ge', ['O']],
-    ['Sb3', '안티모니(III)', 3, 'Sb', OXCL], ['Bi3', '비스무트(III)', 3, 'Bi', 'O Cl NO3'.split(' ')], ['In3', '인듐(III)', 3, 'In', OXCL], ['Ga3', '갈륨(III)', 3, 'Ga', OXCL], ['Tl', '탈륨(I)', 1, 'Tl', OXCL], ['Sc3', '스칸듐', 3, 'Sc', RE], ['Y3', '이트륨', 3, 'Y', RE],
+    ['Au3', '금(III)', 3, 'Au', OXCL], ['Pd2', '팔라듐(II)', 2, 'Pd', OX_ONLY], ['Mn4', '망가니즈(IV)', 4, 'Mn', ['O']], ['Ti4', '타이타늄(IV)', 4, 'Ti', OXCL], ['V5', '바나듐(V)', 5, 'V', ['O']], ['Mo6', '몰리브데넘(VI)', 6, 'Mo', ['O']],
+    ['W6', '텅스텐(VI)', 6, 'W', ['O']], ['Zr4', '지르코늄(IV)', 4, 'Zr', OX_ONLY], ['Hf4', '하프늄(IV)', 4, 'Hf', ['O']], ['Nb5', '나이오븀(V)', 5, 'Nb', ['O']], ['Ta5', '탄탈럼(V)', 5, 'Ta', ['O']], ['Ge4', '저마늄(IV)', 4, 'Ge', ['O']],
+    ['Sb3', '안티모니(III)', 3, 'Sb', OX_ONLY], ['Bi3', '비스무트(III)', 3, 'Bi', OX_ONLY], ['In3', '인듐(III)', 3, 'In', OX_ONLY], ['Ga3', '갈륨(III)', 3, 'Ga', OX_ONLY], ['Tl', '탈륨(I)', 1, 'Tl', OX_ONLY], ['Sc3', '스칸듐', 3, 'Sc', RE], ['Y3', '이트륨', 3, 'Y', RE],
     ['Th4', '토륨(IV)', 4, 'Th', ['O']], ['U6', '우라늄(VI)', 6, 'U', ['O']],
   ];
   'La 란타넘,Ce 세륨,Pr 프라세오디뮴,Nd 네오디뮴,Sm 사마륨,Eu 유로퓸,Gd 가돌리늄,Tb 터븀,Dy 디스프로슘,Ho 홀뮴,Er 어븀,Tm 툴륨,Yb 이터븀,Lu 루테튬'.split(',').forEach((s) => {
@@ -179,7 +182,8 @@
     if (a === 'OH' && (c === 'Ag' || c === 'Hg2')) return false; // 곧바로 산화물이 된다.
     if (a === 'O' && c === 'NH4') return false;
     if (a === 'CO3' && ['Al', 'Fe3', 'Cr3', 'Sn2'].includes(c)) return false; // 가수 분해되어 존재하지 않는다.
-    if (a === 'S' && ['Al', 'Cr3'].includes(c)) return false;
+    if (a === 'S' && ['Al', 'Cr3', 'Fe3'].includes(c)) return false; // 물속에서 황화철(II)과 황으로 바뀐다.
+    if (a === 'I' && ['Cu2', 'Fe3'].includes(c)) return false; // 아이오딘화 이온을 산화시켜 존재하지 않는다(CuI + I₂, Fe²⁺ + I₂).
     return true;
   }
 
@@ -318,7 +322,7 @@
     { id: 'soap', name: '비누 용액', formula: 'C₁₈H₃₃NaO₂(aq)', fx: 'C18H33NaO2', state: 'liquid', cat: 'organic', color: '#c8d8c0', density: 1020, c: 3800, k: 0.5, flow: 3, aq: true, misc: true, pH: 10, desc: '기름과 수산화나트륨이 만든 비누입니다(pH 약 10). 센물에서는 찌꺼기가 생깁니다.' },
     { id: 'wood', name: '나무', formula: 'C₆H₁₀O₅', fx: 'C6H10O5', state: 'solid', cat: 'basic', color: '#8a5a2b', density: 600, c: 1700, k: 0.15, desc: '약 300°C에서 공기와 만나면 불이 붙습니다.' },
     { id: 'ember', name: '불씨', formula: '연소 중인 나무', fx: 'C6H10O5', state: 'solid', color: '#e0662a', density: 600, c: 1700, k: 0.05, T0: 600, desc: '산소가 있으면 계속 타고, 없으면 식어서 꺼집니다.', down: { at: 250, to: 'wood', L: 0, silent: true } },
-    { id: 'ash', name: '재', formula: '탄산염 혼합', fx: 'K2CO3', state: 'powder', cat: 'basic', color: '#77787a', density: 500, c: 800, k: 0.1, desc: '탄 나무가 남긴 가벼운 가루.' },
+    { id: 'ash', name: '재', formula: 'K₂CO₃ 등', fx: 'K2CO3', state: 'powder', cat: 'basic', color: '#77787a', density: 500, c: 800, k: 0.1, salt: { c: 'K', a: 'CO3' }, desc: '탄 나무가 남긴 가벼운 가루. 주성분인 탄산칼륨이 물에 녹아 미끈한 잿물(염기성)이 되고, 불에 넣으면 칼륨의 보라색 불꽃이 보입니다.' },
     { id: 'smoke', name: '연기', formula: '미세입자', fx: 'C', state: 'gas', cat: 'basic', color: '#555b61', density: 1.0, c: 1000, k: 0.03, T0: 200, lifetime: 500, decay: [['CO2', 1]], desc: '입자가 가라앉으면 연소 기체만 남습니다.' },
     { id: 'sugar', name: '설탕', formula: 'C₁₂H₂₂O₁₁', fx: 'C12H22O11', state: 'powder', cat: 'organic', color: '#f4f2ea', density: 1590, c: 1250, k: 0.2, mp: 186, fuel: { ign: 350, prob: 0.1, prods: CH, T: 900 }, desc: '186°C 부근에서 분해됩니다. 진한 황산이 물을 빼앗으면 탄소만 남습니다.' },
     { id: 'phth', name: '페놀프탈레인', formula: 'C₂₀H₁₄O₄(aq)', fx: 'C20H14O4', state: 'liquid', cat: 'indicator', color: '#c8d8e0', density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, indicator: 'phth', desc: 'pH 8.2 위의 염기를 만나면 분홍색이 됩니다. 산성과 중성에서는 무색입니다.' },
@@ -348,6 +352,16 @@
     { id: 'S:CuSO4·5H2O', name: '황산구리 오수화물', formula: 'CuSO₄·5H₂O', fx: 'CuSO4·5H2O', state: 'powder', cat: 'salt', color: '#2a7ae0', density: 2290, c: 1100, k: 1, desc: '파란 결정. 110°C 넘게 가열하면 물이 빠져 흰 무수 황산구리가 됩니다.' },
     { id: 'S:CoCl2·6H2O', name: '염화코발트 육수화물', formula: 'CoCl₂·6H₂O', fx: 'CoCl2·6H2O', state: 'powder', cat: 'salt', color: '#d0507a', density: 1920, c: 1100, k: 1, desc: '분홍 결정. 가열하면 물이 빠져 파랗게 됩니다.' },
     { id: 'S:Cu2(OH)2CO3', name: '염기성 탄산구리 (녹청)', formula: 'Cu₂(OH)₂CO₃', fx: 'Cu2(OH)2CO3', state: 'powder', cat: 'salt', color: '#3c9a74', density: 4000, c: 800, k: 1, desc: '구리의 푸른 녹이자 공작석의 성분. 가열하면 검은 산화구리가 됩니다.' },
+    { id: 'A:sugar', name: '설탕물', formula: 'C₁₂H₂₂O₁₁(aq)', fx: 'C12H22O11', state: 'liquid', cat: 'solution', color: '#a8cde0', density: 1100, c: 3700, k: 0.55, flow: 4, aq: true, misc: true, pH: 7, desc: '설탕이 녹은 물. 설탕은 환원성이 없어 베네딕트 반응을 하지 않습니다.', up: { at: 103, to: [['H2O:g', 0.6], ['sugar', 0.4]], L: 2.257e6 }, down: { at: -3, to: [['H2O:s', 0.7], ['sugar', 0.3]], L: 3.34e5 } },
+    { id: 'glucose', name: '포도당', formula: 'C₆H₁₂O₆', fx: 'C6H12O6', state: 'powder', cat: 'organic', color: '#f2f0e4', density: 1540, c: 1200, k: 0.2, mp: 146, fuel: { ign: 350, prob: 0.1, prods: CH, T: 900 }, desc: '환원성이 있는 당. 물에 잘 녹고, 베네딕트 용액과 데우면 붉은 앙금을 만듭니다.' },
+    { id: 'A:glucose', name: '포도당 용액', formula: 'C₆H₁₂O₆(aq)', fx: 'C6H12O6', state: 'liquid', cat: 'solution', color: '#a8cde0', density: 1080, c: 3800, k: 0.55, flow: 4, aq: true, misc: true, pH: 7, desc: '베네딕트 용액·암모니아성 질산은 용액과 데우면 반응합니다(환원당 검출).', up: { at: 102, to: [['H2O:g', 0.6], ['glucose', 0.4]], L: 2.257e6 } },
+    { id: 'benedict', name: '베네딕트 용액', formula: 'Cu²⁺ 착이온(aq)', fx: 'CuSO4', state: 'liquid', cat: 'indicator', color: '#2a6fd8', density: 1050, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 10, desc: '포도당 같은 환원당과 함께 데우면 황적색 산화구리(I) 앙금이 생깁니다. 설탕과 녹말은 반응하지 않습니다.' },
+    { id: 'S:Cu2O', name: '산화구리(I)', formula: 'Cu₂O', fx: 'Cu2O', state: 'powder', cat: 'salt', color: '#c0441c', density: 6000, c: 450, k: 2, mp: 1232, desc: '황적색 앙금. 베네딕트 반응의 결과물입니다. 녹는점 1232°C.' },
+    { id: 'S:CuI', name: '아이오딘화 구리(I)', formula: 'CuI', fx: 'CuI', state: 'powder', cat: 'salt', color: '#e6dccc', density: 5670, c: 300, k: 1, mp: 606, desc: '구리(II) 이온이 아이오딘화 이온을 만나 생기는 흰 앙금. 함께 생긴 아이오딘 때문에 갈색으로 보입니다.' },
+    { id: 'A:KI3', name: '아이오딘 용액 (루골)', formula: 'I₂ + KI(aq)', fx: 'KI3', state: 'liquid', cat: 'indicator', color: '#8a4a12', density: 1050, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 7, desc: '아이오딘이 아이오딘화 칼륨 용액에 녹은 갈색 용액. 녹말을 만나면 청람색이 됩니다.', up: { at: 102, to: [['H2O:g', 0.7], ['I:g', 0.3]], L: 2.257e6 } },
+    { id: 'A:Na2S2O3', name: '싸이오황산나트륨 용액', formula: 'Na₂S₂O₃(aq)', fx: 'Na2S2O3', state: 'liquid', cat: 'solution', color: '#3f93c4', density: 1080, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 7.5, desc: '산을 만나면 서서히 뿌옇게 황이 생깁니다(반응 속도 실험). 아이오딘의 색을 없앱니다.' },
+    { id: 'oleic', name: '지방산 (올레산)', formula: 'C₁₈H₃₄O₂', fx: 'C18H34O2', state: 'liquid', cat: 'organic', color: '#c8b070', density: 895, c: 2000, k: 0.15, flow: 3, fuel: { ign: 360, prob: 0.2, prods: CH, T: 1000 }, down: { at: 13, to: 'fat', L: 1.4e5 }, desc: '비누에 산을 넣으면 생기는 기름 같은 산. 물에 뜨고 섞이지 않습니다.' },
+    { id: 'ethoxide', name: '소듐 에톡사이드 용액', formula: 'C₂H₅ONa(에탄올)', fx: 'C2H5ONa', state: 'liquid', color: '#d8d0b0', density: 870, c: 2400, k: 0.17, flow: 4, misc: true, pH: 13, fuel: { ign: 365, prob: 0.2, prods: ['Na2CO3', 'CO2', 'H2O'], T: 1000 }, desc: '나트륨이 에탄올과 반응해 생긴 강한 염기. 물을 만나면 수산화나트륨과 에탄올이 됩니다.' },
     { id: 'S:CaC2', name: '탄화칼슘 (카바이드)', formula: 'CaC₂', fx: 'CaC2', state: 'powder', cat: 'salt', color: '#5a5650', density: 2220, c: 950, k: 1, mp: 2160, desc: '물을 만나면 아세틸렌을 냅니다. 녹는점 2160°C.' },
 
     { id: 'sand', name: '모래', formula: 'SiO₂', fx: 'SiO2', state: 'powder', cat: 'rock', color: '#d3b673', density: 1600, c: 830, k: 0.3, mp: 1713, cast: true, desc: '녹는점 1713°C. 녹았다 식으면 유리가 됩니다.', up: { at: 1713, to: 'moltenglass', L: 1.4e5 } },
@@ -371,7 +385,10 @@
   // 합금
   [['steel', '강철', 'Fe+C', 7850, 1450, 2860, '#7f878f', 50], ['bronze', '청동', 'Cu+Sn', 8800, 950, 2300, '#a9793a', 60], ['brass', '황동', 'Cu+Zn', 8500, 930, 1100, '#c9a53c', 110], ['solder', '땜납', 'Sn+Pb', 8400, 183, 1600, '#a8aeb4', 50]].forEach(([key, name, f, rho, mp, bp, color, k]) => {
     family({ key, name, fx: f.replace('+', ''), M: 60, rho: rho / 1000, mp, bp, k, c: 450, color, cat: 'alloy', cast: true, flow: 2 });
-    list.filter((d) => d.sp === key).forEach((d) => { d.formula = f + (d.state === 'powder' ? '' : d.state === 'liquid' ? '(l)' : '(g)'); });
+    list.filter((d) => d.sp === key).forEach((d) => {
+      d.formula = f + (d.state === 'powder' ? '' : d.state === 'liquid' ? '(l)' : '(g)');
+      if (key === 'steel' && d.state !== 'gas') d.metal = 'Fe'; // 강철은 대부분 철이므로 산·산소·이온과 철처럼 반응한다.
+    });
   });
 
   // 불꽃. 불꽃 반응 색은 금속마다 다르다.

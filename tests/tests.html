@@ -144,6 +144,15 @@ const SHOULD = [
   ['얼음+소금', 'ice', 'salt', -5, 'ice-salt:NaCl'], ['수산화바륨+염화암모늄', 'S:Ba(OH)2', 'S:NH4Cl', null, 'endo_ba'], ['드라이아이스+물', 'CO2:s', 'water', null, 'dryice_water'], ['탄산수+석회암', 'limestone', 'A:acid:H2CO3', null, 'hardwater'],
   ['센물 가열', 'A:Ca(HCO3)2', 'air', 80, 'stalactite'], ['센물+비누', 'soap', 'A:Ca(HCO3)2', null, 'scum:Ca(HCO3)2'], ['센물+탄산나트륨', 'A:Ca(HCO3)2', 'A:Na2CO3', null, 'softening'], ['녹청 가열', 'S:Cu2(OH)2CO3', 'air', 300, 'malachite_heat'],
   ['BTB+식초', 'btb', 'vinegar', null, 'indicator:btb:acid'], ['BTB+베이킹소다 용액', 'btb', 'A:NaHCO3', null, 'indicator:btb:base'],
+  // 직접 떨어뜨렸을 때: 고체를 다른 용액에, 기체를 용액에
+  ['소금 결정을 질산은 용액에', 'salt', 'A:AgNO3', null, 'dissolve:NaCl'], ['질산은 결정을 소금물에', 'S:AgNO3', 'brine', null, 'precip:AgNO3:NaCl'], ['재+물(잿물)', 'ash', 'water', null, 'dissolve:K2CO3'], ['재+염산', 'ash', 'hcl', null, 'carbonate:HCl:K2CO3'], ['재+불(칼륨 불꽃)', 'ash', 'fire', null, 'flame:K'],
+  ['베이킹소다를 불에', 'S:NaHCO3', 'fire', null, 'decomp:NaHCO3'], ['암모니아+염산', 'NH3', 'hcl', null, 'nh3-acid:HCl'], ['암모니아+황산구리 용액', 'NH3', 'A:CuSO4', null, 'nh3-dissolve'], ['삼산화황+물', 'SO3', 'water', null, 'oxide-acid-water:SO3'],
+  ['아이오딘화수소+물', 'HIg', 'water', null, 'hi_water'], ['플루오린화수소+물', 'HFg', 'water', null, 'hf_water'], ['플루오린+수소(상온)', 'F', 'hydrogen', null, 'f2_h2'], ['염소+황화수소', 'Cl', 'H2S', null, 'cl2_h2s'], ['암모니아+염소', 'NH3', 'Cl', null, 'nh3_cl2'],
+  ['염화암모늄+소석회(가열)', 'S:NH4Cl', 'S:Ca(OH)2', 120, 'nh4-solid:NH4Cl:Ca(OH)2'], ['황산구리+KI', 'A:CuSO4', 'A:KI', null, 'ki-ox:CuSO4'], ['염화철(III)+KI', 'A:FeCl3', 'A:KI', null, 'ki-ox:FeCl3'], ['표백제+식초', 'A:NaClO', 'vinegar', null, 'naclo-acid:CH3COOH'], ['비누+염산', 'soap', 'hcl', null, 'soap-acid:HCl'],
+  ['백금+과산화수소', 'H2O2', 'Pt', null, 'pt_h2o2'], ['사염화타이타늄+물', 'S:TiCl4', 'water', null, 'ticl4'], ['강철+염산', 'steel', 'hcl', null, 'acid:Fe:Cl'], ['설탕+물', 'sugar', 'water', null, 'sugar_dissolve'], ['포도당+물', 'glucose', 'water', null, 'glucose_dissolve'],
+  ['아이오딘+KI 용액', 'I', 'A:KI', null, 'iodine_ki'], ['녹말+아이오딘 용액', 'starch', 'A:KI3', null, 'starch_iodine'], ['싸이오황산나트륨+염산', 'A:Na2S2O3', 'hcl', 60, 'thio_acid'], ['싸이오황산나트륨+아이오딘', 'A:Na2S2O3', 'A:KI3', null, 'thio_iodine'],
+  ['베네딕트+포도당(가열)', 'benedict', 'A:glucose', 80, 'benedict'], ['은거울', 'A:Ag(NH3)2Cl', 'A:glucose', 60, 'tollens'], ['과망가니즈산칼륨+에탄올', 'A:KMnO4', 'C2H5OH', null, 'kmno4_ethanol'], ['진한 황산+나무', 'wood', 'H2SO4', null, 'h2so4_wood'],
+  ['나트륨+에탄올', 'Na', 'C2H5OH', null, 'na_ethanol'], ['안티모니 가열', 'Sb', 'air', 600, 'ox:Sb'], ['아세톤 증발', 'C3H6O', 'air', null, 'evap:C3H6O'], ['브로민 증발', 'Br', 'air', null, 'evap:Br'],
 ];
 test(`반응이 일어나야 하는 ${SHOULD.length}쌍`, () => {
   const fails = [];
@@ -164,6 +173,8 @@ const SHOULD_NOT = [
   ['석회암 저온', 'limestone', 'air'], ['메테인 저온', 'CH4', 'air'], ['마그네슘 저온', 'Mg', 'air'],
   ['BTB+물 (묽히기만 함)', 'btb', 'water'], ['페놀프탈레인+소금물 (중성)', 'phth', 'brine'], ['구리+수산화나트륨 (양쪽성 아님)', 'Cu', 'naoh'], ['철+수산화나트륨', 'Fe', 'naoh'],
   ['마그네슘+이산화탄소 저온', 'Mg', 'co2'], ['숯+수증기 저온', 'C', 'steam'], ['뜨겁지 않은 기름+물', 'oil', 'water'],
+  ['수소+공기 (불씨·촉매 없음)', 'hydrogen', 'air'], ['소금+소금물 (포화)', 'salt', 'brine'], ['백금+염산', 'Pt', 'hcl'], ['베네딕트+포도당 (데우지 않음)', 'benedict', 'A:glucose'], ['녹말+물', 'starch', 'water'],
+  ['물+공기 (물은 증발 없음)', 'water', 'air'], ['사염화탄소+물', 'CCl4', 'water'],
 ];
 test(`반응이 일어나지 않아야 하는 ${SHOULD_NOT.length}쌍`, () => {
   const bad = [];
@@ -243,6 +254,35 @@ test('어는점 내림: 소금물은 -21°C, 염화칼슘 용액은 -50°C까지
   assert(at('A:CaCl2', -40) === 'A:CaCl2', '염화칼슘 용액 -40°C에서 얼음');
   assert(at('A:KNO3', -10) !== 'A:KNO3', '질산칼륨 용액 -10°C에서 안 얼음');
   return '일치';
+});
+test('설탕은 환원당이 아니라 베네딕트 반응을 하지 않고, 탄산칼륨은 가열해도 분해되지 않음', () => {
+  const hot = (a, b, T) => { const w = new SandLab.World({ width: 40, height: 20 }); w.rect(a, 0, 0, 19, 19, T); w.rect(b, 20, 0, 39, 19, T); for (let i = 0; i < 1500; i++) w.stepCells(); return w.drainEvents().filter((e) => !e.id.startsWith('phase')).map((e) => e.id); };
+  const s = hot('benedict', 'A:sugar', 80);
+  assert(!s.includes('benedict'), s.join());
+  const k = hot('S:K2CO3', 'air', 800).concat(hot('S:Na2CO3', 'air', 800));
+  assert(!k.some((id) => id.startsWith('decomp:')), k.join());
+  return '일치';
+});
+test('세 물질이 있어야 하는 반응: 백금 촉매, 강철의 녹', () => {
+  const w = new SandLab.World({ width: 40, height: 20 });
+  w.rect('hydrogen', 0, 0, 39, 9); w.rect('air', 0, 10, 39, 19); w.rect('Pt', 15, 8, 25, 11);
+  for (let i = 0; i < 1500 && !w.discovered.has('pt_h2'); i++) w.stepCells();
+  assert(w.discovered.has('pt_h2'), '백금 위에서 수소가 타지 않음');
+  const v = new SandLab.World({ width: 40, height: 20 });
+  v.rect('air', 0, 0, 39, 4); v.rect('water', 0, 5, 39, 19); v.rect('steel', 10, 3, 30, 19);
+  for (let i = 0; i < 4000 && !v.discovered.has('fe_rust'); i++) v.stepCells();
+  assert(v.discovered.has('fe_rust'), '강철이 녹슬지 않음');
+  const x = new SandLab.World({ width: 40, height: 20 });
+  x.rect('A:KMnO4', 0, 0, 19, 19); x.rect('A:FeSO4', 20, 0, 39, 19); x.rect('H2SO4aq', 0, 0, 39, 2); // 위쪽에 산을 둔다
+  for (let i = 0; i < 3000 && !x.discovered.has('kmno4_fe2'); i++) x.stepCells();
+  assert(x.discovered.has('kmno4_fe2'), '산성에서 과망가니즈산 이온이 탈색되지 않음');
+  return '일치';
+});
+test('반응이 거의 없던 드문 화합물을 정리함', () => {
+  const ids = new Set(SandLab.MATERIALS.map((d) => d.id));
+  for (const id of ['S:LaCl3', 'A:Nd(NO3)3', 'S:TlCl', 'S:BiCl3', 'S:ZrCl4', 'S:CuI2', 'S:FeI3', 'S:Fe2S3', 'S:BeSO4']) assert(!ids.has(id), id + ' 남아 있음');
+  for (const id of ['S:La2O3', 'S:La(OH)3', 'S:Sb2O3', 'S:ZrO2', 'S:TiCl4', 'S:AuCl3']) assert(ids.has(id), id + ' 없음');
+  return `물질 전체 ${ids.size}종`;
 });
 test('공기 중 액체 질소는 끓어 기체가 됨', () => {
   const w = fresh(); w.rect('N:l', 100, 60, 130, 70);
