@@ -420,6 +420,7 @@
       for (const e of list) {
         const r = e.r;
         if (r.minT != null && hi < r.minT) continue;
+        if (r.maxT != null && hi > r.maxT) continue; // 낮은 온도에서만 일어나는 반응(수화, 부동태)
         if (Math.random() > r.prob) continue;
         if (e.near && !this.hasNear(i, e.near) && !this.hasNear(j, e.near)) continue;
         const dT = r.dT || 0;

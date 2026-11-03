@@ -115,9 +115,9 @@
     ['HIg', '아이오딘화수소', 'HI', 127.9, 2.85, -50.8, -35.4, 'gas', '#c8c0c8', { gasColor: '#2c262e', k: 0.1, c: 230 }],
     ['HFg', '플루오린화수소', 'HF', 20.01, 1.0, -83.6, 19.5, 'gas', '#d0d8b0', { gasColor: '#2a3026', k: 0.1, c: 1450, gasOnly: true }],
     ['H2O2', '과산화수소', 'H2O2', 34.01, 1.45, -0.4, 150.2, 'chem', '#bcdcf0', { k: 0.6, c: 2620, misc: true, flow: 4, desc: '이산화망가니즈를 만나면 빠르게 분해되어 산소를 냅니다.' }],
-    ['H2SO4', '진한 황산', 'H2SO4', 98.08, 1.84, 10.3, 337, 'acid', '#d8d4a8', { k: 0.3, c: 1400, flow: 2, misc: true, tags: { acid: { a: 'SO4', conc: true } }, desc: '물과 만나면 많은 열을 내고, 설탕에서 물을 빼앗습니다.' }],
-    ['HNO3', '진한 질산', 'HNO3', 63.01, 1.51, -42, 83, 'acid', '#e8dca0', { k: 0.3, c: 1720, flow: 4, misc: true, tags: { acid: { a: 'NO3', conc: true } }, desc: '강한 산화제. 수소 대신 이산화질소가 생깁니다.' }],
-    ['CH3COOH', '빙초산', 'CH3COOH', 60.05, 1.05, 16.6, 118, 'acid', '#d8dcc8', { k: 0.2, c: 2050, flow: 4, misc: true, tags: Object.assign({ acid: { a: 'CH3COO', conc: true, weak: true } }, fuel(460, 0.1, CH, 1100)) }],
+    ['H2SO4', '진한 황산', 'H2SO4', 98.08, 1.84, 10.3, 337, 'acid', '#d8d4a8', { k: 0.3, c: 1400, flow: 2, misc: true, tags: { acid: { a: 'SO4', conc: true }, pH: 0 }, desc: '물과 만나면 많은 열을 내고, 설탕에서 물을 빼앗습니다.' }],
+    ['HNO3', '진한 질산', 'HNO3', 63.01, 1.51, -42, 83, 'acid', '#e8dca0', { k: 0.3, c: 1720, flow: 4, misc: true, tags: { acid: { a: 'NO3', conc: true }, pH: 0 }, desc: '강한 산화제. 수소 대신 이산화질소가 생깁니다.' }],
+    ['CH3COOH', '빙초산', 'CH3COOH', 60.05, 1.05, 16.6, 118, 'acid', '#d8dcc8', { k: 0.2, c: 2050, flow: 4, misc: true, tags: Object.assign({ acid: { a: 'CH3COO', conc: true, weak: true }, pH: 2.4 }, fuel(460, 0.1, CH, 1100)) }],
     ['CH4', '메테인', 'CH4', 16.04, 0.42, -182.5, -161.5, 'organic', '#b8c0d0', { gasColor: '#222a36', k: 0.1, c: 2220, tags: fuel(540, 0.5, CH, 1400), desc: '천연가스의 주성분.' }],
     ['C2H6', '에테인', 'C2H6', 30.07, 0.54, -182.8, -88.6, 'organic', '#b8c0d0', { gasColor: '#222a36', k: 0.1, c: 1750, tags: fuel(515, 0.5, CH, 1400) }],
     ['C3H8', '프로페인', 'C3H8', 44.1, 0.58, -187.7, -42.1, 'organic', '#b8c0d0', { gasColor: '#232b33', k: 0.1, c: 1670, tags: fuel(470, 0.5, CH, 1400), desc: '공기보다 무거운 연료 기체.' }],
@@ -133,6 +133,7 @@
     ['C3H8O3', '글리세롤', 'C3H8O3', 92.09, 1.26, 17.8, 290, 'organic', '#e0e4d8', { rhoL: 1.26, k: 0.29, c: 2430, flow: 1, misc: true, std: 'l', tags: fuel(370, 0.1, CH, 1000) }],
     ['C25H52', '파라핀', 'C25H52', 352.7, 0.9, 58, 370, 'organic', '#ece6cc', { k: 0.25, c: 2500, tags: fuel(245, 0.15, CH, 1000), desc: '양초의 재료. 녹으면 불이 잘 붙습니다.' }],
     ['C10H8', '나프탈렌', 'C10H8', 128.2, 1.14, 80.3, 218, 'organic', '#f0f0ea', { k: 0.3, c: 1300, tags: fuel(525, 0.2, CH, 1200) }],
+    ['C4H8O2', '아세트산 에틸', 'C4H8O2', 88.11, 0.902, -83.6, 77.1, 'organic', '#e4ecd8', { rhoL: 0.902, k: 0.14, c: 1920, flow: 5, tags: fuel(426, 0.3, CH, 1100), desc: '과일 향이 나는 에스터. 매니큐어 제거제에도 쓰입니다. 물에 조금만 녹아 위에 뜹니다.' }],
   ];
   for (const m of MOLECULES) {
     const [key, name, fx, M, rho, mp, bp, cat, color, extra] = m;
@@ -224,6 +225,21 @@
   // 용해열: 양수는 데워지고 음수는 차가워진다(°C/칸).
   const DISSOLVE_HEAT = { NaOH: 40, KOH: 45, NH4NO3: -25, KNO3: -12, CaCl2: 25, NH4Cl: -12, K2CO3: 8, Na2CO3: 6, MgSO4: 8, NaCl: -1 };
 
+  // 0.1 mol/L 정도 수용액의 대략적인 pH. 약산의 음이온은 염기성, 약염기의 양이온과 작은 고전하 금속 이온은 산성을 띤다(가수 분해).
+  const ANION_PH = { OH: 13, CO3: 11.6, HCO3: 8.3, PO4: 12.1, S: 12.5, CH3COO: 8.9, F: 7.9, CrO4: 8.8 };
+  const CATION_PH = {
+    NH4: 5.1, Be: 3.5, Mg: 6.5, Al: 3, Cr3: 3, Mn2: 5.5, Fe2: 4.5, Fe3: 2, Co2: 5.5, Ni2: 5.5, Cu2: 4, Zn: 5.2, Ag: 6, Cd: 5.5, Sn2: 2, Pb2: 4, Hg2: 3.5,
+    Au3: 2, Pd2: 2, Ti4: 1, Zr4: 1.5, Sb3: 1.5, Bi3: 1.5, In3: 3.5, Ga3: 3, Tl: 6.5, Sc3: 4, Y3: 5,
+  };
+  const STRONG_BASE_PH = { Ca: 12.4 }; // 수산화칼슘은 조금만 녹아 포화 용액의 pH가 낮다.
+  const phOf = (c, a) => {
+    if (a === 'OH' && STRONG_BASE_PH[c]) return STRONG_BASE_PH[c];
+    const shift = (ANION_PH[a] != null ? ANION_PH[a] - 7 : 0) + (CATION_PH[c] != null ? CATION_PH[c] - 7 : /^[A-Z][a-z]3$/.test(c) ? -1.5 : 0);
+    return Math.round(Math.max(0, Math.min(14, 7 + shift)) * 10) / 10;
+  };
+  // 수용액이 어는 가장 낮은 온도(공융점, °C). 없으면 -5°C로 단순화한다.
+  const EUTECTIC = { NaCl: -21, KCl: -11, CaCl2: -50, MgCl2: -33, NH4NO3: -17, BaCl2: -8, NH4Cl: -16 };
+
   const salts = {};
   const gcd = (a, b) => (b ? gcd(b, a % b) : a);
   const part = (fx, n, poly) => (n === 1 ? fx : poly ? `(${fx})${n}` : fx + n);
@@ -237,7 +253,7 @@
       const fx = part(c === 'NH4' ? 'NH4' : cat[3], nc, c === 'NH4') + part(afx, na, poly);
       if (c === 'NH4' && a === 'OH') { // 암모니아수는 용액으로만 존재한다.
         salts[c][a] = { aq: 'NH4OH:aq', solid: null, fx };
-        add({ id: 'NH4OH:aq', name: '암모니아수', formula: 'NH₃(aq)', fx: 'NH4OH', state: 'liquid', cat: 'base', color: '#b8d8e0', density: 960, c: 4000, k: 0.5, flow: 5, aq: true, misc: true, salt: { c, a }, base: true, up: { at: 40, to: 'NH3:g', L: 3e5 }, desc: '끓지 않아도 암모니아가 날아갑니다.' });
+        add({ id: 'NH4OH:aq', name: '암모니아수', formula: 'NH₃(aq)', fx: 'NH4OH', state: 'liquid', cat: 'base', color: '#b8d8e0', density: 960, c: 4000, k: 0.5, flow: 5, aq: true, misc: true, salt: { c, a }, base: true, pH: 11.6, up: { at: 40, to: 'NH3:g', L: 3e5 }, desc: '약한 염기(pH 약 11.6). 끓지 않아도 암모니아가 날아갑니다. 구리·은 이온과 착이온을 만듭니다.' });
         continue;
       }
       const data = DATA[fx] || [];
@@ -264,50 +280,75 @@
       if (soluble(c, a)) {
         const aqId = 'A:' + fx;
         entry.aq = aqId;
+        const pH = phOf(c, a);
+        const freeze = EUTECTIC[fx] != null ? EUTECTIC[fx] : -5;
         add({
-          id: aqId, name: (fx === 'NaCl' ? '소금물' : `${aname}${cname} 용액`), formula: pretty(fx) + '(aq)', fx, state: 'liquid', cat: isBase ? 'base' : 'solution', color: AN_AQ_COLOR[a] || AQ_COLOR[c] || '#3f93c4', density: 1000 + Math.min(300, density / 25), c: 3900, k: 0.6, flow: 5, aq: true, misc: true, salt: { c, a }, base: isBase,
-          desc: '끓이면 물이 날아가고 고체가 남습니다.',
-          up: { at: 102, to: [['H2O:g', 0.6], [solid, 0.4]], L: 2.257e6 }, down: { at: -5, to: [['H2O:s', 0.7], [solid, 0.3]], L: 3.34e5 },
+          id: aqId, name: (fx === 'NaCl' ? '소금물' : `${aname}${cname} 용액`), formula: pretty(fx) + '(aq)', fx, state: 'liquid', cat: isBase ? 'base' : 'solution', color: AN_AQ_COLOR[a] || AQ_COLOR[c] || '#3f93c4', density: 1000 + Math.min(300, density / 25), c: 3900, k: 0.6, flow: 5, aq: true, misc: true, salt: { c, a }, base: isBase, pH,
+          desc: `pH 약 ${pH}. 끓이면 물이 날아가고 고체가 남습니다.` + (EUTECTIC[fx] != null ? ` 진하면 ${freeze}°C까지 얼지 않습니다.` : ''),
+          up: { at: 102, to: [['H2O:g', 0.6], [solid, 0.4]], L: 2.257e6 }, down: { at: freeze, to: [['H2O:s', 0.7], [solid, 0.3]], L: 3.34e5 },
         });
       }
     }
   }
 
   // ---- 산 ----
-  // [별칭, 이름, 화학식, 음이온, 색, 끓을 때 나오는 기체, 강도]
+  // [별칭, 이름, 화학식, 음이온, 색, 끓을 때 나오는 기체, 강도, pH(약 0.1 mol/L)]
   const ACIDS = [
-    ['HCl', '염산', 'HCl', 'Cl', '#b7dc5a', 'HClg', 0.9], ['HBr', '브로민화수소산', 'HBr', 'Br', '#c8c080', 'HBrg', 0.9], ['HI', '아이오딘화수소산', 'HI', 'I', '#c0a080', 'HIg', 0.9],
-    ['HF', '플루오린화수소산', 'HF', 'F', '#c8e080', 'HFg', 0.4], ['HNO3aq', '묽은 질산', 'HNO3', 'NO3', '#dcd890', 'NO2', 0.9], ['H2SO4aq', '묽은 황산', 'H2SO4', 'SO4', '#d0d0a0', 'SO2', 0.9],
-    ['H3PO4', '인산', 'H3PO4', 'PO4', '#d0d8c0', null, 0.3], ['CH3COOHaq', '식초(아세트산)', 'CH3COOH', 'CH3COO', '#d8d8b0', 'CH3COOH', 0.15], ['H2CO3', '탄산수', 'H2CO3', 'CO3', '#a8d0e0', 'CO2', 0.05], ['H2SO3', '아황산', 'H2SO3', 'SO3x', '#c8d8c0', 'SO2', 0.2],
+    ['HCl', '염산', 'HCl', 'Cl', '#b7dc5a', 'HClg', 0.9, 1], ['HBr', '브로민화수소산', 'HBr', 'Br', '#c8c080', 'HBrg', 0.9, 1], ['HI', '아이오딘화수소산', 'HI', 'I', '#c0a080', 'HIg', 0.9, 1],
+    ['HF', '플루오린화수소산', 'HF', 'F', '#c8e080', 'HFg', 0.4, 2.1], ['HNO3aq', '묽은 질산', 'HNO3', 'NO3', '#dcd890', 'NO2', 0.9, 1], ['H2SO4aq', '묽은 황산', 'H2SO4', 'SO4', '#d0d0a0', 'SO2', 0.9, 1],
+    ['H3PO4', '인산', 'H3PO4', 'PO4', '#d0d8c0', null, 0.3, 1.6], ['CH3COOHaq', '식초(아세트산)', 'CH3COOH', 'CH3COO', '#d8d8b0', 'CH3COOH', 0.15, 2.9], ['H2CO3', '탄산수', 'H2CO3', 'CO3', '#a8d0e0', 'CO2', 0.05, 4], ['H2SO3', '아황산', 'H2SO3', 'SO3x', '#c8d8c0', 'SO2', 0.2, 1.8],
   ];
-  for (const [key, name, fx, a, color, gas, strength] of ACIDS) {
+  for (const [key, name, fx, a, color, gas, strength, pH] of ACIDS) {
     const id = 'A:acid:' + key;
     alias[key] = id;
     add({
-      id, name, formula: pretty(fx) + '(aq)', fx, state: 'liquid', cat: 'acid', color, density: 1050, c: 3900, k: 0.55, flow: 5, aq: true, misc: true, acid: { a, strength },
-      desc: '금속, 탄산염, 염기, 금속 산화물과 반응합니다.',
+      id, name, formula: pretty(fx) + '(aq)', fx, state: 'liquid', cat: 'acid', color, density: 1050, c: 3900, k: 0.55, flow: 5, aq: true, misc: true, acid: { a, strength }, pH,
+      desc: `pH 약 ${pH}. 금속, 탄산염, 염기, 금속 산화물과 반응합니다.`,
       up: { at: key === 'H2CO3' ? 60 : 105, to: gas ? [['H2O:g', 0.7], [gas, 0.3]] : 'H2O:g', L: key === 'H2CO3' ? 2e5 : 2.257e6 },
       down: { at: -10, to: 'H2O:s', L: 3.34e5 },
     });
   }
-  add({ id: 'aquaregia', name: '왕수', formula: 'HCl+HNO₃', fx: 'HCl', state: 'liquid', cat: 'acid', color: '#e0a040', density: 1200, c: 3000, k: 0.5, flow: 4, aq: true, misc: true, acid: { a: 'Cl', strength: 0.9 }, up: { at: 108, to: [['H2O:g', 0.5], ['NO2', 0.5]], L: 1e6 }, desc: '진한 염산과 진한 질산의 혼합물. 금을 녹입니다.' });
+  add({ id: 'aquaregia', name: '왕수', formula: 'HCl+HNO₃', fx: 'HCl', state: 'liquid', cat: 'acid', color: '#e0a040', density: 1200, c: 3000, k: 0.5, flow: 4, aq: true, misc: true, acid: { a: 'Cl', strength: 0.9 }, pH: 0, up: { at: 108, to: [['H2O:g', 0.5], ['NO2', 0.5]], L: 1e6 }, desc: '진한 염산과 진한 질산의 혼합물. 금을 녹입니다.' });
 
   // ---- 일상 물질, 암석, 장치 ----
   const others = [
     { id: 'air', name: '공기', formula: 'N₂+O₂', fx: 'O2', state: 'gas', color: '#10151b', density: 1.2, c: 1005, k: 0.026, desc: '산소 21%. 연소에 쓰이면 소모됩니다.' },
     { id: 'oil', name: '식용유', formula: 'C₅₇H₁₀₄O₆', fx: 'C57H104O6', state: 'liquid', cat: 'organic', color: '#b58a2e', density: 900, c: 2000, k: 0.15, flow: 3, fuel: { ign: 250, prob: 0.3, prods: CH, T: 1000 }, down: { at: -10, to: 'fat', L: 2e5 }, desc: '물에 뜨는 가연성 액체. 수산화나트륨과 반응해 비누가 됩니다.' },
     { id: 'fat', name: '굳은 기름', formula: '지방', fx: 'C57H104O6', state: 'powder', color: '#d8c890', density: 930, c: 2000, k: 0.15, T0: -20, up: { at: -10, to: 'oil', L: 2e5 } },
-    { id: 'soap', name: '비누 용액', formula: 'C₁₈H₃₃NaO₂(aq)', fx: 'C18H33NaO2', state: 'liquid', cat: 'organic', color: '#c8d8c0', density: 1020, c: 3800, k: 0.5, flow: 3, aq: true, misc: true, desc: '기름과 수산화나트륨이 만든 비누입니다.' },
+    { id: 'soap', name: '비누 용액', formula: 'C₁₈H₃₃NaO₂(aq)', fx: 'C18H33NaO2', state: 'liquid', cat: 'organic', color: '#c8d8c0', density: 1020, c: 3800, k: 0.5, flow: 3, aq: true, misc: true, pH: 10, desc: '기름과 수산화나트륨이 만든 비누입니다(pH 약 10). 센물에서는 찌꺼기가 생깁니다.' },
     { id: 'wood', name: '나무', formula: 'C₆H₁₀O₅', fx: 'C6H10O5', state: 'solid', cat: 'basic', color: '#8a5a2b', density: 600, c: 1700, k: 0.15, desc: '약 300°C에서 공기와 만나면 불이 붙습니다.' },
     { id: 'ember', name: '불씨', formula: '연소 중인 나무', fx: 'C6H10O5', state: 'solid', color: '#e0662a', density: 600, c: 1700, k: 0.05, T0: 600, desc: '산소가 있으면 계속 타고, 없으면 식어서 꺼집니다.', down: { at: 250, to: 'wood', L: 0, silent: true } },
     { id: 'ash', name: '재', formula: '탄산염 혼합', fx: 'K2CO3', state: 'powder', cat: 'basic', color: '#77787a', density: 500, c: 800, k: 0.1, desc: '탄 나무가 남긴 가벼운 가루.' },
     { id: 'smoke', name: '연기', formula: '미세입자', fx: 'C', state: 'gas', cat: 'basic', color: '#555b61', density: 1.0, c: 1000, k: 0.03, T0: 200, lifetime: 500, decay: [['CO2', 1]], desc: '입자가 가라앉으면 연소 기체만 남습니다.' },
     { id: 'sugar', name: '설탕', formula: 'C₁₂H₂₂O₁₁', fx: 'C12H22O11', state: 'powder', cat: 'organic', color: '#f4f2ea', density: 1590, c: 1250, k: 0.2, mp: 186, fuel: { ign: 350, prob: 0.1, prods: CH, T: 900 }, desc: '186°C 부근에서 분해됩니다. 진한 황산이 물을 빼앗으면 탄소만 남습니다.' },
-    { id: 'phth', name: '페놀프탈레인', formula: 'C₂₀H₁₄O₄(aq)', fx: 'C20H14O4', state: 'liquid', cat: 'indicator', color: '#c8d8e0', density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, indicator: 'phth', desc: '염기를 만나면 분홍색이 됩니다.' },
+    { id: 'phth', name: '페놀프탈레인', formula: 'C₂₀H₁₄O₄(aq)', fx: 'C20H14O4', state: 'liquid', cat: 'indicator', color: '#c8d8e0', density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, indicator: 'phth', desc: 'pH 8.2 위의 염기를 만나면 분홍색이 됩니다. 산성과 중성에서는 무색입니다.' },
     { id: 'phth:pink', name: '분홍색 페놀프탈레인', formula: '염기성', fx: 'C20H14O4', state: 'liquid', color: '#e83a9a', density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, indicator: 'phth', desc: '염기성 용액입니다.' },
-    { id: 'litmus', name: '리트머스 용액', formula: '지시약', fx: 'C7H7NO4', state: 'liquid', cat: 'indicator', color: '#7a5ab0', density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, indicator: 'litmus', desc: '산에서 붉게, 염기에서 푸르게 변합니다.' },
+    { id: 'litmus', name: '리트머스 용액', formula: '지시약', fx: 'C7H7NO4', state: 'liquid', cat: 'indicator', color: '#7a5ab0', density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, indicator: 'litmus', desc: 'pH 4.5 아래에서 붉게, 8.3 위에서 푸르게 변합니다. 그 사이에서는 보라색입니다.' },
     { id: 'litmus:red', name: '붉은 리트머스', formula: '산성', fx: 'C7H7NO4', state: 'liquid', color: '#d03040', density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, indicator: 'litmus', desc: '산성 용액입니다.' },
     { id: 'litmus:blue', name: '푸른 리트머스', formula: '염기성', fx: 'C7H7NO4', state: 'liquid', color: '#2a50d0', density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, indicator: 'litmus', desc: '염기성 용액입니다.' },
+    { id: 'btb', name: 'BTB 용액', formula: '지시약', fx: 'C27H28Br2O5S', state: 'liquid', cat: 'indicator', color: '#3f9a4a', density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, indicator: 'btb', desc: '브로모티몰 블루. pH 6 아래에서 노랑, 6~7.6에서 초록, 7.6 위에서 파랑입니다. 탄산수처럼 약한 산에도 반응합니다.' },
+    { id: 'btb:yellow', name: '노란 BTB', formula: '산성', fx: 'C27H28Br2O5S', state: 'liquid', color: '#e0c828', density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, indicator: 'btb', desc: '산성 용액입니다.' },
+    { id: 'btb:blue', name: '파란 BTB', formula: '염기성', fx: 'C27H28Br2O5S', state: 'liquid', color: '#2a5ed8', density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, indicator: 'btb', desc: '염기성 용액입니다.' },
+    { id: 'starch', name: '녹말 용액', formula: '(C₆H₁₀O₅)ₙ(aq)', fx: 'C6H10O5', state: 'liquid', cat: 'indicator', color: '#d8dccc', density: 1010, c: 4000, k: 0.6, flow: 4, aq: true, misc: true, desc: '아이오딘을 만나면 청람색이 됩니다. 데우면 색이 사라졌다가 식으면 돌아옵니다.' },
+    { id: 'starch:blue', name: '청람색 녹말 용액', formula: '녹말-아이오딘', fx: 'C6H10O5', state: 'liquid', color: '#1c1e5a', density: 1010, c: 4000, k: 0.6, flow: 4, aq: true, misc: true, desc: '녹말 사슬 속에 아이오딘이 들어간 착물입니다.' },
+    { id: 'bleached', name: '탈색된 용액', formula: '산화된 색소(aq)', fx: 'H2O', state: 'liquid', color: '#c4d4dc', density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, desc: '표백되어 색을 잃은 색소 용액입니다. 다시 지시약으로 쓸 수 없습니다.' },
+    { id: 'foam', name: '거품', formula: 'O₂ + 비누막', fx: 'O2', state: 'powder', color: '#f4f2ee', density: 60, c: 2000, k: 0.05, lifetime: 900, decay: [['air', 0.8], ['soap', 0.2]], desc: '비누 막에 갇힌 기체. 액체 위에 쌓였다가 터져 사라집니다.' },
+    { id: 'scum', name: '비누 찌꺼기', formula: 'Ca(C₁₈H₃₃O₂)₂', fx: 'Ca(C18H33O2)2', state: 'powder', color: '#b8b4a6', density: 1030, c: 1800, k: 0.2, desc: '센물의 칼슘·마그네슘 이온과 비누가 만든, 물에 녹지 않는 찌꺼기(욕조의 때).' },
+
+    // 착이온과 생활 화학 용액
+    { id: 'A:NaAl(OH)4', name: '알루민산나트륨 용액', formula: 'Na[Al(OH)₄](aq)', fx: 'NaAl(OH)4', state: 'liquid', cat: 'solution', color: '#4f9ac4', density: 1080, c: 3800, k: 0.6, flow: 5, aq: true, misc: true, pH: 13, desc: '양쪽성인 알루미늄이 강염기에 녹아 생긴 용액(pH 약 13).', up: { at: 102, to: [['H2O:g', 0.6], ['S:Al(OH)3', 0.4]], L: 2.257e6 } },
+    { id: 'A:Na2Zn(OH)4', name: '아연산나트륨 용액', formula: 'Na₂[Zn(OH)₄](aq)', fx: 'Na2Zn(OH)4', state: 'liquid', cat: 'solution', color: '#4f9ac4', density: 1080, c: 3800, k: 0.6, flow: 5, aq: true, misc: true, pH: 13, desc: '양쪽성인 아연이 강염기에 녹아 생긴 용액(pH 약 13).', up: { at: 102, to: [['H2O:g', 0.6], ['S:Zn(OH)2', 0.4]], L: 2.257e6 } },
+    { id: 'A:Cu(NH3)4(OH)2', name: '테트라암민구리(II) 용액', formula: '[Cu(NH₃)₄]²⁺(aq)', fx: 'Cu(NH3)4(OH)2', state: 'liquid', cat: 'solution', color: '#1d2fb0', density: 1020, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 11, desc: '구리 이온에 암모니아 네 분자가 결합한 짙은 남색 착이온. 구리 이온 검출에 씁니다.', up: { at: 60, to: [['NH3:g', 0.5], ['S:Cu(OH)2', 0.5]], L: 5e5 } },
+    { id: 'A:Ag(NH3)2Cl', name: '다이암민은 용액', formula: '[Ag(NH₃)₂]Cl(aq)', fx: 'Ag(NH3)2Cl', state: 'liquid', cat: 'solution', color: '#7ab0cc', density: 1020, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 10.5, desc: '염화은이 암모니아수에 녹은 무색 용액. 산을 넣으면 다시 염화은이 가라앉습니다.', up: { at: 60, to: [['NH3:g', 0.5], ['S:AgCl', 0.5]], L: 5e5 } },
+    { id: 'A:KSCN', name: '싸이오사이안산칼륨 용액', formula: 'KSCN(aq)', fx: 'KSCN', state: 'liquid', cat: 'solution', color: '#3f93c4', density: 1050, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 7, desc: '철(III) 이온을 만나면 핏빛으로 변합니다. 철 이온 검출 시약입니다.' },
+    { id: 'A:Fe(SCN)3', name: '싸이오사이안산철 용액', formula: '[Fe(SCN)]²⁺(aq)', fx: 'Fe(SCN)3', state: 'liquid', color: '#8e0c1c', density: 1050, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, desc: '철(III) 이온과 싸이오사이안산 이온의 핏빛 착이온.' },
+    { id: 'A:K2Cr2O7', name: '다이크로뮴산칼륨 용액', formula: 'K₂Cr₂O₇(aq)', fx: 'K2Cr2O7', state: 'liquid', cat: 'solution', color: '#e06a14', density: 1060, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 4, desc: '주황색. 염기를 넣으면 노란 크로뮴산 이온으로 돌아갑니다. 독성이 있습니다.' },
+    { id: 'A:NaClO', name: '표백제(차아염소산나트륨)', formula: 'NaClO(aq)', fx: 'NaClO', state: 'liquid', cat: 'base', color: '#d4e0b8', density: 1100, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 11.5, desc: '가정용 락스. 색소를 산화시켜 표백합니다. 산성 세제와 섞으면 염소 기체가 나옵니다(절대 섞지 마세요).', up: { at: 102, to: [['H2O:g', 0.7], ['S:NaCl', 0.3]], L: 2.257e6 } },
+    { id: 'A:Ca(HCO3)2', name: '센물(탄산수소칼슘)', formula: 'Ca(HCO₃)₂(aq)', fx: 'Ca(HCO3)2', state: 'liquid', cat: 'solution', color: '#5aa0c8', density: 1010, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, hard: true, pH: 8, desc: '석회암 지대의 물. 이산화탄소가 빠지면 탄산칼슘이 쌓여 종유석과 물때가 됩니다. 비누 거품이 잘 안 납니다.', up: { at: 102, to: [['H2O:g', 0.6], ['S:CaCO3', 0.4]], L: 2.257e6 } },
+    { id: 'S:CuSO4·5H2O', name: '황산구리 오수화물', formula: 'CuSO₄·5H₂O', fx: 'CuSO4·5H2O', state: 'powder', cat: 'salt', color: '#2a7ae0', density: 2290, c: 1100, k: 1, desc: '파란 결정. 110°C 넘게 가열하면 물이 빠져 흰 무수 황산구리가 됩니다.' },
+    { id: 'S:CoCl2·6H2O', name: '염화코발트 육수화물', formula: 'CoCl₂·6H₂O', fx: 'CoCl2·6H2O', state: 'powder', cat: 'salt', color: '#d0507a', density: 1920, c: 1100, k: 1, desc: '분홍 결정. 가열하면 물이 빠져 파랗게 됩니다.' },
+    { id: 'S:Cu2(OH)2CO3', name: '염기성 탄산구리 (녹청)', formula: 'Cu₂(OH)₂CO₃', fx: 'Cu2(OH)2CO3', state: 'powder', cat: 'salt', color: '#3c9a74', density: 4000, c: 800, k: 1, desc: '구리의 푸른 녹이자 공작석의 성분. 가열하면 검은 산화구리가 됩니다.' },
+    { id: 'S:CaC2', name: '탄화칼슘 (카바이드)', formula: 'CaC₂', fx: 'CaC2', state: 'powder', cat: 'salt', color: '#5a5650', density: 2220, c: 950, k: 1, mp: 2160, desc: '물을 만나면 아세틸렌을 냅니다. 녹는점 2160°C.' },
 
     { id: 'sand', name: '모래', formula: 'SiO₂', fx: 'SiO2', state: 'powder', cat: 'rock', color: '#d3b673', density: 1600, c: 830, k: 0.3, mp: 1713, cast: true, desc: '녹는점 1713°C. 녹았다 식으면 유리가 됩니다.', up: { at: 1713, to: 'moltenglass', L: 1.4e5 } },
     { id: 'quartz', name: '석영', formula: 'SiO₂', fx: 'SiO2', state: 'solid', cat: 'rock', color: '#e8e4dc', density: 2650, c: 740, k: 3, mp: 1713, desc: '녹는점 1713°C.', up: { at: 1713, to: 'moltenglass', L: 1.4e5 } },

@@ -240,6 +240,162 @@
       },
     },
     {
+      id: 'complex', name: '색이 변하는 이온 반응', tab: 'codex',
+      desc: '왼쪽: 황산구리 용액이 암모니아수를 만나면 파란 수산화구리 앙금이 생겼다가, 암모니아가 많으면 다시 녹아 짙은 남색 착이온이 됩니다. 가운데: 염화철(III)에 싸이오사이안산칼륨을 넣으면 핏빛이 됩니다. 오른쪽: 노란 크로뮴산칼륨에 염산을 넣으면 주황색이 됩니다.',
+      setup(w) {
+        air(w);
+        const pairs = [['A:CuSO4', 'NH4OH:aq'], ['A:FeCl3', 'A:KSCN'], ['A:K2CrO4', 'hcl']];
+        beakers(w, pairs.map(([a, b], i) => (t) => {
+          if (i === 0) { // 착이온은 암모니아가 많아야 생기므로, 과량의 암모니아수에 황산구리 용액을 떨어뜨린다.
+            w.rect(b, t.l, 100, t.r, t.b);
+            w.rect(a, t.l + 15, 75, t.r - 15, 85);
+            return;
+          }
+          w.rect(a, t.l, 118, t.r, t.b);
+          w.rect(b, t.l + 6, 80, t.r - 6, 100);
+        }));
+      },
+    },
+    {
+      id: 'ph', name: 'BTB로 보는 pH', tab: 'codex',
+      desc: '초록색 BTB 용액에 왼쪽부터 식초(pH 약 3), 탄산수(약 4), 소금물(7), 베이킹소다 용액(약 8.3), 수산화나트륨 용액(13)을 넣었습니다. 산성은 노랑, 중성은 초록, 염기성은 파랑입니다.',
+      setup(w) {
+        air(w);
+        beakers(w, ['vinegar', 'A:acid:H2CO3', 'brine', 'A:NaHCO3', 'naoh'].map((id) => (t) => {
+          w.rect('btb', t.l, 122, t.r, t.b);
+          w.rect(id, t.l + 3, 95, t.r - 3, 110);
+        }));
+      },
+    },
+    {
+      id: 'peroxide', name: '과산화수소와 촉매', tab: 'codex',
+      desc: '왼쪽: 이산화망가니즈 촉매가 과산화수소를 물과 산소로 분해합니다. 가운데: 비누를 섞은 과산화수소에 아이오딘화 칼륨을 넣으면 산소가 거품을 부풀립니다(코끼리 치약). 오른쪽: 보라색 과망가니즈산 칼륨이 과산화수소를 만나 색을 잃고 갈색 앙금이 생깁니다.',
+      setup(w) {
+        air(w);
+        beakers(w, [
+          (t) => { w.rect('H2O2', t.l, 110, t.r, t.b); w.rect('S:MnO2', t.l + 25, 85, t.r - 25, 90); },
+          (t) => { w.rect('H2O2', t.l, 118, t.r, t.b); w.rect('soap', t.l, 110, t.r, 117); w.rect('A:KI', t.l + 20, 85, t.r - 20, 92); },
+          (t) => { w.rect('A:KMnO4', t.l, 118, t.r, t.b); w.rect('H2O2', t.l + 10, 85, t.r - 10, 98); },
+        ]);
+      },
+    },
+    {
+      id: 'amphoteric', name: '양쪽성 금속', tab: 'codex',
+      desc: '알루미늄과 아연은 산뿐 아니라 강염기에도 녹습니다. 왼쪽과 가운데는 염화알루미늄·황산아연 용액을 수산화나트륨 용액에 떨어뜨린 것으로, 흰 앙금이 생겼다가 염기가 많은 곳에서 다시 녹습니다. 오른쪽은 알루미늄 조각이 수산화나트륨 용액에서 수소를 내는 모습입니다.',
+      setup(w) {
+        air(w);
+        beakers(w, [
+          // 금속염 용액이 수산화나트륨 용액보다 무거우므로, 위에서 떨어뜨리면 염기 속을 지나며 반응한다.
+          (t) => { w.rect('naoh', t.l, 100, t.r, t.b); w.rect('A:AlCl3', t.l + 15, 70, t.r - 15, 80); },
+          (t) => { w.rect('naoh', t.l, 100, t.r, t.b); w.rect('A:ZnSO4', t.l + 15, 70, t.r - 15, 80); },
+          (t) => { w.rect('naoh', t.l, 105, t.r, t.b); w.rect('Al', t.l + 20, 130, t.r - 20, t.b, 20, true); },
+        ]);
+      },
+    },
+    {
+      id: 'bleach', name: '표백제와 염소', tab: 'codex',
+      desc: '왼쪽: 표백제(락스)가 리트머스의 색을 없앱니다. 가운데: 표백제에 염산을 넣으면 황록색 염소 기체가 나옵니다. 그래서 락스와 산성 세제는 절대 섞으면 안 됩니다. 오른쪽: 염소가 아이오딘화 칼륨에서 아이오딘을 밀어내고, 그 아이오딘이 녹말을 청람색으로 물들입니다. 실제로 따라 하지 마세요.',
+      setup(w) {
+        air(w);
+        beakers(w, [
+          (t) => { w.rect('litmus', t.l, 120, t.r, t.b); w.rect('A:NaClO', t.l + 8, 90, t.r - 8, 105); },
+          (t) => { w.rect('A:NaClO', t.l, 120, t.r, t.b); w.rect('hcl', t.l + 8, 90, t.r - 8, 105); },
+          (t) => { w.rect('starch', t.l, 128, t.r, t.b); w.rect('A:KI', t.l, 120, t.r, 127); w.rect('Cl:g', t.l, 70, t.r, 105); },
+        ]);
+      },
+    },
+    {
+      id: 'cave', name: '석회 동굴과 센물', tab: 'codex',
+      desc: '왼쪽: 이산화탄소가 녹은 물(탄산수)이 석회암을 천천히 녹여 센물이 됩니다. 가운데: 센물을 데우면 이산화탄소가 빠지며 탄산칼슘이 다시 쌓입니다(종유석, 주전자 물때). 오른쪽: 센물에 비누를 넣으면 거품 대신 찌꺼기가 생깁니다.',
+      setup(w) {
+        air(w);
+        w.rect('stone', 0, 146, 239, 149);
+        const t1 = tank(w, 'glass', 4, 76, 60, 142);
+        w.rect('A:acid:H2CO3', t1.l, 95, t1.r, t1.b);
+        w.rect('limestone', t1.l + 15, 125, t1.r - 15, t1.b, 20, true);
+        w.rect('heater', 84, 142, 156, 145);
+        const t2 = tank(w, 'glass', 84, 156, 60, 141);
+        w.rect('A:Ca(HCO3)2', t2.l, 100, t2.r, t2.b);
+        const t3 = tank(w, 'glass', 164, 236, 60, 142);
+        w.rect('A:Ca(HCO3)2', t3.l, 115, t3.r, t3.b);
+        w.rect('soap', t3.l + 8, 85, t3.r - 8, 100);
+      },
+    },
+    {
+      id: 'freeze', name: '얼음과 소금 (한제)', tab: 'physics', graph: 'T',
+      desc: '왼쪽은 얼음만, 오른쪽은 얼음과 소금을 섞었습니다. 온도계는 오른쪽에 꽂혀 있습니다. 소금물은 0°C보다 훨씬 낮은 온도(최저 약 -21°C)에서 얼기 때문에, 얼음이 녹으며 열을 빼앗아 영하로 내려갑니다. 아이스크림을 만들거나 도로에 염화칼슘을 뿌리는 원리입니다.',
+      setup(w) {
+        air(w);
+        w.rect('stone', 0, 146, 239, 149);
+        const a = tank(w, 'glass', 20, 110, 60, 142);
+        w.rect('ice', a.l, 100, a.r, a.b, -5);
+        const b = tank(w, 'glass', 130, 220, 60, 142);
+        for (let y = 100; y <= b.b; y++) for (let x = b.l; x <= b.r; x++) w.rect((x * 7 + y * 3) % 5 === 0 ? 'salt' : 'ice', x, y, x, y, -5);
+        w.setProbe(175, 130);
+      },
+    },
+    {
+      id: 'endo', name: '열을 내는 반응, 빼앗는 반응', tab: 'physics', graph: 'T',
+      desc: '왼쪽: 수산화바륨과 염화암모늄 두 고체를 섞기만 해도 열을 빼앗아 차가워집니다(온도계). 가운데: 질산암모늄이 물에 녹으면 차가워집니다(냉찜질 팩). 오른쪽: 생석회에 물을 부으면 뜨거워집니다(발열 도시락). 온도 보기로 함께 보세요.',
+      setup(w) {
+        air(w);
+        beakers(w, [
+          (t) => { for (let y = 115; y <= t.b; y++) for (let x = t.l; x <= t.r; x++) w.rect((x + y) % 2 ? 'S:Ba(OH)2' : 'S:NH4Cl', x, y, x, y); },
+          (t) => { w.rect('water', t.l, 115, t.r, t.b); w.rect('S:NH4NO3', t.l + 10, 90, t.r - 10, 100); },
+          (t) => { w.rect('quicklime', t.l, 125, t.r, t.b); w.rect('water', t.l + 10, 90, t.r - 10, 105); },
+        ]);
+        w.setProbe(40, 130);
+      },
+    },
+    {
+      id: 'metalfire', name: '금속 화재', tab: 'codex',
+      desc: '왼쪽: 불붙은 마그네슘은 이산화탄소 속에서도 계속 타며 검은 탄소를 남깁니다. 오른쪽: 불붙은 마그네슘에 물을 부으면 뜨거운 금속이 수증기에서 산소를 빼앗아 수소를 내고 불길이 더 커집니다. 금속 화재는 마른 모래나 전용 소화기로 끕니다.',
+      setup(w) {
+        air(w);
+        w.rect('stone', 0, 146, 239, 149);
+        const a = tank(w, 'glass', 10, 110, 40, 142);
+        w.rect('co2', a.l, 41, a.r, a.b);
+        w.rect('Mg', a.l + 20, 130, a.r - 20, a.b, 1000);
+        const b = tank(w, 'stone', 130, 230, 90, 142);
+        w.rect('Mg', b.l + 20, 130, b.r - 20, b.b, 1000);
+        w.rect('water', b.l + 30, 60, b.r - 30, 70);
+      },
+    },
+    {
+      id: 'oilfire', name: '기름 화재와 물', tab: 'codex',
+      desc: '두 냄비 모두 기름에 불이 붙어 있습니다. 왼쪽에 물을 부으면 물이 기름 밑으로 가라앉아 순간적으로 끓으며 불붙은 기름을 튀겨 불길이 커집니다. 오른쪽처럼 공기보다 무거운 이산화탄소로 덮어 산소를 막으면 꺼집니다. 실제로 따라 하지 마세요.',
+      setup(w) {
+        air(w);
+        w.rect('stone', 0, 146, 239, 149);
+        [[20, 110], [130, 220]].forEach(([x0, x1], i) => {
+          w.rect('heater', x0, 142, x1, 145);
+          const t = tank(w, 'stone', x0, x1, 120, 138);
+          w.rect('oil', t.l, 126, t.r, t.b, 320);
+          w.rect('fire', t.l, 121, t.r, 125);
+          if (i === 0) w.rect('water', t.l + 25, 70, t.r - 25, 80);
+          else w.rect('co2', t.l - 3, 60, t.r + 3, 100, 20);
+        });
+      },
+    },
+    {
+      id: 'hydrate', name: '결정 속의 물', tab: 'codex',
+      desc: '왼쪽: 파란 황산구리 오수화물을 데우면 결정 속 물이 빠져 흰색이 됩니다(650°C를 넘기면 황산구리 자체가 분해됩니다). 오른쪽: 흰 무수 황산구리와 파란 염화코발트에 물방울이 떨어지면 각각 파랑과 분홍으로 변했다가 녹아 용액이 됩니다. 물을 검출하거나 습도를 나타내는 데 씁니다.',
+      setup(w) {
+        air(w);
+        w.setHeatBoost(400);
+        w.rect('stone', 0, 146, 239, 149);
+        // 가열판과 결정 사이에 내화벽돌을 두어 천천히 데운다.
+        w.rect('heater', 10, 142, 110, 145);
+        w.rect('firebrick', 10, 126, 110, 141);
+        w.rect('S:CuSO4·5H2O', 20, 120, 100, 125);
+        const t = tank(w, 'glass', 130, 230, 100, 142);
+        w.rect('S:CuSO4', t.l + 4, 130, t.l + 40, t.b);
+        w.rect('S:CoCl2', t.l + 54, 130, t.r - 4, t.b);
+        w.rect('water', t.l + 14, 70, t.l + 28, 73);
+        w.rect('water', t.l + 64, 70, t.l + 78, 73);
+      },
+    },
+    {
       id: 'density', name: '밀도 기둥', tab: 'materials',
       desc: '일부러 무거운 소금물을 위에, 기름을 아래에 넣었습니다. 밀도 순서대로 층이 나뉘는 과정을 보세요. 밀도 보기와 함께 쓰면 좋습니다.',
       setup(w) {
