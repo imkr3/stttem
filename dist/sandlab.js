@@ -837,7 +837,7 @@ Og|오가네손|294|noble|7|50|80|1`;
           out.push(R('h2so4c:' + elA, A.name + '과 진한 황산', [elA, 'H2SO4'], [oxSal.fx, 'SO2', 'H2O'], { minT: cold ? undefined : 100, prob: cold ? 0.03 : 0.1, toA: formOf(oxSal), toB: 'SO2', dT: 30, note: '진한 황산은 수소 대신 자극적인 이산화황을 냅니다. 수소보다 반응성이 작은 금속은 가열해야 녹습니다.' }));
         } else if (r < H_RANK && !oxidizing) {
           // 반응 속도는 반응성 계열에서 수소와 멀수록 가파르게 커진다(Mg ≫ Zn > Fe > Sn, Pb).
-          const pace = Math.max(0.003, 0.6 * (1 - r / H_RANK) ** 2) * (B.acid.strength || 0.9);
+          const pace = Math.max(0.003, 1.2 * (1 - r / H_RANK) ** 3) * (B.acid.strength || 0.9);
           const insoluble = !sal.aq;
           // 몰 수: 금속 1cm³에는 묽은 산 1cm³보다 수십 배 많은 원자가 있다. 그래서 반응할 때마다 산 칸은 다 쓰이지만(염 용액이나 수소 거품),
           // 금속 칸은 가끔만 녹아 없어진다. 녹지 않는 염이 생기면 금속 표면을 덮어 반응이 느려진다.
