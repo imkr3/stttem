@@ -1,0 +1,35 @@
+# 작업 브랜치에 올라온 내용을 GitHub Pages(gh-pages 브랜치)에 테스트용으로 배포한다.
+# 배포 전에 dist/sandlab.js가 src/와 같은지 확인한다(사이트에 넣는 파일이 최신이어야 하므로).
+name: 테스트 페이지 배포
+
+on:
+  push:
+    branches: [main, master, 'claude/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: dist가 src와 같은지 확인
+        run: sh build.sh --check
+      - name: 사이트 파일 모으기
+        run: |
+          mkdir -p site
+          cp -r index.html embed-example.html dist src tests site/
+          touch site/.nojekyll
+      - name: gh-pages 브랜치에 올리기
+        run: |
+          cd site
+          git init -q -b gh-pages
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "배포: ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages

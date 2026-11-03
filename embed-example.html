@@ -22,8 +22,8 @@
   <script src="dist/sandlab.js"></script>
   <script>
     const el = document.getElementById('lab');
-    const lab = SandLab.create(el, { scene: 'sodium' });
-    document.getElementById('to-boil').onclick = () => lab.loadScene('boil');
+    const lab = SandLab.create(el, { scene: 'alkali' });
+    document.getElementById('to-boil').onclick = () => lab.loadScene('water');
     el.addEventListener('sandlab:discover', (e) => {
       document.getElementById('log').textContent = '사이트가 받은 발견 이벤트: ' + e.detail.name + ' / ' + e.detail.eq;
     });

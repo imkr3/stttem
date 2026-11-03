@@ -7,6 +7,14 @@
 
 `index.html`을 더블클릭하면 실행됩니다.
 
+테스트용 공개 페이지(작업 브랜치에 올릴 때마다 자동 배포):
+
+| 주소 | 내용 |
+|---|---|
+| https://imkr3.github.io/stttem/ | 실험실 전체 화면 |
+| https://imkr3.github.io/stttem/embed-example.html | 다른 사이트에 넣었을 때의 모습(사이트 CSS와 격리 확인) |
+| https://imkr3.github.io/stttem/tests/tests.html | 엔진 자동 검증 |
+
 ## 다른 웹사이트에 넣기
 
 필요한 파일은 `dist/sandlab.js` 하나입니다. 넣을 요소에는 높이를 지정해 주세요.
@@ -14,7 +22,7 @@
 ```html
 <!-- 방법 1: 태그 -->
 <script src="sandlab.js"></script>
-<sand-lab scene="sodium" style="height:600px"></sand-lab>
+<sand-lab scene="alkali" style="height:600px"></sand-lab>
 
 <!-- 방법 2: 스크립트로 제어 -->
 <div id="lab" style="height:600px"></div>
@@ -22,7 +30,7 @@
 <script>
   const el = document.getElementById('lab');
   const lab = SandLab.create(el, {
-    scene: 'boil',
+    scene: 'water',
     // 생략하면 브라우저에 저장합니다. 사이트 계정에 저장하려면 이 두 함수를 바꾸면 됩니다.
     storage: { load: (key) => null, save: (key, value) => {} },
   });
@@ -32,7 +40,8 @@
 
 | 항목 | 내용 |
 |---|---|
-| 메서드 | `loadScene(id)`, `pause()`, `resume()`, `setView('normal'｜'heat'｜'density')`, `save()`, `restore(data)`, `discoveries()`, `destroy()` |
+| 메서드 | `loadScene(id)`, `scenes()`, `pause()`, `resume()`, `setView('normal'｜'heat'｜'density')`, `save()`, `restore(data)`, `discoveries()`, `destroy()` |
+| 버전 | `SandLab.version` (저장 데이터나 공개 API가 바뀌면 올림) |
 | 이벤트 | `sandlab:ready`, `sandlab:scenechange`, `sandlab:discover` |
 | 색상 변경 | 사이트 CSS에서 `--sl-accent`, `--sl-bg`, `--sl-panel` 등을 지정 |
 
@@ -52,11 +61,17 @@
 | `src/renderer.js` | 격자 그리기, 보기 모드 | 색상·표현 변경 |
 | `src/ui.js` | 화면, 입력, 그래프, 공개 API | UI 변경 |
 
-`src/`를 고친 뒤에는 다시 묶어야 합니다.
+`src/`를 고친 뒤에는 다시 묶어야 합니다(둘 중 하나).
 
 ```bash
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
+
+```bash
+sh build.sh
+```
+
+`sh build.sh --check`는 `dist/sandlab.js`가 `src/`와 같은지만 확인합니다. 배포할 때 자동으로 확인합니다.
 
 엔진 검증은 개발 서버를 띄운 뒤 `http://localhost:8123/tests/tests.html`을 열면 실행됩니다.
 

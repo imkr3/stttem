@@ -496,9 +496,15 @@
 
   // 불꽃. 불꽃 반응 색은 금속마다 다르다.
   const FLAME_COLORS = { Li: [230, 30, 60], Na: [255, 200, 30], K: [190, 130, 240], Rb: [200, 60, 170], Cs: [120, 110, 255], Ca: [255, 110, 40], Sr: [240, 25, 45], Ba: [150, 230, 80], Cu: [50, 220, 150], Mg: [255, 255, 245] };
-  const mkFire = (id, name, rgb) => add({ id, name, formula: '연소 기체', state: 'gas', cat: id === 'fire' ? 'basic' : null, color: '#ff8a2a', density: 0.3, c: 1100, k: 0.08, T0: 1000, lifetime: 40, rise: 0.12, flame: rgb, inert: false, decay: [['smoke', 0.85], ['CO2', 0.15]], aliasOf: id === 'fire' ? null : 'fire', desc: '수명이 짧은 고온의 기체.' });
-  mkFire('fire', '불꽃', [255, 130, 30]);
-  for (const [el, rgb] of Object.entries(FLAME_COLORS)) mkFire('fire:' + el, SL.ELEMENTS.find((e) => e.sym === el).name + ' 불꽃', rgb);
+  // 불꽃이 식으면 무엇이 남는지는 무엇이 탔는지에 따라 다르다. 탄소가 든 연료만 연기와 이산화탄소를 남긴다.
+  const mkFire = (id, name, rgb, decay, desc) => add({ id, name, formula: '연소 기체', state: 'gas', cat: id === 'fire' ? 'basic' : null, color: '#ff8a2a', density: 0.3, c: 1100, k: 0.08, T0: 1000, lifetime: 40, rise: 0.12, flame: rgb, inert: false, decay, aliasOf: id === 'fire' ? null : 'fire', desc: desc || '수명이 짧은 고온의 기체.' });
+  mkFire('fire', '불꽃', [255, 130, 30], [['smoke', 0.85], ['CO2', 0.15]], '수명이 짧은 고온의 기체. 탄소가 든 연료의 불꽃은 식으면 연기와 이산화탄소가 됩니다.');
+  // 산소를 다 쓴 뒤 남는 공기는 질소이므로, 탄소가 없는 불꽃은 식으면 질소(와 흰 연기·수증기)가 된다.
+  add({ id: 'smoke:white', name: '흰 연기', formula: '금속 산화물 미세입자', fx: 'MgO', state: 'gas', color: '#9aa0a4', density: 1.1, c: 1000, k: 0.03, T0: 200, lifetime: 400, decay: [['N:g', 1]], desc: '금속이 탈 때 생긴 산화물 가루가 떠 있는 연기.' });
+  for (const [el, rgb] of Object.entries(FLAME_COLORS)) mkFire('fire:' + el, SL.ELEMENTS.find((e) => e.sym === el).name + ' 불꽃', rgb, [['smoke:white', 0.6], ['N:g', 0.4]], '금속이 타는 불꽃. 식으면 금속 산화물의 흰 연기가 됩니다.');
+  mkFire('fire:H', '수소 불꽃', [150, 185, 255], [['H2O:g', 0.6], ['N:g', 0.4]], '수소의 불꽃은 엷은 파란색이라 낮에는 잘 보이지 않고, 식으면 수증기만 남습니다.');
+  mkFire('fire:S', '황 불꽃', [70, 110, 255], [['N:g', 1]], '황은 파란 불꽃을 내며 탑니다.');
+  mkFire('fire:clean', '불꽃', [255, 150, 50], [['N:g', 0.8], ['smoke:white', 0.2]], '탄소가 없는 물질이 타거나 폭발한 불꽃. 이산화탄소를 남기지 않습니다.');
   // 핵폭발의 불덩이: 아주 뜨겁고 오래 남아 위로 솟으며 연기(버섯구름)가 된다.
   add({ id: 'fireball', name: '불덩이(화구)', formula: '플라스마·고온 기체', state: 'gas', color: '#fff0c8', density: 0.1, c: 1100, k: 0.05, T0: 5000, lifetime: 260, rise: 0.4, flame: [255, 236, 190], decay: [['smoke', 0.8], ['fallout', 0.2]], aliasOf: 'fire', desc: '핵폭발로 생긴 수천 °C의 불덩이. 위로 솟아오르며 식어 연기와 방사성 낙진이 됩니다.' });
 

@@ -73,7 +73,7 @@
   const isOx = (d) => d.id === 'air' || d.id === 'O:g' || d.id === 'O:l';
   const isWater = (d) => d.id === 'H2O:l';
   const metalInfo = (d) => (d.metal && d.state !== 'gas' ? METALS[d.metal] : null);
-  const flameId = (k) => (k ? 'fire:' + k : 'fire');
+  const flameId = (k) => (k ? 'fire:' + k : 'fire:clean'); // 불꽃색이 없는 금속도 이산화탄소는 남기지 않는다.
   const dFx = (d) => d.fx;
 
   function R(id, name, reactants, products, o) {
@@ -92,7 +92,8 @@
       // 기체 연료가 공기와 섞여 타면 순식간에 번져 폭발한다(가스 폭발). 액체 산소와 만난 연료도 격렬하다.
       const gasFuel = A.state === 'gas';
       const blast = B.id === 'O:l' ? [2.5, 0.3] : gasFuel ? (B.id === 'air' ? [1.5, 0.15] : [2.5, 0.4]) : null;
-      out.push(R('burn:' + (A.sp || A.id), A.name + '의 연소', [dFx(A), 'O2'], f.prods, { kind: 'chemical', a: A.id, minT: f.ign, prob: f.prob * (B.id === 'air' ? 1 : 3), toA: 'fire', toB: 'fire', T: f.T, explode: blast && blast[0], explodeP: blast && blast[1], note: gasFuel ? '기체 연료는 공기와 섞인 채로 불이 붙으면 한꺼번에 타며 폭발합니다.' : '산소가 있어야 탑니다.' }));
+      const fireId = f.prods.includes('CO2') ? 'fire' : 'fire:clean';
+      out.push(R('burn:' + (A.sp || A.id), A.name + '의 연소', [dFx(A), 'O2'], f.prods, { kind: 'chemical', a: A.id, minT: f.ign, prob: f.prob * (B.id === 'air' ? 1 : 3), toA: fireId, toB: fireId, T: f.T, explode: blast && blast[0], explodeP: blast && blast[1], note: gasFuel ? '기체 연료는 공기와 섞인 채로 불이 붙으면 한꺼번에 타며 폭발합니다.' : '산소가 있어야 탑니다.' }));
     }
     if ((A.fuel || (m && m.burn)) && B.flame) {
       const ign = A.fuel ? A.fuel.ign : m.ign;
@@ -418,7 +419,7 @@
     }
 
     // 불과 물
-    if (A.flame && isWater(B)) out.push(R('fire-water', '물로 불 끄기', [], [], { kind: 'physical', eq: '불꽃 + 물 → 연기 + 수증기', prob: 0.5, toA: 'smoke', toB: 'H2O:g', note: '물이 열을 빼앗아 불이 꺼집니다.' }));
+    if (A.flame && isWater(B)) out.push(R('fire-water', '물로 불 끄기', [], [], { kind: 'physical', eq: '불꽃 + 물 → 연기 + 수증기', prob: 0.5, toA: A.id === 'fire' ? 'smoke' : A.id === 'fire:H' ? 'H2O:g' : 'smoke:white', toB: 'H2O:g', note: '물이 열을 빼앗아 불이 꺼집니다.' }));
 
     // 지시약: 용액의 pH에 따라 변색 범위가 다르다. 순수한 물로 묽히는 것만으로는 색이 바뀌지 않게 한다.
     if (A.indicator && INDICATORS[A.indicator] && B.pH != null && B.state === 'liquid' && Math.abs(B.pH - 7) >= 0.5) {
@@ -631,15 +632,15 @@
     { id: 'ash_lift', name: '재가 날림', kind: 'physical', eq: '불꽃의 상승 기류 → 재가 날아오름', a: 'fire', b: 'ash', prob: 0.05, toB: 'smoke', silent: true, note: '' },
 
     // 수소는 공기와 섞인 채 불이 붙으면 "펑" 하고 터지고, 순수한 산소와 2:1로 섞이면(산수소) 훨씬 세게 터진다.
-    ...OX.map((ox) => ({ id: 'h2_burn', name: '수소의 연소', reactants: ['H2', 'O2'], products: ['H2O'], a: 'hydrogen', b: ox, minT: 500, prob: 0.6, toA: 'fire', toB: 'steam', T: 1100, explode: ox === 'air' ? 1.5 : 3, explodeP: ox === 'air' ? 0.15 : 0.4, note: '수소가 타면 물만 생깁니다. 공기나 산소와 섞인 수소에 불이 붙으면 폭발합니다.' })),
+    ...OX.map((ox) => ({ id: 'h2_burn', name: '수소의 연소', reactants: ['H2', 'O2'], products: ['H2O'], a: 'hydrogen', b: ox, minT: 500, prob: 0.6, toA: 'fire:H', toB: 'steam', T: 1100, explode: ox === 'air' ? 1.5 : 3, explodeP: ox === 'air' ? 0.15 : 0.4, note: '수소가 타면 물만 생깁니다. 공기나 산소와 섞인 수소에 불이 붙으면 폭발합니다.' })),
     // 불꽃 옆의 수소는 산소나 공기와 맞닿아 있으면 바로 탄다. 불꽃이 혼합 기체 전체로 순식간에 번진다.
-    { id: 'h2_burn', name: '수소의 연소', reactants: ['H2', 'O2'], products: ['H2O'], a: 'hydrogen', b: 'fire', near: ['O:g'], prob: 0.7, toA: 'fire', T: 1100, explode: 3, explodeP: 0.4, note: '수소가 타면 물만 생깁니다. 공기나 산소와 섞인 수소에 불이 붙으면 폭발합니다.' },
-    { id: 'h2_burn', name: '수소의 연소', reactants: ['H2', 'O2'], products: ['H2O'], a: 'hydrogen', b: 'fire', near: ['air'], prob: 0.6, toA: 'fire', T: 1100, explode: 1.5, explodeP: 0.15, note: '수소가 타면 물만 생깁니다. 공기나 산소와 섞인 수소에 불이 붙으면 폭발합니다.' },
+    { id: 'h2_burn', name: '수소의 연소', reactants: ['H2', 'O2'], products: ['H2O'], a: 'hydrogen', b: 'fire', near: ['O:g'], prob: 0.7, toA: 'fire:H', T: 1100, explode: 3, explodeP: 0.4, note: '수소가 타면 물만 생깁니다. 공기나 산소와 섞인 수소에 불이 붙으면 폭발합니다.' },
+    { id: 'h2_burn', name: '수소의 연소', reactants: ['H2', 'O2'], products: ['H2O'], a: 'hydrogen', b: 'fire', near: ['air'], prob: 0.6, toA: 'fire:H', T: 1100, explode: 1.5, explodeP: 0.15, note: '수소가 타면 물만 생깁니다. 공기나 산소와 섞인 수소에 불이 붙으면 폭발합니다.' },
     { id: 'h2_burn', name: '수소의 연소', reactants: ['H2', 'O2'], products: ['H2O'], a: 'hydrogen', b: 'fire', prob: 0.5, T: 550, note: '수소가 타면 물만 생깁니다. 공기나 산소와 섞인 수소에 불이 붙으면 폭발합니다.' },
     ...OX.map((ox) => ({ id: 'c_burn', name: '탄소의 연소', reactants: ['C', 'O2'], products: ['CO2'], a: 'C:s', b: ox, minT: 600, prob: ox === 'air' ? 0.05 : 0.2, toA: 'fire', toB: 'CO2', T: 1200, note: '숯이 타면 이산화탄소가 됩니다.' })),
     { id: 'c_burn', name: '탄소의 연소', reactants: ['C', 'O2'], products: ['CO2'], a: 'C:s', b: 'fire', prob: 0.3, T: 650, note: '숯이 타면 이산화탄소가 됩니다.' },
-    ...['S:s', 'S:l'].flatMap((s) => OX.map((ox) => ({ id: 's_burn', name: '황의 연소', reactants: ['S', 'O2'], products: ['SO2'], a: s, b: ox, minT: 230, prob: ox === 'air' ? 0.1 : 0.3, toA: 'fire', toB: 'SO2', T: 1000, note: '파란 불꽃과 함께 자극적인 이산화황이 생깁니다.' }))),
-    ...OX.map((ox) => ({ id: 'p_burn', name: '인의 연소', reactants: ['P', 'O2'], products: ['P4O10'], a: 'P:s', b: ox, minT: 34, prob: 0.2, toA: 'fire', toB: 'smoke', T: 1500, note: '흰인은 30~40°C 정도에서도 스스로 불이 붙습니다.' })),
+    ...['S:s', 'S:l'].flatMap((s) => OX.map((ox) => ({ id: 's_burn', name: '황의 연소', reactants: ['S', 'O2'], products: ['SO2'], a: s, b: ox, minT: 230, prob: ox === 'air' ? 0.1 : 0.3, toA: 'fire:S', toB: 'SO2', T: 1000, note: '파란 불꽃과 함께 자극적인 이산화황이 생깁니다.' }))),
+    ...OX.map((ox) => ({ id: 'p_burn', name: '인의 연소', reactants: ['P', 'O2'], products: ['P4O10'], a: 'P:s', b: ox, minT: 34, prob: 0.2, toA: 'fire:clean', toB: 'smoke:white', T: 1500, note: '흰인은 30~40°C 정도에서도 스스로 불이 붙습니다.' })),
     ...OX.map((ox) => ({ id: 'si_burn', name: '규소의 산화', reactants: ['Si', 'O2'], products: ['SiO2'], a: 'Si:s', b: ox, minT: 900, prob: 0.02, toA: 'sand', note: '고온에서 이산화규소가 됩니다.' })),
     ...OX.map((ox) => ({ id: 'b_burn', name: '붕소의 연소', reactants: ['B', 'O2'], products: ['B2O3'], a: 'B:s', b: ox, minT: 700, prob: 0.1, toA: 'fire:Ba', toB: 'fire:Ba', T: 1800, note: '붕소는 녹색 불꽃을 냅니다.' })),
     { id: 'lava_burst', name: '마그마 수증기 폭발', kind: 'physical', eq: '용암 + 물 → 수증기 폭발', a: 'lava', b: 'water', prob: 0.01, toB: 'steam', explode: 2.5, T: 900, note: '물이 용암 속에 갇혀 순간적으로 끓으면 폭발합니다. 바다에서 일어나는 화산 폭발이 격렬한 이유입니다.' },
@@ -715,7 +716,7 @@
     { id: 'stalactite', name: '종유석과 물때', reactants: ['Ca(HCO3)2'], products: ['CaCO3', 'CO2', 'H2O'], a: 'A:Ca(HCO3)2', b: 'air', minT: 70, prob: 0.05, toA: 'limestone', toB: 'CO2', note: '센물을 끓이면 탄산칼슘이 빠르게 쌓입니다.' },
     // ---- 직접 떨어뜨렸을 때의 반응 (물질별로 실제 상황을 생각해 추가) ----
     // 백금: 반응하지 않지만 촉매로 작용한다.
-    ...OX.map((ox) => ({ id: 'pt_h2', name: '백금 촉매와 수소', reactants: ['H2', 'O2'], products: ['H2O'], a: 'hydrogen', b: ox, near: ['Pt:s'], prob: 0.3, toA: 'fire', toB: 'steam', T: 900, note: '백금 표면에서는 불을 붙이지 않아도 수소가 산소와 반응해 불이 붙습니다(되베라이너 라이터).' })),
+    ...OX.map((ox) => ({ id: 'pt_h2', name: '백금 촉매와 수소', reactants: ['H2', 'O2'], products: ['H2O'], a: 'hydrogen', b: ox, near: ['Pt:s'], prob: 0.3, toA: 'fire:H', toB: 'steam', T: 900, note: '백금 표면에서는 불을 붙이지 않아도 수소가 산소와 반응해 불이 붙습니다(되베라이너 라이터).' })),
     { id: 'pt_h2o2', name: '백금 촉매와 과산화수소', reactants: ['H2O2'], products: ['H2O', 'O2'], a: 'H2O2', b: 'Pt:s', prob: 0.3, toA: [['water', 0.6], ['oxygen', 0.4]], dT: 10, note: '백금은 줄어들지 않고 분해만 빠르게 합니다.' },
     { id: 'pt_aqua', name: '백금과 왕수', eq: '3Pt + 4HNO₃ + 18HCl → 3H₂PtCl₆ + 4NO + 8H₂O', a: 'Pt:s', b: 'aquaregia', prob: 0.02, toA: 'aquaregia', toB: 'NO2', note: '백금도 왕수에는 천천히 녹습니다.' },
     // 기체끼리
@@ -726,7 +727,7 @@
     { id: 'hf_water', name: '플루오린화수소가 물에 녹음', eq: 'HF(g) → HF(aq)', kind: 'physical', a: 'HFg', b: 'water', prob: 0.4, toA: 'HF', toB: 'HF', dT: 10, note: '유리를 녹이는 플루오린화수소산이 됩니다.' },
     { id: 'ticl4', name: '사염화타이타늄의 가수 분해', reactants: ['TiCl4', 'H2O'], products: ['TiO2', 'HCl'], a: 'S:TiCl4', b: 'water', prob: 0.3, toA: 'S:TiO2', toB: 'hcl', dT: 40, note: '물을 만나면 흰 이산화타이타늄과 염산이 생깁니다.' },
     { id: 'ticl4', name: '사염화타이타늄의 가수 분해', reactants: ['TiCl4', 'H2O'], products: ['TiO2', 'HCl'], a: 'M:TiCl4', b: 'water', prob: 0.3, toA: 'S:TiO2', toB: 'hcl', dT: 40, note: '물을 만나면 흰 이산화타이타늄과 염산이 생깁니다.' },
-    { id: 'ticl4_air', name: '사염화타이타늄의 흰 연기', kind: 'chemical', eq: 'TiCl₄ + 2H₂O(공기 중 습기) → TiO₂ + 4HCl', a: 'M:TiCl4', b: 'air', prob: 0.01, toA: 'S:TiO2', toB: 'smoke', note: '공기 중의 습기와 반응해 짙은 흰 연기를 냅니다. 연막에 쓰였습니다.' },
+    { id: 'ticl4_air', name: '사염화타이타늄의 흰 연기', kind: 'chemical', eq: 'TiCl₄ + 2H₂O(공기 중 습기) → TiO₂ + 4HCl', a: 'M:TiCl4', b: 'air', prob: 0.01, toA: 'S:TiO2', toB: 'smoke:white', note: '공기 중의 습기와 반응해 짙은 흰 연기를 냅니다. 연막에 쓰였습니다.' },
     // 공기 중에서 저절로
     { id: 'nh3_escape', name: '암모니아수에서 암모니아가 날아감', kind: 'physical', eq: 'NH₃(aq) → NH₃(g)', a: 'NH4OH:aq', b: 'air', prob: 0.002, toA: 'water', toB: 'NH3', note: '암모니아수는 뚜껑을 열어 두면 냄새를 내며 암모니아가 빠져나가 점점 묽어집니다.' },
     { id: 'soda_flat', name: '김빠진 탄산수', kind: 'physical', eq: 'H₂CO₃(aq) → H₂O + CO₂↑', a: 'A:acid:H2CO3', b: 'air', prob: 0.002, toA: 'water', toB: 'CO2', note: '열어 둔 탄산수는 이산화탄소가 빠져나가 그냥 물이 됩니다. 따뜻할수록 빠릅니다.' },
@@ -839,7 +840,7 @@
     { id: 'naclo_nh3', name: '표백제와 암모니아', reactants: ['NaClO', 'NH3'], products: ['NaOH', 'NH2Cl'], a: 'A:NaClO', b: 'NH3', prob: 0.3, toA: 'naoh', toB: 'NH2Cl', note: '유독한 클로라민 기체가 나옵니다. 락스와 암모니아가 든 세제(유리 세정제 등)를 절대 섞지 마세요.' },
     { id: 'waterglass_make', name: '물유리 만들기', reactants: ['SiO2', 'NaOH'], products: ['Na2SiO3', 'H2O'], a: 'sand', b: 'naoh', minT: 90, prob: 0.01, toA: 'A:Na2SiO3', toB: 'A:Na2SiO3', note: '뜨거운 진한 염기는 모래(이산화규소)도 천천히 녹입니다.' },
     // 실험 시연
-    ...['fire', 'air'].map((b) => ({ id: 'volcano', name: '다이크로뮴산암모늄 화산', reactants: ['(NH4)2Cr2O7'], products: ['Cr2O3', 'N2', 'H2O'], a: 'S:(NH4)2Cr2O7', b, minT: b === 'air' ? 225 : undefined, prob: 0.3, toA: 'S:Cr2O3', toB: [['fire', 0.6], ['nitrogen', 0.4]], T: 900, note: '스스로 분해하며 불꽃을 튀기고, 부피가 큰 초록색 산화크로뮴이 화산재처럼 쌓입니다. 독성이 있어 지금은 학교에서 하지 않습니다.' })),
+    ...['fire', 'air'].map((b) => ({ id: 'volcano', name: '다이크로뮴산암모늄 화산', reactants: ['(NH4)2Cr2O7'], products: ['Cr2O3', 'N2', 'H2O'], a: 'S:(NH4)2Cr2O7', b, minT: b === 'air' ? 225 : undefined, prob: 0.3, toA: 'S:Cr2O3', toB: [['fire:clean', 0.6], ['nitrogen', 0.4]], T: 900, note: '스스로 분해하며 불꽃을 튀기고, 부피가 큰 초록색 산화크로뮴이 화산재처럼 쌓입니다. 독성이 있어 지금은 학교에서 하지 않습니다.' })),
     { id: 'sugar_snake', name: '설탕 뱀', eq: 'C₁₂H₂₂O₁₁ → 12C + 11H₂O, 2NaHCO₃ → Na₂CO₃ + CO₂↑ + H₂O', a: 'sugar', b: 'S:NaHCO3', minT: 250, prob: 0.1, toA: 'snake', toB: [['snake', 0.6], ['CO2', 0.4]], note: '설탕이 타서 생긴 탄소가 베이킹소다에서 나온 이산화탄소에 부풀어 검은 뱀처럼 솟아오릅니다.' },
     ...['A:FeCl3', 'A:CuSO4', 'liver', 'rust'].map((c) => ({ id: 'luminol', name: '루미놀 발광', kind: 'chemical', eq: '루미놀 + H₂O₂ (촉매) → 3-아미노프탈산 + N₂ + 빛', a: 'luminol', b: 'H2O2', near: [c], prob: 0.4, toA: 'luminol:glow', toB: 'water', note: '철 같은 촉매가 있으면 과산화수소가 루미놀을 산화시키고, 그 에너지가 파란빛으로 나옵니다. 혈액 속 철로 혈흔을 찾습니다.' })),
     // 부식: 금속끼리 닿으면 더 활발한 쪽이 대신 녹슨다(희생 양극, 아연 도금).

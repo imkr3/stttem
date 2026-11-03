@@ -482,7 +482,7 @@
       this.boomBudget -= r >= 4 ? 8 : 1;
       const { w, h, mat } = this, d = this.data, Tm = this.T;
       const cx = ci % w, cy = (ci / w) | 0, R = Math.ceil(r);
-      const fire = fallout && d.idOf.fireball != null ? d.idOf.fireball : d.idOf.fire, ash = d.idOf.fallout;
+      const fire = fallout && d.idOf.fireball != null ? d.idOf.fireball : d.idOf['fire:clean'] != null ? d.idOf['fire:clean'] : d.idOf.fire, ash = d.idOf.fallout;
       for (let y = Math.max(0, cy - R); y <= Math.min(h - 1, cy + R); y++) {
         for (let x = Math.max(0, cx - R); x <= Math.min(w - 1, cx + R); x++) {
           const dist = Math.hypot(x - cx, y - cy);

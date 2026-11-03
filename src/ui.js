@@ -84,6 +84,8 @@
   `;
 
   const TABS = [['materials', '재료'], ['scenes', '실험'], ['physics', '물리·측정'], ['codex', '도감']];
+  // 예전 문서에 쓰인 실험 이름도 받아 준다.
+  const SCENE_ALIAS = { sodium: 'alkali', boil: 'water' };
   const TOOLS = [['inspect', '관찰'], ['erase', '지우개'], ['heat', '가열'], ['cool', '냉각'], ['ball', '공 던지기'], ['probe', '온도계']];
   const GRAVITY = [['무중력', 0], ['달', 1.62], ['화성', 3.71], ['지구', 9.81], ['목성', 24.79]];
   const fmt = (v, d) => (v == null || !isFinite(v) ? '-' : v.toFixed(d));
@@ -202,7 +204,9 @@
     }
 
     loadScene(id) {
-      const sc = SL.SCENES.find((s) => s.id === id) || SL.SCENES[0];
+      const want = SCENE_ALIAS[id] || id;
+      const sc = SL.SCENES.find((s) => s.id === want) || SL.SCENES[0];
+      if (id && sc.id !== want) console.warn(`[SandLab] 알 수 없는 실험 "${id}". 빈 실험실을 엽니다. 사용할 수 있는 이름: ${SL.SCENES.map((s) => s.id).join(', ')}`);
       this.currentScene = sc;
       this.world.reset();
       sc.setup(this.world);
@@ -645,6 +649,8 @@
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,storage?:{load:Function,save:Function}}} [options]
    */
+  SL.version = '0.6.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);
     opts.storage = opts.storage || localStorageAdapter('sandlab:');
@@ -659,6 +665,7 @@
       save: () => app.world.toJSON(),
       restore: (data) => app.world.fromJSON(data),
       discoveries: () => [...app.codex.values()],
+      scenes: () => SL.SCENES.map((s) => ({ id: s.id, name: s.name, desc: s.desc })),
       destroy: () => app.destroy(),
     };
   };

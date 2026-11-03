@@ -387,6 +387,13 @@ test('전기 분해: 물(2:1), 소금물, 구리 도금, 전기가 안 통하는
   const s = cell('brine', 'short'); assert(s.discovered.has('short') && count(s, 'Cl:g') === 0, '합선'); out.push('합선이면 반응 없음');
   return out.join(', ');
 });
+test('불꽃이 남기는 것: 탄소 연료만 이산화탄소, 수소·금속 불꽃은 남기지 않음', () => {
+  const w = fresh(); scene(w, 'alkali'); run(w, 15);
+  assert(count(w, 'CO2:g') === 0, `알칼리 금속과 물에서 이산화탄소 ${count(w, 'CO2:g')}칸`);
+  const e = fresh(); scene(e, 'flame'); run(e, 10);
+  assert(count(e, 'CO2:g') > 50, '에탄올이 타도 이산화탄소가 없음');
+  return `수소 0칸, 에탄올 ${count(e, 'CO2:g')}칸`;
+});
 test('공기 중 액체 질소는 끓어 기체가 됨', () => {
   const w = fresh(); w.rect('N:l', 100, 60, 130, 70);
   run(w, 30);
