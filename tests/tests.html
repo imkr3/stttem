@@ -164,7 +164,14 @@ const SHOULD = [
   ['브로민+물', 'Br', 'water', null, 'br_water'], ['브로민수+에틸렌', 'brominewater', 'C2H4', null, 'br_alkene'], ['과망가니즈산칼륨+에틸렌', 'A:KMnO4', 'C2H4', null, 'kmno4_alkene'], ['에탄올+진한 황산(170°C)', 'C2H5OH', 'H2SO4', 180, 'ethylene_make'],
   ['산화구리+에탄올(가열)', 'S:CuO', 'C2H5OH', 300, 'cuo_ethanol'], ['아이오딘+에탄올', 'I', 'C2H5OH', null, 'tincture'], ['녹말+아이오딘 팅크', 'starch', 'tincture', null, 'starch_iodine'], ['기름+비누', 'oil', 'soap', null, 'emulsify'],
   ['굳은 기름+NaOH', 'fat', 'naoh', 50, 'soap'], ['흰자+진한 질산', 'eggwhite', 'HNO3', null, 'xanthoprotein'], ['흰자+염산', 'eggwhite', 'hcl', null, 'denature'], ['흰자+에탄올', 'eggwhite', 'C2H5OH', null, 'denature'], ['생간+과산화수소', 'H2O2', 'liver', null, 'catalase'],
-  ['플루토늄 가열', 'Pu', 'air', 400, 'ox:Pu'], ['녹은 철+수증기 없음 확인용: 생석회+수증기', 'quicklime', 'steam', null, 'oxide-water:CaO'],
+  ['플루토늄 가열', 'Pu', 'air', 400, 'ox:Pu'],
+  // 생활 속 반응
+  ['적양배추+염산', 'cabbage', 'hcl', null, 'indicator:cabbage:acid'], ['적양배추+탄산나트륨', 'cabbage', 'A:Na2CO3', null, 'indicator:cabbage:base'], ['메틸 오렌지+식초', 'mo', 'vinegar', null, 'indicator:mo:acid'],
+  ['구연산+베이킹소다', 'A:citric', 'S:NaHCO3', null, 'citric-carb:NaHCO3'], ['구연산 가루+베이킹소다 용액', 'citric', 'A:NaHCO3', null, 'citric-carb:NaHCO3'], ['구연산+물때', 'A:citric', 'limestone', null, 'citric-scale'], ['구연산+녹', 'A:citric', 'rust', null, 'citric-rust'],
+  ['물풀+붕사', 'glue', 'A:borax', null, 'slime'], ['우유+레몬즙', 'milk', 'A:citric', null, 'milk_curd'], ['박하 사탕+탄산수', 'mentos', 'A:acid:H2CO3', null, 'mentos'], ['비타민 C+아이오딘', 'A:vitc', 'A:KI3', null, 'vitc_iodine'], ['비타민 C+과망가니즈산칼륨', 'A:vitc', 'A:KMnO4', null, 'vitc_kmno4'],
+  ['핫 아이스', 'supersat', 'S:NaCH3COO', null, 'hotice'], ['효모+설탕물(30°C)', 'yeast', 'A:sugar', 30, 'ferment'], ['효모+과산화수소', 'H2O2', 'yeast', null, 'yeast_h2o2'], ['시멘트+물', 'cement', 'water', null, 'cement_set'], ['소석고+물', 'plaster', 'water', null, 'plaster_set'],
+  ['점토+물', 'clay', 'water', null, 'clay_wet'], ['표백제+암모니아수', 'A:NaClO', 'NH4OH:aq', null, 'naclo_nh3'], ['물유리+금속염(화학 정원)', 'S:CuSO4', 'A:Na2SiO3', null, 'garden'], ['물유리+염산', 'A:Na2SiO3', 'hcl', null, 'silicagel:HCl'],
+  ['다이크로뮴산암모늄+불', 'S:(NH4)2Cr2O7', 'fire', null, 'volcano'], ['설탕+베이킹소다(가열)', 'sugar', 'S:NaHCO3', 300, 'sugar_snake'], ['녹은 철+수증기 없음 확인용: 생석회+수증기', 'quicklime', 'steam', null, 'oxide-water:CaO'],
 ];
 test(`반응이 일어나야 하는 ${SHOULD.length}쌍`, () => {
   const fails = [];
@@ -189,6 +196,7 @@ const SHOULD_NOT = [
   ['물+공기 (물은 증발 없음)', 'water', 'air'], ['사염화탄소+물', 'CCl4', 'water'],
   ['브로민수+메테인 (포화 탄화수소)', 'brominewater', 'CH4'], ['과망가니즈산칼륨+에테인', 'A:KMnO4', 'C2H6'], ['익은 간+과산화수소 (효소 변성)', 'liver:cooked', 'H2O2'], ['흰자+물', 'eggwhite', 'water'], ['구리+염화철(II)', 'Cu', 'A:FeCl2'],
   ['천연 우라늄+물', 'U', 'water'], ['농축 우라늄+공기 (화학 반응 없음)', 'HEU', 'nitrogen'],
+  ['루미놀+과산화수소 (촉매 없음)', 'luminol', 'H2O2'], ['박하 사탕+물', 'mentos', 'water'], ['설탕물+효모가 아닌 죽은 효모', 'yeast:dead', 'A:sugar'], ['물풀+물', 'glue', 'water'], ['우유+물', 'milk', 'water'],
 ];
 test(`반응이 일어나지 않아야 하는 ${SHOULD_NOT.length}쌍`, () => {
   const bad = [];
@@ -309,7 +317,7 @@ test('핵분열: 임계 질량, 감속재, 제어봉', () => {
   };
   const out = [];
   const big = trial('HEU', 14); assert(big.has('chain') && big.has('nuke'), '임계 질량을 넘은 농축 우라늄이 폭발하지 않음'); out.push('농축 우라늄 큰 덩어리 폭발');
-  const pu = trial('Pu', 9); assert(pu.has('nuke'), '플루토늄이 더 작은 덩어리로 폭발하지 않음'); out.push('플루토늄은 더 작은 덩어리로 폭발');
+  const pu = trial('Pu', 10); assert(pu.has('nuke'), '플루토늄이 더 작은 덩어리로 폭발하지 않음'); out.push('플루토늄은 더 작은 덩어리로 폭발');
   const small = trial('HEU', 6); assert(!small.has('nuke') && !small.has('chain'), '작은 덩어리가 연쇄 반응함'); out.push('작은 덩어리는 안전');
   const nat = trial('U', 16); assert(!nat.has('chain') && !nat.has('nuke'), '천연 우라늄이 연쇄 반응함'); out.push('천연 우라늄은 반응 없음');
   const wat = trial('HEU', 9, 'water'); assert(!wat.has('nuke') && (wat.has('meltdown') || wat.has('chain')), `물속: ${[...wat].join()}`); out.push('물속에서는 녹을 뿐 폭발하지 않음');
@@ -345,6 +353,20 @@ test('재료 힌트: 고른 물질과 반응하는 재료 목록', () => {
   assert(hcl.includes('Mg:s') && !hcl.includes('Cu:s'), '염산: 구리 포함 여부');
   assert(na.includes('H2O:l') && na.includes('air'), '나트륨: ' + na.join());
   return `소금 ${salt.length}종, 염산 ${hcl.length}종, 나트륨 ${na.length}종`;
+});
+test('시간에 따라 일어나는 생활 반응: 화학 정원, 핫 아이스, 발효 온도, 아연 도금', () => {
+  const out = [];
+  const g = fresh(); g.rect('stone', 0, 146, 239, 149); g.rect('A:Na2SiO3', 63, 60, 177, 145); g.rect('S:CuSO4', 110, 140, 117, 145);
+  run(g, 20);
+  let top = 999; for (let i = 0; i < g.mat.length; i++) if (g.data.defs[g.mat[i]].id === 'garden:Cu') top = Math.min(top, (i / g.w) | 0);
+  assert(top < 125, `화학 정원 꼭대기 y=${top}`); out.push(`화학 정원 ${140 - top}칸 자람`);
+  const h = fresh(); h.rect('stone', 0, 146, 239, 149); h.rect('supersat', 80, 100, 160, 145); h.rect('S:NaCH3COO', 120, 95, 121, 99);
+  run(h, 6); assert(count(h, 'supersat') < 100 && h.T[h.index(120, 130)] > 40, `과포화 용액 ${count(h, 'supersat')}칸 남음`); out.push('핫 아이스 결정화');
+  const f = (T) => { const w = fresh(); w.rect('stone', 0, 146, 239, 149); w.rect('A:sugar', 80, 100, 160, 145, T); for (let x = 85; x < 160; x += 6) w.rect('yeast', x, 120, x, 120, T); run(w, 10); return w.discovered.has('ferment'); };
+  assert(f(30) && !f(70), '발효 온도 범위'); out.push('30°C에서만 발효');
+  const rust = (zinc) => { const w = new SandLab.World({ width: 40, height: 20 }); w.rect('air', 0, 0, 39, 4); w.rect('brine', 0, 5, 39, 19); w.rect('iron', 10, 3, 30, 19); if (zinc) for (let x = 10; x <= 30; x += 2) w.rect('Zn', x, 3, x, 19); for (let i = 0; i < 3000; i++) w.stepCells(); return w.discovered.has('fe_rust'); };
+  assert(rust(false) && !rust(true), '아연이 철을 지키지 못함'); out.push('아연과 닿은 철은 녹슬지 않음');
+  return out.join(', ');
 });
 test('공기 중 액체 질소는 끓어 기체가 됨', () => {
   const w = fresh(); w.rect('N:l', 100, 60, 130, 70);

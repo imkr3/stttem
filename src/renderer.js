@@ -60,7 +60,7 @@
           const c = this.base[m];
           const s = shade[i];
           let r = c[0] + s, g = c[1] + s, b = c[2] + s;
-          const flame = defs[m].flame;
+          const flame = defs[m].flame || defs[m].glow; // glow: 열 없이 빛만 내는 물질(화학 발광)
           if (flame) {
             // 불꽃색을 중심으로 밝기만 일렁인다.
             const f = 0.7 + Math.random() * 0.45;

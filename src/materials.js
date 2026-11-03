@@ -378,6 +378,52 @@
     { id: 'biuret', name: '보라색 단백질 용액', formula: '뷰렛 반응', fx: 'C', state: 'liquid', color: '#8a3ab8', density: 1050, c: 3800, k: 0.5, flow: 3, misc: true, aq: true, desc: '염기성에서 구리 이온이 단백질의 펩타이드 결합과 결합한 보라색(뷰렛 반응).' },
     { id: 'liver', name: '생간 조각', formula: '카탈레이스 효소', fx: 'C', state: 'solid', cat: 'organic', color: '#7a2a2a', density: 1060, c: 3500, k: 0.5, desc: '카탈레이스 효소가 과산화수소를 빠르게 분해합니다. 익히면(70°C 이상) 효소가 망가져 작용하지 않습니다.', up: { at: 70, to: 'liver:cooked', L: 5e4 } },
     { id: 'liver:cooked', name: '익은 간', formula: '변성된 효소', fx: 'C', state: 'solid', color: '#5a3a2a', density: 1060, c: 3500, k: 0.5, fuel: { ign: 300, prob: 0.05, prods: ['CO2'], T: 800 }, desc: '효소가 열로 변성되어 과산화수소를 분해하지 못합니다.' },
+    // ---- 지시약 ----
+    { id: 'cabbage', name: '적양배추 지시약', formula: '안토사이아닌(aq)', fx: 'C15H11O6', state: 'liquid', cat: 'indicator', color: '#7a4aa0', density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, indicator: 'cabbage', desc: '자주색. pH에 따라 빨강(강산) → 분홍 → 자주(중성) → 파랑 → 초록 → 노랑(강염기)으로 변하는 천연 지시약입니다.' },
+    ...[['red', '빨간', '#d02050', '강산성'], ['pink', '분홍', '#c84a98', '약산성'], ['blue', '파란', '#3a5ad0', '약염기성'], ['green', '초록', '#2f9a5a', '염기성'], ['yellow', '노란', '#d8c830', '강염기성']].map(([k, n, color, what]) => ({ id: 'cabbage:' + k, name: n + ' 적양배추 지시약', formula: what, fx: 'C15H11O6', state: 'liquid', color, density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, indicator: 'cabbage', desc: what + ' 용액입니다.' })),
+    { id: 'mo', name: '메틸 오렌지', formula: '지시약', fx: 'C14H14N3NaO3S', state: 'liquid', cat: 'indicator', color: '#f08020', density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, indicator: 'mo', desc: 'pH 3.1 아래에서 빨강, 4.4 위에서 노랑입니다. 강산을 약염기로 적정할 때 씁니다.' },
+    { id: 'mo:red', name: '빨간 메틸 오렌지', formula: '산성', fx: 'C14H14N3NaO3S', state: 'liquid', color: '#d82828', density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, indicator: 'mo', desc: 'pH 3.1 아래입니다.' },
+    { id: 'mo:yellow', name: '노란 메틸 오렌지', formula: 'pH 4.4 이상', fx: 'C14H14N3NaO3S', state: 'liquid', color: '#f0d020', density: 1000, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, indicator: 'mo', desc: 'pH 4.4 위입니다.' },
+    { id: 'luminol', name: '루미놀 용액', formula: 'C₈H₇N₃O₂(염기성)', fx: 'C8H7N3O2', state: 'liquid', cat: 'indicator', color: '#c8d0e0', density: 1010, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, pH: 11, desc: '과산화수소와 철 같은 촉매(혈액의 헤모글로빈)를 만나면 파랗게 빛납니다. 과학 수사에서 혈흔을 찾는 데 씁니다.' },
+    { id: 'luminol:glow', name: '빛나는 루미놀', formula: '화학 발광', fx: 'C8H7N3O2', state: 'liquid', color: '#5a8cff', density: 1010, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, glow: [90, 150, 255], lifetime: 150, decay: [['luminol:spent', 1]], desc: '산화될 때 나온 에너지가 열 대신 빛으로 나옵니다(화학 발광).' },
+    { id: 'luminol:spent', name: '빛이 꺼진 루미놀', formula: '3-아미노프탈산염', fx: 'C8H7N3O2', state: 'liquid', color: '#b8c4d4', density: 1010, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, desc: '반응이 끝나 더 빛나지 않습니다.' },
+
+    // ---- 부엌과 집 ----
+    { id: 'citric', name: '구연산', formula: 'C₆H₈O₇', fx: 'C6H8O7', state: 'powder', cat: 'organic', color: '#f4f4ec', density: 1665, c: 1200, k: 0.2, mp: 153, desc: '레몬의 신맛을 내는 약한 산. 물때(탄산칼슘)와 녹을 녹여 청소에 씁니다.' },
+    { id: 'A:citric', name: '구연산 용액 (레몬즙)', formula: 'C₆H₈O₇(aq)', fx: 'C6H8O7', state: 'liquid', cat: 'acid', color: '#e8e4a8', density: 1040, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 2.3, desc: 'pH 약 2.3의 약한 산. 베이킹소다와 거품을 내고, 물때·녹을 녹이며, 우유를 굳힙니다.', up: { at: 103, to: [['H2O:g', 0.7], ['citric', 0.3]], L: 2.257e6 } },
+    { id: 'A:citrate', name: '시트르산염 용액', formula: '시트르산 이온(aq)', fx: 'Na3C6H5O7', state: 'liquid', cat: null, color: '#b8d4e0', density: 1060, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 7.5, desc: '구연산이 염기·탄산염·녹과 반응해 생긴 용액.' },
+    { id: 'A:vitc', name: '비타민 C 용액', formula: 'C₆H₈O₆(aq)', fx: 'C6H8O6', state: 'liquid', cat: 'solution', color: '#e8e0b0', density: 1020, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 3, desc: '환원제(항산화제). 아이오딘의 갈색, 과망가니즈산 칼륨의 보라색을 없애고 철(III)을 철(II)로 바꿉니다.' },
+    { id: 'milk', name: '우유', formula: '단백질·지방(aq)', fx: 'C', state: 'liquid', cat: 'organic', color: '#f4f2ea', density: 1030, c: 3900, k: 0.55, flow: 4, aq: true, misc: true, pH: 6.7, desc: '카제인 단백질이 퍼져 있는 액체. 산을 만나면 몽글몽글 굳습니다(치즈·두부의 원리).', up: { at: 100, to: [['H2O:g', 0.8], ['curd', 0.2]], L: 2.257e6 } },
+    { id: 'curd', name: '응유 (굳은 우유)', formula: '카제인', fx: 'C', state: 'powder', color: '#faf8ee', density: 1080, c: 3000, k: 0.4, desc: '산 때문에 카제인 단백질이 엉긴 덩어리. 치즈의 시작입니다.' },
+    { id: 'whey', name: '유청', formula: '유청(aq)', fx: 'H2O', state: 'liquid', color: '#e8e4b8', density: 1025, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, pH: 4.6, desc: '우유가 굳고 남은 노르스름한 물.' },
+    { id: 'mentos', name: '박하 사탕', formula: '설탕·고무 코팅', fx: 'C12H22O11', state: 'powder', cat: 'organic', color: '#f8f8f0', density: 1500, c: 1250, k: 0.2, desc: '울퉁불퉁한 표면이 탄산수 속 이산화탄소가 거품으로 빠져나오는 자리가 되어 거품이 뿜어져 나옵니다(물리 변화).' },
+    { id: 'glue', name: '물풀 (PVA)', formula: '(C₂H₄O)ₙ(aq)', fx: 'C2H4O', state: 'liquid', cat: 'organic', color: '#e8eef4', density: 1100, c: 3500, k: 0.4, flow: 2, misc: true, aq: true, pH: 6, desc: '폴리비닐 알코올 사슬이 녹은 풀. 붕사 용액을 만나면 사슬끼리 묶여 슬라임이 됩니다.' },
+    { id: 'S:borax', name: '붕사', formula: 'Na₂B₄O₇·10H₂O', fx: 'Na2B4O7', state: 'powder', cat: 'salt', color: '#f0f0ec', density: 1730, c: 1600, k: 0.5, desc: '세탁 보조제. 물에 녹으면 약한 염기(pH 9.2)가 됩니다.' },
+    { id: 'A:borax', name: '붕사 용액', formula: 'Na₂B₄O₇(aq)', fx: 'Na2B4O7', state: 'liquid', cat: 'base', color: '#3f93c4', density: 1030, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 9.2, desc: '물풀과 섞으면 슬라임이 됩니다.' },
+    { id: 'slime', name: '슬라임', formula: 'PVA-붕산 교차 결합', fx: 'C2H4O', state: 'liquid', cat: null, color: '#6ad0a0', density: 1080, c: 3500, k: 0.4, flow: 1, desc: '긴 사슬들이 붕산 이온으로 느슨하게 묶여 천천히 흐르는 고분자.' },
+    { id: 'supersat', name: '과포화 아세트산나트륨 용액', formula: 'NaCH₃COO(aq, 과포화)', fx: 'NaCH3COO', state: 'liquid', cat: 'solution', color: '#d8e4ec', density: 1300, c: 3000, k: 0.5, flow: 3, misc: true, aq: true, pH: 8.9, desc: '녹을 수 있는 양보다 더 녹아 있는 불안정한 용액. 결정 하나만 닿아도 순식간에 굳으며 54°C까지 뜨거워집니다(재사용 손난로, "핫 아이스").' },
+    { id: 'yeast', name: '효모', formula: '효모균', fx: 'C', state: 'powder', cat: 'organic', color: '#c8a870', density: 1100, c: 3500, k: 0.3, desc: '설탕물이나 포도당 용액을 15~45°C에서 에탄올과 이산화탄소로 발효시킵니다. 60°C를 넘으면 죽습니다. 카탈레이스도 있어 과산화수소를 분해합니다.', up: { at: 60, to: 'yeast:dead', L: 5e4 } },
+    { id: 'yeast:dead', name: '죽은 효모', formula: '변성된 효모', fx: 'C', state: 'powder', color: '#a08860', density: 1100, c: 3500, k: 0.3, desc: '열로 죽어 발효하지 못합니다.' },
+
+    // ---- 건축 재료 ----
+    { id: 'cement', name: '시멘트', formula: 'Ca₃SiO₅ 등', fx: 'Ca3SiO5', state: 'powder', cat: 'rock', color: '#a8a8a0', density: 1440, c: 840, k: 0.3, desc: '물과 반응(수화)해 단단한 콘크리트가 됩니다. 굳으면서 열이 납니다.' },
+    { id: 'concrete', name: '콘크리트', formula: '규산칼슘 수화물', fx: 'Ca3SiO5', state: 'solid', cat: null, color: '#8c8c88', density: 2400, c: 880, k: 1.4, desc: '시멘트가 물과 반응해 굳은 돌. 산성비에 조금씩 깎입니다.' },
+    { id: 'plaster', name: '소석고', formula: 'CaSO₄·½H₂O', fx: 'CaSO4', state: 'powder', cat: 'rock', color: '#f0eee4', density: 2550, c: 1000, k: 0.3, desc: '물을 만나면 다시 석고로 굳습니다(깁스, 석고상).' },
+    { id: 'gypsum', name: '석고', formula: 'CaSO₄·2H₂O', fx: 'CaSO4', state: 'solid', cat: null, color: '#f6f4ec', density: 2320, c: 1090, k: 0.5, desc: '굳은 석고. 150°C 정도로 가열하면 물이 빠져 다시 소석고 가루가 됩니다.' },
+    { id: 'clay', name: '점토', formula: 'Al₂Si₂O₅(OH)₄', fx: 'Al2Si2O5(OH)4', state: 'powder', cat: 'rock', color: '#b88a5a', density: 1700, c: 920, k: 0.4, desc: '물을 머금으면 빚을 수 있는 진흙이 되고, 약 900°C로 구우면 단단한 도자기가 됩니다.', up: { at: 900, to: 'ceramic', L: 2e5 } },
+    { id: 'mud', name: '젖은 점토', formula: '점토 + 물', fx: 'Al2Si2O5(OH)4', state: 'powder', cat: null, color: '#8a6040', density: 1900, c: 2000, k: 0.8, desc: '물을 머금은 점토. 마르면(100°C) 다시 점토가 됩니다.', up: { at: 100, to: [['clay', 0.7], ['H2O:g', 0.3]], L: 6e5 } },
+    { id: 'ceramic', name: '도자기', formula: '구운 점토', fx: 'Al2Si2O5(OH)4', state: 'solid', cat: null, color: '#c8704a', density: 2300, c: 900, k: 1.2, desc: '구운 점토. 물에 다시 풀어지지 않습니다.' },
+
+    // ---- 화학 정원과 실험 ----
+    { id: 'A:Na2SiO3', name: '물유리 (규산나트륨)', formula: 'Na₂SiO₃(aq)', fx: 'Na2SiO3', state: 'liquid', cat: 'base', color: '#a8c4cc', density: 1300, c: 3500, k: 0.6, flow: 3, aq: true, misc: true, pH: 12.5, desc: '끈적한 강염기 용액. 금속염 결정을 넣으면 색깔 있는 관이 자라는 "화학 정원"이 생기고, 산을 넣으면 실리카겔이 됩니다.' },
+    { id: 'silicagel', name: '실리카겔', formula: 'SiO₂·nH₂O', fx: 'SiO2', state: 'powder', cat: null, color: '#e8eef0', density: 700, c: 900, k: 0.2, desc: '구멍이 많은 이산화규소. 습기를 빨아들이는 제습제입니다.' },
+    { id: 'S:(NH4)2Cr2O7', name: '다이크로뮴산암모늄', formula: '(NH₄)₂Cr₂O₇', fx: '(NH4)2Cr2O7', state: 'powder', cat: 'salt', color: '#e86018', density: 2150, c: 1000, k: 0.5, desc: '주황 결정. 불을 붙이면 불꽃을 튀기며 부피가 큰 초록색 산화크로뮴이 솟는 "화산" 반응을 합니다. 독성이 있습니다.' },
+    { id: 'snake', name: '탄소 뱀', formula: 'C (거품 구조)', fx: 'C', state: 'powder', color: '#1c1c1c', density: 150, c: 700, k: 0.05, desc: '설탕이 타며 나온 탄소가 이산화탄소 거품에 부풀어 오른 가벼운 덩어리.' },
+    { id: 'NH2Cl', name: '클로라민', formula: 'NH₂Cl', fx: 'NH2Cl', state: 'gas', color: '#2a3226', density: 2.14, c: 900, k: 0.03, desc: '표백제와 암모니아를 섞으면 생기는 유독한 기체. 기침과 폐 손상을 일으킵니다. 절대 섞지 마세요.' },
+    ...[['Cu', '#2a70c8'], ['Co', '#4a3aa8'], ['Ni', '#3aa060'], ['Fe3', '#a85a20'], ['Fe2', '#4a6a40'], ['Mn', '#d8a0b8'], ['Ca', '#ecece4'], ['Zn', '#dce8e8']].flatMap(([k, color]) => [
+      { id: 'garden:' + k, name: '화학 정원의 관', formula: '금속 규산염', fx: 'SiO2', state: 'solid', color, density: 2000, c: 900, k: 0.5, desc: '금속 이온과 규산 이온이 만나 생긴 얇은 막. 안쪽 용액이 위로 솟으며 관이 자랍니다.' },
+      { id: 'gjet:' + k, name: '솟아오르는 금속염 용액', formula: '금속염(aq)', fx: 'SiO2', state: 'liquid', color, density: 1060, c: 3900, k: 0.6, flow: 1, lifetime: 120, decay: [['garden:' + k, 1]], desc: '물유리보다 가벼워 위로 솟으며 바깥에 막을 남깁니다.' },
+    ]),
     { id: 'S:CaC2', name: '탄화칼슘 (카바이드)', formula: 'CaC₂', fx: 'CaC2', state: 'powder', cat: 'salt', color: '#5a5650', density: 2220, c: 950, k: 1, mp: 2160, desc: '물을 만나면 아세틸렌을 냅니다. 녹는점 2160°C.' },
 
     { id: 'sand', name: '모래', formula: 'SiO₂', fx: 'SiO2', state: 'powder', cat: 'rock', color: '#d3b673', density: 1600, c: 830, k: 0.3, mp: 1713, cast: true, desc: '녹는점 1713°C. 녹았다 식으면 유리가 됩니다.', up: { at: 1713, to: 'moltenglass', L: 1.4e5 } },
