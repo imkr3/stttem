@@ -432,4 +432,30 @@
       },
     },
   ];
+
+  // ---- 도전 과제 ----
+  // check(c): c.has(발견 id), c.any(정규식), c.count(물질 id), c.cells(물질 id, 조건). 발견 기록은 저장되므로 한 번 이루면 끝이다.
+  // 사이트에서는 sandlab:challenge 이벤트로 진도·점수와 연결할 수 있다.
+  SL.CHALLENGES = [
+    { id: 'neutral', name: '산과 염기 중화하기', hint: '염산에 수산화나트륨 용액을 떨어뜨려 보세요.', check: (c) => c.any(/^neutral:/) },
+    { id: 'precip', name: '노란 앙금 만들기', hint: '질산납 용액과 아이오딘화 칼륨 용액을 만나게 해 보세요.', check: (c) => c.count('S:PbI2') > 0 || c.count('S:AgI') > 0 || c.count('S:PbCrO4') > 0 },
+    { id: 'flame4', name: '불꽃색 네 가지 보기', hint: '여러 금속의 염화물을 불꽃에 넣어 보세요.', check: (c) => c.ids().filter((k) => /^flame:/.test(k)).length >= 4 },
+    { id: 'silver', name: '은 나무 키우기', hint: '구리를 질산은 용액에 넣어 보세요.', check: (c) => c.any(/^displace:.*:Ag:/) },
+    { id: 'starch', name: '녹말 찾기', hint: '녹말 용액에 아이오딘을 넣어 보세요.', check: (c) => c.has('starch_iodine') },
+    { id: 'slime', name: '슬라임 만들기', hint: '물풀과 붕사 용액을 섞어 보세요.', check: (c) => c.has('slime') },
+    { id: 'garden', name: '화학 정원 키우기', hint: '물유리에 금속염 결정을 떨어뜨려 보세요.', check: (c) => c.has('garden') },
+    { id: 'ferment', name: '발효시키기', hint: '따뜻한 설탕물에 효모를 넣어 보세요.', check: (c) => c.has('ferment') },
+    { id: 'cold', name: '얼음과 소금으로 영하 15°C 만들기', hint: '얼음에 소금을 뿌리고 온도계로 재 보세요.', check: (c) => c.cells('A:NaCl', (T) => T < -15) > 0 },
+    { id: 'fog', name: '차가운 안개 만들기', hint: '액체 질소나 드라이아이스를 공기 중에 두어 보세요.', check: (c) => c.has('fog') },
+    { id: 'hotice', name: '핫 아이스 굳히기', hint: '과포화 아세트산나트륨 용액에 결정을 하나 떨어뜨려 보세요.', check: (c) => c.has('hotice') },
+    { id: 'glass', name: '모래로 유리 만들기', hint: '모래를 1713°C 넘게 녹였다가 식혀 보세요(용광로판).', check: (c) => c.has('phase:moltenglass:glass') },
+    { id: 'steel', name: '강철 만들기', hint: '녹은 철에 숯을 넣어 보세요.', check: (c) => c.has('steel') },
+    { id: 'thermite', name: '테르밋으로 쇳물 얻기', hint: '알루미늄 가루와 녹을 섞고 아주 뜨겁게 불을 붙여 보세요.', check: (c) => c.any(/^thermite:/) },
+    { id: 'h2pop', name: '수소 폭발시키기', hint: '수소와 산소를 섞고 불을 대 보세요.', check: (c) => c.has('h2_burn') && c.has('explosion:small') },
+    { id: 'electrolysis', name: '물을 전기 분해하기', hint: '묽은 황산에 (+)극과 (−)극 전극을 꽂아 보세요.', check: (c) => c.has('electro:H2') && c.has('electro:O2') },
+    { id: 'plating', name: '구리 도금하기', hint: '황산구리 용액에서 철을 (−)극에 이어 보세요.', check: (c) => c.has('electro:metal:Cu') },
+    { id: 'battery', name: '레몬 전지로 전구 켜기', hint: '레몬즙에 아연과 구리를 담그고 도선과 전구로 이어 보세요.', check: (c) => c.has('galvanic') && c.has('bulb') },
+    { id: 'chain', name: '핵분열 연쇄 반응 일으키기', hint: '농축 우라늄을 임계 질량보다 많이 모아 보세요(실제로는 절대 불가능하고 위험합니다).', check: (c) => c.has('chain') },
+    { id: 'meltdown', name: '원자로가 녹는 까닭 알아보기', hint: '물속에 농축 우라늄을 모아 보세요. 핵폭발은 일어나지 않습니다.', check: (c) => c.has('meltdown') },
+  ];
 })(globalThis.SandLab = globalThis.SandLab || {});

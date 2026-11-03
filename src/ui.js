@@ -53,6 +53,15 @@
   input[type=checkbox] { width:18px; height:18px; accent-color:var(--sl-accent); }
   .val { font-variant-numeric:tabular-nums; min-width:62px; text-align:right; }
   .hint { color:var(--sl-muted); font-size:13px; line-height:1.55; margin:6px 0; }
+  .challenges summary { cursor:pointer; list-style:none; }
+  .challenges summary::-webkit-details-marker { display:none; }
+  .challenges summary h3 { display:inline-block; margin:0 0 6px; }
+  .challenges ul { list-style:none; margin:0 0 10px; padding:0; }
+  .challenges li { padding:4px 0; font-size:13px; border-bottom:1px solid var(--sl-line); }
+  .challenges li span { display:inline-block; width:18px; color:var(--sl-muted); }
+  .challenges li.ok { color:var(--sl-muted); }
+  .challenges li.ok span { color:var(--sl-accent); }
+  .challenges li small { display:block; margin-left:18px; color:var(--sl-muted); font-size:12px; }
   .partner-list summary { cursor:pointer; color:var(--sl-muted); font-size:13px; padding:4px 0; min-height:28px; }
   .partner-list .chips { margin:4px 0 8px; }
   .partners:not(:empty) { border-bottom:1px solid var(--sl-line); margin-bottom:6px; }
@@ -135,6 +144,7 @@
       this.partnersOpen = true; // 정보 탭의 "함께 떨어뜨려 볼 재료"는 처음부터 펼친다.
       this.graphMode = 'v';
       this.codex = new Map((this.storage.load('codex') || []).map((e) => [e.id, e]));
+      this.done = new Set(this.storage.load('challenges') || []);
       this.pointer = null;
       this.hover = null;
       this.cleanups = [];
@@ -448,10 +458,14 @@
     paneCodex(pane) {
       const entries = [...this.codex.values()];
       const found = entries.filter((e) => e.type === 'reaction').length;
-      pane.innerHTML = `<h3>발견한 반응 ${found}개, 상태 변화 ${entries.length - found}개</h3>` +
+      const ch = SL.CHALLENGES || [];
+      pane.innerHTML = `<details class="challenges"${this.challengesOpen === false ? '' : ' open'}><summary><h3>도전 과제 ${this.done.size} / ${ch.length}</h3></summary><ul>${ch.map((c) => `<li class="${this.done.has(c.id) ? 'ok' : ''}" title="${c.hint}"><span>${this.done.has(c.id) ? '✓' : '○'}</span>${c.name}${this.done.has(c.id) ? '' : `<small>${c.hint}</small>`}</li>`).join('')}</ul></details>` +
+        `<h3>발견한 반응 ${found}개, 상태 변화 ${entries.length - found}개</h3>` +
         (entries.length ? entries.slice().reverse().map((e) => `<details class="entry"><summary><b>${e.name}</b><code>${e.eq}</code></summary><span>${e.note || ''}</span></details>`).join('')
           : '<p class="hint">아직 발견한 반응이 없습니다. 물질들을 만나게 해 보세요.</p>');
       pane.onclick = null;
+      const det = pane.querySelector('.challenges');
+      det.ontoggle = () => { this.challengesOpen = det.open; };
     }
 
     // ---- 입력 ----
@@ -552,13 +566,34 @@
     }
 
     afterStep() {
+      let found = false;
       for (const e of this.world.drainEvents()) {
         if (this.codex.has(e.id)) continue;
         this.codex.set(e.id, e);
         this.storage.save('codex', [...this.codex.values()]);
         this.toast(e);
         this.emit('discover', e);
+        found = true;
         if (this.tab === 'codex' || this.tab === 'info') this.renderPane();
+      }
+      // 새 발견이 있을 때와 가끔(온도처럼 상태로 판정하는 과제) 도전 과제를 확인한다.
+      if (found || this.world.tick % 120 === 0) this.checkChallenges();
+    }
+
+    checkChallenges() {
+      const w = this.world, d = w.data;
+      const count = (id) => { const k = d.idOf[id]; if (k == null) return 0; let n = 0; for (let i = 0; i < w.mat.length; i++) if (w.mat[i] === k) n++; return n; };
+      const ctx = {
+        has: (id) => this.codex.has(id), ids: () => [...this.codex.keys()], any: (re) => [...this.codex.keys()].some((k) => re.test(k)),
+        count, cells: (id, f) => { const k = d.idOf[id]; let n = 0; for (let i = 0; i < w.mat.length; i++) if (w.mat[i] === k && f(w.T[i])) n++; return n; },
+      };
+      for (const c of SL.CHALLENGES || []) {
+        if (this.done.has(c.id) || !c.check(ctx)) continue;
+        this.done.add(c.id);
+        this.storage.save('challenges', [...this.done]);
+        this.toast({ name: '도전 과제 완료: ' + c.name, eq: `${this.done.size} / ${SL.CHALLENGES.length}` });
+        this.emit('challenge', { id: c.id, name: c.name, done: this.done.size, total: SL.CHALLENGES.length });
+        if (this.tab === 'codex') this.renderPane();
       }
     }
 
@@ -742,7 +777,7 @@
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.8.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.9.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);
@@ -753,6 +788,7 @@
       world: app.world,
       loadScene: (id) => app.loadScene(id),
       undo: () => app.undo(),
+      challenges: () => (SL.CHALLENGES || []).map((c) => ({ id: c.id, name: c.name, hint: c.hint, done: app.done.has(c.id) })),
       pause: () => app.setRunning(false),
       resume: () => app.setRunning(true),
       setView: (v) => app.setView(v),

@@ -597,6 +597,7 @@
     if (!E || E.state !== 'liquid' || !E.aq || E.indicator) return null;
     if (E.salt) return { c: E.salt.c, a: E.salt.a };
     if (E.acid) return { c: 'H', a: E.acid.a };
+    if (E.id === 'A:citric' || E.id === 'A:vitc') return { c: 'H', a: 'cit' }; // 레몬즙 같은 약한 유기산도 전기가 통한다.
     return null;
   }
   const SUP = { 1: '⁺', 2: '²⁺', 3: '³⁺', 4: '⁴⁺' };
@@ -629,9 +630,10 @@
     const m = metalDef.metal && METALS[metalDef.metal];
     if (!ions || !m || !m.cat || metalDef.metal === 'Au') return null;
     const sal = salt(m.cat, ions.a);
-    if (!sal || !sal.aq) return null;
+    const to = sal && sal.aq ? sal.aq : ions.a === 'cit' ? 'A:citrate' : null;
+    if (!to) return null;
     const el = metalDef.metal, ch = SL.CATION[m.cat].charge;
-    return { to: sal.aq, e: ch, key: 'electro:anode:' + el, name: '전기 분해: (+)극의 ' + metalDef.name + '이(가) 녹음', eq: `${el} → ${el}${SUP[ch] || '⁺'} + ${ch}e⁻`, note: '금속을 (+)극으로 쓰면 전극 자체가 이온으로 녹아 들어갑니다. 구리를 순수하게 만드는 정련과 전기 도금에 씁니다.' };
+    return { to, e: ch, key: 'electro:anode:' + el, name: '전기 분해: (+)극의 ' + metalDef.name + '이(가) 녹음', eq: `${el} → ${el}${SUP[ch] || '⁺'} + ${ch}e⁻`, note: '금속을 (+)극으로 쓰면 전극 자체가 이온으로 녹아 들어갑니다. 구리를 순수하게 만드는 정련과 전기 도금에 씁니다.' };
   }
 
   SL.CHEM = { rulesFor, equation, balance, parseFormula, METALS, SERIES, electrolysis, anodeDissolve, electrolyteIons };
@@ -869,6 +871,7 @@
     // ---- 가열·냉각으로 일어나는 변화 ----
     { id: 'glass_shock', name: '유리의 열 충격', kind: 'physical', eq: '뜨거운 유리 + 찬물 → 깨진 유리', a: 'glass', b: 'water', minT: 250, prob: 0.2, toA: 'glassshards', toB: 'steam', note: '바깥만 급히 식어 줄어들면서 안쪽과 어긋나 유리가 깨집니다. 내열 유리는 덜 늘어나서 잘 견딥니다.' },
     { id: 'quench', name: '강철 담금질', kind: 'physical', eq: '달군 강철(750°C 이상) + 물 → 단단한 강철', a: 'steel:s', b: 'water', minT: 700, prob: 0.3, toA: 'steel:hard', toB: 'steam', note: '대장간에서 칼을 단단하게 만드는 방법입니다. 탄소가 철 결정 속에 갇혀 단단해집니다.' },
+    { id: 'quench', name: '강철 담금질', kind: 'physical', eq: '달군 강철(750°C 이상) + 물 → 단단한 강철', a: 'steel:s', b: 'steam', minT: 700, prob: 0.2, toA: 'steel:hard', toB: null, note: '대장간에서 칼을 단단하게 만드는 방법입니다. 탄소가 철 결정 속에 갇혀 단단해집니다.' },
     { id: 'plastic_sulfur', name: '고무상 황 만들기', kind: 'physical', eq: '진한 액체 황 + 찬물 → 고무상 황', a: 'S:l:dark', b: 'water', prob: 0.3, toA: 'S:plastic', toB: 'steam', note: '긴 사슬 모양의 황이 결정을 만들 틈 없이 굳어 고무처럼 늘어납니다.' },
     { id: 'iodine_sublime', name: '아이오딘의 승화', kind: 'physical', eq: 'I₂(s) → I₂(g)', a: 'I:s', b: 'air', minT: 50, prob: 0.01, toA: 'I:vapor', note: '아이오딘은 녹기 전에도 보라색 증기로 많이 날아갑니다. 데울수록 빠릅니다.' },
     { id: 'iodine_sublime', name: '아이오딘의 승화', kind: 'physical', eq: 'I₂(s) → I₂(g)', a: 'I:s', b: 'air', minT: 100, prob: 0.08, toA: 'I:vapor', note: '아이오딘은 녹기 전에도 보라색 증기로 많이 날아갑니다. 데울수록 빠릅니다.' },

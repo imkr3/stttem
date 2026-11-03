@@ -444,6 +444,31 @@ test('물질 색: 같은 색을 쓰는 물질이 적고, 색 있는 이온은 �
   assert(r4 + g4 + b4 < 150, '황화구리가 검지 않음');
   return `가장 많이 겹친 색 ${most}종`;
 });
+test('화학 전지와 전구: 다른 두 금속을 도선으로 이으면 전류가 흐름', () => {
+  const cell = (liq, a, c, opt) => {
+    const w = fresh(); w.rect('stone', 0, 146, 239, 149); w.rect('glass', 60, 80, 62, 145); w.rect('glass', 178, 80, 180, 145); w.rect(liq, 63, 95, 177, 145);
+    w.rect(a, 90, 85, 93, 140, 20, true); w.rect(c, 147, 85, 150, 140, 20, true);
+    if (opt !== 'nowire') { w.rect('wire', 90, 60, 93, 84, 20, true); w.rect('wire', 147, 60, 150, 84, 20, true); w.rect('wire', 94, 60, 146, 62, 20, true); w.rect('bulb', 118, 60, 121, 62, 20, true); }
+    run(w, 4); return w;
+  };
+  const out = [];
+  const lemon = cell('A:citric', 'Zn', 'Cu'); assert(lemon.discovered.has('galvanic') && count(lemon, 'bulb:on') > 0, '레몬 전지에 전구가 안 켜짐'); out.push('레몬 전지 전구 켜짐');
+  const salt = cell('brine', 'Mg', 'Cu'); assert(salt.discovered.has('galvanic') && count(salt, 'H:g') > 0, '마그네슘-구리 전지 없음'); out.push('마그네슘-구리');
+  for (const [liq, a, c, opt, why] of [['A:acid:H2SO4aq', 'Cu', 'Cu', null, '같은 금속'], ['water', 'Zn', 'Cu', null, '전해질 없음'], ['A:citric', 'Zn', 'Cu', 'nowire', '도선 없음']]) {
+    const w = cell(liq, a, c, opt); assert(!w.discovered.has('galvanic'), why + '인데 전류가 흐름');
+  }
+  out.push('같은 금속·순수한 물·도선 없음은 전류 없음');
+  const p = fresh(); p.rect('electrode+', 50, 50, 53, 100, 20, true); p.rect('wire', 54, 50, 100, 52, 20, true); p.rect('bulb', 101, 50, 104, 52, 20, true); p.rect('wire', 105, 50, 150, 52, 20, true); p.rect('electrode-', 151, 50, 154, 100, 20, true);
+  run(p, 1); assert(count(p, 'bulb:on') > 0, '전원에 이은 전구가 안 켜짐'); out.push('전원-전구 회로');
+  return out.join(', ');
+});
+test('도전 과제: 이름이 겹치지 않고 판정이 오류 없이 돌아감', () => {
+  const ids = SandLab.CHALLENGES.map((c) => c.id);
+  assert(new Set(ids).size === ids.length, '겹치는 id');
+  const ctx = { has: () => false, ids: () => [], any: () => false, count: () => 0, cells: () => 0 };
+  for (const c of SandLab.CHALLENGES) assert(c.check(ctx) === false && c.hint, c.id);
+  return `${ids.length}개`;
+});
 test('공기 중 액체 질소는 끓어 기체가 됨', () => {
   const w = fresh(); w.rect('N:l', 100, 60, 130, 70);
   run(w, 30);

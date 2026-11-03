@@ -629,6 +629,9 @@ Og|오가네손|294|noble|7|50|80|1`;
     { id: 'fallout:old', name: '식은 핵분열 생성물', formula: '사용후 핵연료 성분', fx: 'Cs', state: 'powder', color: '#7a8450', density: 6000, c: 300, k: 2, radioactive: true, decayHeat: 3, absorb: 0.1, desc: '붕괴열이 줄었지만 여전히 방사성입니다. 오랫동안 냉각하고 격리해야 합니다.' },
     { id: 'electrode+', name: '(+)극 전극', formula: '흑연, 전원 +', fx: 'C', state: 'solid', cat: 'device', color: '#c84040', density: 2200, c: 710, k: 100, inert: true, electrode: 1, desc: '전원의 + 쪽에 연결된 흑연 전극(산화가 일어나는 곳). (−)극과 같은 전해질 용액에 닿아 있어야 전류가 흐릅니다. 닿아 있는 금속도 전극이 됩니다.' },
     { id: 'electrode-', name: '(−)극 전극', formula: '흑연, 전원 −', fx: 'C', state: 'solid', cat: 'device', color: '#4060c8', density: 2200, c: 710, k: 100, inert: true, electrode: 2, desc: '전원의 − 쪽에 연결된 흑연 전극(환원이 일어나는 곳). 금속 이온이 여기에 석출되거나 수소가 나옵니다.' },
+    { id: 'wire', name: '도선', formula: '피복 구리선', fx: 'Cu', state: 'solid', cat: 'device', color: '#c06a30', density: 8900, c: 385, k: 50, inert: true, wire: true, grain: 3, desc: '겉을 감싼 구리선. 전기는 통하지만 용액과는 반응하지 않습니다. 금속·전극·전구를 이어 회로를 만듭니다.' },
+    { id: 'bulb', name: '전구', formula: '꼬마전구', fx: 'W', state: 'solid', cat: 'device', color: '#5a5a48', density: 2500, c: 800, k: 2, inert: true, load: true, grain: 2, desc: '회로에 전류가 흐르면 켜집니다. 전원의 (+)·(−)극 사이나, 서로 다른 두 금속으로 만든 화학 전지 사이에 이어 보세요.' },
+    { id: 'bulb:on', name: '켜진 전구', formula: '꼬마전구', fx: 'W', state: 'solid', color: '#fff2a0', density: 2500, c: 800, k: 2, inert: true, load: true, glow: [255, 240, 150], desc: '전류가 흘러 필라멘트가 빛납니다.' },
     { id: 'heater', name: '가열판', formula: '800°C', state: 'solid', cat: 'device', color: '#d8392b', density: 5000, c: 1000, k: 80, T0: 800, fixed: true, inert: true, desc: '항상 800°C를 유지합니다.' },
     { id: 'furnace', name: '용광로판', formula: '2000°C', state: 'solid', cat: 'device', color: '#f07a10', density: 5000, c: 1000, k: 80, T0: 2000, fixed: true, inert: true, desc: '항상 2000°C를 유지합니다. 철도 녹습니다.' },
     { id: 'cooler', name: '냉각판', formula: '-60°C', state: 'solid', cat: 'device', color: '#3bb4d8', density: 5000, c: 1000, k: 80, T0: -60, fixed: true, inert: true, desc: '항상 -60°C를 유지합니다.' },
@@ -1348,6 +1351,7 @@ Og|오가네손|294|noble|7|50|80|1`;
     if (!E || E.state !== 'liquid' || !E.aq || E.indicator) return null;
     if (E.salt) return { c: E.salt.c, a: E.salt.a };
     if (E.acid) return { c: 'H', a: E.acid.a };
+    if (E.id === 'A:citric' || E.id === 'A:vitc') return { c: 'H', a: 'cit' }; // 레몬즙 같은 약한 유기산도 전기가 통한다.
     return null;
   }
   const SUP = { 1: '⁺', 2: '²⁺', 3: '³⁺', 4: '⁴⁺' };
@@ -1380,9 +1384,10 @@ Og|오가네손|294|noble|7|50|80|1`;
     const m = metalDef.metal && METALS[metalDef.metal];
     if (!ions || !m || !m.cat || metalDef.metal === 'Au') return null;
     const sal = salt(m.cat, ions.a);
-    if (!sal || !sal.aq) return null;
+    const to = sal && sal.aq ? sal.aq : ions.a === 'cit' ? 'A:citrate' : null;
+    if (!to) return null;
     const el = metalDef.metal, ch = SL.CATION[m.cat].charge;
-    return { to: sal.aq, e: ch, key: 'electro:anode:' + el, name: '전기 분해: (+)극의 ' + metalDef.name + '이(가) 녹음', eq: `${el} → ${el}${SUP[ch] || '⁺'} + ${ch}e⁻`, note: '금속을 (+)극으로 쓰면 전극 자체가 이온으로 녹아 들어갑니다. 구리를 순수하게 만드는 정련과 전기 도금에 씁니다.' };
+    return { to, e: ch, key: 'electro:anode:' + el, name: '전기 분해: (+)극의 ' + metalDef.name + '이(가) 녹음', eq: `${el} → ${el}${SUP[ch] || '⁺'} + ${ch}e⁻`, note: '금속을 (+)극으로 쓰면 전극 자체가 이온으로 녹아 들어갑니다. 구리를 순수하게 만드는 정련과 전기 도금에 씁니다.' };
   }
 
   SL.CHEM = { rulesFor, equation, balance, parseFormula, METALS, SERIES, electrolysis, anodeDissolve, electrolyteIons };
@@ -1620,6 +1625,7 @@ Og|오가네손|294|noble|7|50|80|1`;
     // ---- 가열·냉각으로 일어나는 변화 ----
     { id: 'glass_shock', name: '유리의 열 충격', kind: 'physical', eq: '뜨거운 유리 + 찬물 → 깨진 유리', a: 'glass', b: 'water', minT: 250, prob: 0.2, toA: 'glassshards', toB: 'steam', note: '바깥만 급히 식어 줄어들면서 안쪽과 어긋나 유리가 깨집니다. 내열 유리는 덜 늘어나서 잘 견딥니다.' },
     { id: 'quench', name: '강철 담금질', kind: 'physical', eq: '달군 강철(750°C 이상) + 물 → 단단한 강철', a: 'steel:s', b: 'water', minT: 700, prob: 0.3, toA: 'steel:hard', toB: 'steam', note: '대장간에서 칼을 단단하게 만드는 방법입니다. 탄소가 철 결정 속에 갇혀 단단해집니다.' },
+    { id: 'quench', name: '강철 담금질', kind: 'physical', eq: '달군 강철(750°C 이상) + 물 → 단단한 강철', a: 'steel:s', b: 'steam', minT: 700, prob: 0.2, toA: 'steel:hard', toB: null, note: '대장간에서 칼을 단단하게 만드는 방법입니다. 탄소가 철 결정 속에 갇혀 단단해집니다.' },
     { id: 'plastic_sulfur', name: '고무상 황 만들기', kind: 'physical', eq: '진한 액체 황 + 찬물 → 고무상 황', a: 'S:l:dark', b: 'water', prob: 0.3, toA: 'S:plastic', toB: 'steam', note: '긴 사슬 모양의 황이 결정을 만들 틈 없이 굳어 고무처럼 늘어납니다.' },
     { id: 'iodine_sublime', name: '아이오딘의 승화', kind: 'physical', eq: 'I₂(s) → I₂(g)', a: 'I:s', b: 'air', minT: 50, prob: 0.01, toA: 'I:vapor', note: '아이오딘은 녹기 전에도 보라색 증기로 많이 날아갑니다. 데울수록 빠릅니다.' },
     { id: 'iodine_sublime', name: '아이오딘의 승화', kind: 'physical', eq: 'I₂(s) → I₂(g)', a: 'I:s', b: 'air', minT: 100, prob: 0.08, toA: 'I:vapor', note: '아이오딘은 녹기 전에도 보라색 증기로 많이 날아갑니다. 데울수록 빠릅니다.' },
@@ -1691,7 +1697,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       up: [], down: [], decay: [], explicit: new Map(), cache: new Map(), reactive: new Uint8Array(n), base: new Uint16Array(n),
       fast: new Float32Array(n), thermal: new Float32Array(n), spont: new Float32Array(n), emitter: new Uint8Array(n),
       moder: new Uint8Array(n), absorb: new Float32Array(n), heat: new Float32Array(n), armor: new Uint8Array(n),
-      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
+      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
     };
     materials.forEach((d, i) => {
       c.state[i] = STATES[d.state];
@@ -1713,7 +1719,8 @@ Og|오가네손|294|noble|7|50|80|1`;
       // 칸마다 밝기를 조금씩 달리하는 정도(질감): 액체는 매끈하게, 금속은 고르게, 가루와 바위는 거칠게.
       c.grain[i] = d.grain != null ? d.grain : d.state === 'liquid' ? 5 : d.state === 'gas' ? 7 : d.metal ? 7 : d.state === 'solid' ? 16 : 13;
       if (d.electrode) c.anyElectrode = true;
-      c.conductor[i] = d.electrode || (d.metal && d.state !== 'gas') ? 1 : 0; // 전기가 통하는 고체·액체 금속
+      c.conductor[i] = d.electrode || d.wire || (d.metal && d.state !== 'gas') ? 1 : 0; // 전기가 통하는 고체·액체 금속, 도선
+      c.load[i] = d.load ? 1 : 0; // 전구처럼 전류가 지나가며 일을 하는 것
     });
     const add = (a, b, entry) => {
       const key = a * n + b;
@@ -2117,7 +2124,9 @@ Og|오가네손|294|noble|7|50|80|1`;
           let t = T[cell] + dT;
           if (r.T != null) t = Math.max(t, r.T);
           if (to == null) { if (!this.data.fixed[this.mat[cell]]) T[cell] = t; return; }
-          this.setCell(cell, pick(to), t);
+          const next = pick(to);
+          if (next === this.mat[cell]) { T[cell] = t; return; } // 그대로 남는 칸은 고정 상태·잠열을 지킨다.
+          this.setCell(cell, next, t);
         };
         apply(i, e.toSelf);
         apply(j, e.toOther);
@@ -2214,6 +2223,20 @@ Og|오가네손|294|noble|7|50|80|1`;
       };
       flood(1, 1, this.anodes);
       flood(2, 2, this.cathodes);
+      // 전구는 도체가 아니라 짐(부하)이다. 한쪽은 (+)극 쪽, 다른 쪽은 (−)극 쪽 도체에 닿으면 전류가 흘러 켜진다.
+      const seen = new Uint8Array(size);
+      for (let i = 0; i < size; i++) {
+        if (seen[i] || !d.load[mat[i]]) continue;
+        const group = [], st = [i];
+        let a = false, c = false;
+        seen[i] = 1;
+        while (st.length) {
+          const k = st.pop();
+          group.push(k);
+          nb(k, (j) => { if (role[j] & 1) a = true; if (role[j] & 2) c = true; if (!seen[j] && d.load[mat[j]]) { seen[j] = 1; st.push(j); } });
+        }
+        if (a && c) for (const k of group) this.lit.add(k);
+      }
       if (!this.anodes.length || !this.cathodes.length) return;
       if (this.anodes.some((i) => role[i] & 2)) { // 합선
         this.note('short', () => ({ type: 'reaction', id: 'short', name: '합선', kind: 'physical', eq: '(+)극 ─ 금속 ─ (−)극', note: '두 전극이 금속으로 바로 이어지면 전류가 용액을 지나지 않아 전기 분해가 일어나지 않습니다.' }));
@@ -2228,11 +2251,104 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.circuit = this.anodes.some((i) => { let ok = false; nb(i, (j) => { if (role[j] & 4) ok = true; }); return ok; });
     }
 
+    // 화학 전지: 도선이나 금속끼리 이어진 덩어리 안에 반응성이 다른 두 금속이 같은 전해질에 잠겨 있으면 전류가 흐른다.
+    // 반응성이 큰 금속이 녹아 전자를 내놓고(−극), 작은 금속 표면에서 수소가 나오거나 금속이 석출된다(+극).
+    findGalvanic() {
+      const { w, h, mat } = this, d = this.data, size = w * h, role = this.role;
+      this.cells = [];
+      const nb = (i, f) => { const x = i % w; if (x > 0) f(i - 1); if (x < w - 1) f(i + 1); if (i >= w) f(i - w); if (i + w < size) f(i + w); };
+      const elab = this.elab && this.elab.length === size ? this.elab.fill(0) : (this.elab = new Int32Array(size));
+      const clab = this.clab && this.clab.length === size ? this.clab.fill(0) : (this.clab = new Int32Array(size));
+      let regions = 0, clusters = 0;
+      for (let i = 0; i < size; i++) {
+        if (elab[i] || !this.isElectrolyte(mat[i])) continue;
+        const r = ++regions, st = [i]; elab[i] = r;
+        while (st.length) { const k = st.pop(); nb(k, (j) => { if (!elab[j] && this.isElectrolyte(mat[j])) { elab[j] = r; st.push(j); } }); }
+      }
+      if (!regions) return;
+      const rank = (el) => SL.CHEM.SERIES.indexOf(el);
+      for (let i = 0; i < size; i++) {
+        const m0 = mat[i];
+        if (clab[i] || !(d.conductor[m0] || d.load[m0]) || d.electrode[m0] || (role && role[i] & 3)) continue;
+        const id = ++clusters, st = [i], wet = new Map(), bulbs = [];
+        clab[i] = id;
+        while (st.length) {
+          const k = st.pop(), def = d.defs[mat[k]];
+          if (d.load[mat[k]]) bulbs.push(k);
+          if (def.metal && rank(def.metal) >= 0) nb(k, (j) => { if (elab[j]) { const key = def.metal + '|' + elab[j]; if (!wet.has(key)) wet.set(key, []); wet.get(key).push(k); } });
+          nb(k, (j) => { const mj = mat[j]; if (!clab[j] && (d.conductor[mj] || d.load[mj]) && !d.electrode[mj] && !(role && role[j] & 3)) { clab[j] = id; st.push(j); } });
+        }
+        // 전해질 영역마다 가장 활발한 금속(−극)과 가장 덜 활발한 금속(+극)을 고른다.
+        const byRegion = new Map();
+        for (const [key, list] of wet) { const [el, r] = key.split('|'); if (!byRegion.has(r)) byRegion.set(r, []); byRegion.get(r).push([el, list]); }
+        for (const metals of byRegion.values()) {
+          if (metals.length < 2) continue;
+          metals.sort((a, b) => rank(a[0]) - rank(b[0]));
+          const [aEl, anode] = metals[0], [cEl, cathode] = metals[metals.length - 1];
+          const diff = rank(cEl) - rank(aEl);
+          if (diff <= 0 || !SL.CHEM.METALS[aEl] || !SL.CHEM.METALS[aEl].cat) continue;
+          this.cells.push({ anode, cathode, rate: Math.min(3, 0.12 * diff), bulbs, aEl, cEl, ea: 0, ec: 0 });
+          for (const b of bulbs) this.lit.add(b);
+        }
+      }
+    }
+
+    // 회로 상태에 따라 전구를 켜고 끈다.
+    updateBulbs() {
+      const d = this.data, on = d.idOf['bulb:on'], off = d.idOf.bulb, mat = this.mat;
+      if (on == null) return;
+      for (let i = 0; i < mat.length; i++) {
+        if (mat[i] === on && !this.lit.has(i)) { const T = this.T[i]; this.setCell(i, off, T); this.anchor[i] = 1; }
+        else if (mat[i] === off && this.lit.has(i)) {
+          const T = this.T[i]; this.setCell(i, on, T + 5); this.anchor[i] = 1;
+          this.note('bulb', () => ({ type: 'reaction', id: 'bulb', name: '전구에 불이 들어옴', kind: 'physical', eq: '전류 → 필라멘트가 뜨거워져 빛남', note: '회로가 닫혀 전류가 흐르면 전구가 켜집니다. 전류가 흐르려면 전원이나 화학 전지와, 끊기지 않은 길이 필요합니다.' }));
+        }
+      }
+    }
+
+    stepGalvanic() {
+      if (!this.cells || !this.cells.length) return;
+      const { w, mat } = this, d = this.data, size = mat.length;
+      const pickNb = (i) => { const r = Math.random(), x = i % w; return r < 0.25 ? (x > 0 ? i - 1 : -1) : r < 0.5 ? (x < w - 1 ? i + 1 : -1) : r < 0.75 ? (i >= w ? i - w : -1) : (i + w < size ? i + w : -1); };
+      const apply = (j, res) => {
+        this.setCell(j, pick(d.resolve(res.to)), this.T[j] + 1);
+        this.note(res.key, () => ({ type: 'reaction', id: res.key, name: res.name, kind: 'chemical', eq: res.eq, note: res.note }));
+      };
+      for (const cell of this.cells) {
+        cell.ec += cell.rate; cell.ea += cell.rate;
+        let did = false;
+        for (let t = 0; t < 20 && cell.ec > 0; t++) {
+          const i = cell.cathode[(Math.random() * cell.cathode.length) | 0], j = pickNb(i);
+          if (j < 0 || d.defs[mat[i]].metal !== cell.cEl || !this.isElectrolyte(mat[j])) continue;
+          const res = SL.CHEM.electrolysis(d.defs[mat[j]], 'cathode');
+          if (!res) continue;
+          apply(j, res); cell.ec -= res.e; did = true;
+          if (res.deposit) this.anchor[j] = 1;
+        }
+        for (let t = 0; t < 20 && cell.ea > 0; t++) {
+          const i = cell.anode[(Math.random() * cell.anode.length) | 0], j = pickNb(i);
+          if (j < 0 || d.defs[mat[i]].metal !== cell.aEl || !this.isElectrolyte(mat[j])) continue;
+          const res = SL.CHEM.anodeDissolve(d.defs[mat[i]], d.defs[mat[j]]);
+          if (!res) continue;
+          // 금속 한 칸에는 이온이 수십 배 많으므로, 녹아 나온 이온은 대개 옆 용액으로 들어가고 금속 칸은 가끔만 사라진다.
+          apply(Math.random() < 0.12 ? i : j, res); cell.ea -= res.e; did = true;
+        }
+        cell.ea = Math.min(cell.ea, cell.rate); cell.ec = Math.min(cell.ec, cell.rate);
+        if (did) this.note('galvanic', () => ({ type: 'reaction', id: 'galvanic', name: '화학 전지', kind: 'chemical', eq: `${cell.aEl} → ${cell.aEl}ⁿ⁺ + ne⁻ (−극) │ 전자가 도선을 따라 ${cell.cEl}(+극)으로`, note: '반응성이 다른 두 금속을 전해질에 담그고 도선으로 이으면, 반응성이 큰 금속이 녹으며 내놓은 전자가 도선으로 흘러 전류가 됩니다. 볼타 전지·다니엘 전지·레몬 전지의 원리입니다.' }));
+      }
+    }
+
     stepElectro() {
       const d = this.data;
-      if (!d.anyElectrode || !SL.CHEM || !SL.CHEM.electrolysis) return;
-      if (this.tick % 20 === 1 || !this.role) this.findCircuit();
-      if (!this.circuit) return;
+      if (!SL.CHEM || !SL.CHEM.electrolysis) return;
+      if (this.tick % 20 === 1 || !this.lit) {
+        this.lit = new Set();
+        if (d.anyElectrode) this.findCircuit(); else { this.role = null; this.circuit = false; }
+        this.findGalvanic();
+        this.updateBulbs();
+      }
+      this.stepGalvanic();
+      if (!d.anyElectrode || !this.circuit) return;
       const { w, mat, role } = this, size = mat.length;
       const pickNb = (i) => { const r = Math.random(), x = i % w; return r < 0.25 ? (x > 0 ? i - 1 : -1) : r < 0.5 ? (x < w - 1 ? i + 1 : -1) : r < 0.75 ? (i >= w ? i - w : -1) : (i + w < size ? i + w : -1); };
       // 패러데이 법칙: 전류가 일정하므로 한 틱에 오가는 전자 수가 정해져 있다. 두 극에서 같은 수의 전자가 오간다.
@@ -2259,7 +2375,10 @@ Og|오가네손|294|noble|7|50|80|1`;
         if (j < 0 || !(role[j] & 4) || !this.isElectrolyte(mat[j])) continue;
         if (!d.electrode[mat[i]]) { // 금속 (+)극은 스스로 녹는다
           const res = SL.CHEM.anodeDissolve(d.defs[mat[i]], d.defs[mat[j]]);
-          if (res) { apply(i, res, this.T[i]); role[i] = 4; this.eAnod -= res.e; continue; }
+          if (res) {
+            if (Math.random() < 0.12) { apply(i, res, this.T[i]); role[i] = 4; } else apply(j, res, this.T[i]); // 금속 칸은 가끔만 사라진다
+            this.eAnod -= res.e; continue;
+          }
         }
         const res = SL.CHEM.electrolysis(d.defs[mat[j]], 'anode');
         if (!res) continue;
@@ -2525,7 +2644,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.bodies = s.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] }));
       this.selected = null; this.fq = [];
       if (s.probe) this.setProbe(s.probe.x, s.probe.y); else this.probe = null;
-      this.role = null; // 전기 회로를 다시 찾는다.
+      this.role = null; this.lit = null; // 전기 회로를 다시 찾는다.
     }
 
     // ---- 저장/복원 (포함될 사이트에서 서버에 저장할 수 있도록 순수 JSON) ----
@@ -2996,6 +3115,32 @@ Og|오가네손|294|noble|7|50|80|1`;
       },
     },
   ];
+
+  // ---- 도전 과제 ----
+  // check(c): c.has(발견 id), c.any(정규식), c.count(물질 id), c.cells(물질 id, 조건). 발견 기록은 저장되므로 한 번 이루면 끝이다.
+  // 사이트에서는 sandlab:challenge 이벤트로 진도·점수와 연결할 수 있다.
+  SL.CHALLENGES = [
+    { id: 'neutral', name: '산과 염기 중화하기', hint: '염산에 수산화나트륨 용액을 떨어뜨려 보세요.', check: (c) => c.any(/^neutral:/) },
+    { id: 'precip', name: '노란 앙금 만들기', hint: '질산납 용액과 아이오딘화 칼륨 용액을 만나게 해 보세요.', check: (c) => c.count('S:PbI2') > 0 || c.count('S:AgI') > 0 || c.count('S:PbCrO4') > 0 },
+    { id: 'flame4', name: '불꽃색 네 가지 보기', hint: '여러 금속의 염화물을 불꽃에 넣어 보세요.', check: (c) => c.ids().filter((k) => /^flame:/.test(k)).length >= 4 },
+    { id: 'silver', name: '은 나무 키우기', hint: '구리를 질산은 용액에 넣어 보세요.', check: (c) => c.any(/^displace:.*:Ag:/) },
+    { id: 'starch', name: '녹말 찾기', hint: '녹말 용액에 아이오딘을 넣어 보세요.', check: (c) => c.has('starch_iodine') },
+    { id: 'slime', name: '슬라임 만들기', hint: '물풀과 붕사 용액을 섞어 보세요.', check: (c) => c.has('slime') },
+    { id: 'garden', name: '화학 정원 키우기', hint: '물유리에 금속염 결정을 떨어뜨려 보세요.', check: (c) => c.has('garden') },
+    { id: 'ferment', name: '발효시키기', hint: '따뜻한 설탕물에 효모를 넣어 보세요.', check: (c) => c.has('ferment') },
+    { id: 'cold', name: '얼음과 소금으로 영하 15°C 만들기', hint: '얼음에 소금을 뿌리고 온도계로 재 보세요.', check: (c) => c.cells('A:NaCl', (T) => T < -15) > 0 },
+    { id: 'fog', name: '차가운 안개 만들기', hint: '액체 질소나 드라이아이스를 공기 중에 두어 보세요.', check: (c) => c.has('fog') },
+    { id: 'hotice', name: '핫 아이스 굳히기', hint: '과포화 아세트산나트륨 용액에 결정을 하나 떨어뜨려 보세요.', check: (c) => c.has('hotice') },
+    { id: 'glass', name: '모래로 유리 만들기', hint: '모래를 1713°C 넘게 녹였다가 식혀 보세요(용광로판).', check: (c) => c.has('phase:moltenglass:glass') },
+    { id: 'steel', name: '강철 만들기', hint: '녹은 철에 숯을 넣어 보세요.', check: (c) => c.has('steel') },
+    { id: 'thermite', name: '테르밋으로 쇳물 얻기', hint: '알루미늄 가루와 녹을 섞고 아주 뜨겁게 불을 붙여 보세요.', check: (c) => c.any(/^thermite:/) },
+    { id: 'h2pop', name: '수소 폭발시키기', hint: '수소와 산소를 섞고 불을 대 보세요.', check: (c) => c.has('h2_burn') && c.has('explosion:small') },
+    { id: 'electrolysis', name: '물을 전기 분해하기', hint: '묽은 황산에 (+)극과 (−)극 전극을 꽂아 보세요.', check: (c) => c.has('electro:H2') && c.has('electro:O2') },
+    { id: 'plating', name: '구리 도금하기', hint: '황산구리 용액에서 철을 (−)극에 이어 보세요.', check: (c) => c.has('electro:metal:Cu') },
+    { id: 'battery', name: '레몬 전지로 전구 켜기', hint: '레몬즙에 아연과 구리를 담그고 도선과 전구로 이어 보세요.', check: (c) => c.has('galvanic') && c.has('bulb') },
+    { id: 'chain', name: '핵분열 연쇄 반응 일으키기', hint: '농축 우라늄을 임계 질량보다 많이 모아 보세요(실제로는 절대 불가능하고 위험합니다).', check: (c) => c.has('chain') },
+    { id: 'meltdown', name: '원자로가 녹는 까닭 알아보기', hint: '물속에 농축 우라늄을 모아 보세요. 핵폭발은 일어나지 않습니다.', check: (c) => c.has('meltdown') },
+  ];
 })(globalThis.SandLab = globalThis.SandLab || {});
 
 // 격자를 픽셀로 그린다. 보기 모드: normal(일반) / heat(온도) / density(밀도)
@@ -3147,6 +3292,15 @@ Og|오가네손|294|noble|7|50|80|1`;
   input[type=checkbox] { width:18px; height:18px; accent-color:var(--sl-accent); }
   .val { font-variant-numeric:tabular-nums; min-width:62px; text-align:right; }
   .hint { color:var(--sl-muted); font-size:13px; line-height:1.55; margin:6px 0; }
+  .challenges summary { cursor:pointer; list-style:none; }
+  .challenges summary::-webkit-details-marker { display:none; }
+  .challenges summary h3 { display:inline-block; margin:0 0 6px; }
+  .challenges ul { list-style:none; margin:0 0 10px; padding:0; }
+  .challenges li { padding:4px 0; font-size:13px; border-bottom:1px solid var(--sl-line); }
+  .challenges li span { display:inline-block; width:18px; color:var(--sl-muted); }
+  .challenges li.ok { color:var(--sl-muted); }
+  .challenges li.ok span { color:var(--sl-accent); }
+  .challenges li small { display:block; margin-left:18px; color:var(--sl-muted); font-size:12px; }
   .partner-list summary { cursor:pointer; color:var(--sl-muted); font-size:13px; padding:4px 0; min-height:28px; }
   .partner-list .chips { margin:4px 0 8px; }
   .partners:not(:empty) { border-bottom:1px solid var(--sl-line); margin-bottom:6px; }
@@ -3229,6 +3383,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.partnersOpen = true; // 정보 탭의 "함께 떨어뜨려 볼 재료"는 처음부터 펼친다.
       this.graphMode = 'v';
       this.codex = new Map((this.storage.load('codex') || []).map((e) => [e.id, e]));
+      this.done = new Set(this.storage.load('challenges') || []);
       this.pointer = null;
       this.hover = null;
       this.cleanups = [];
@@ -3542,10 +3697,14 @@ Og|오가네손|294|noble|7|50|80|1`;
     paneCodex(pane) {
       const entries = [...this.codex.values()];
       const found = entries.filter((e) => e.type === 'reaction').length;
-      pane.innerHTML = `<h3>발견한 반응 ${found}개, 상태 변화 ${entries.length - found}개</h3>` +
+      const ch = SL.CHALLENGES || [];
+      pane.innerHTML = `<details class="challenges"${this.challengesOpen === false ? '' : ' open'}><summary><h3>도전 과제 ${this.done.size} / ${ch.length}</h3></summary><ul>${ch.map((c) => `<li class="${this.done.has(c.id) ? 'ok' : ''}" title="${c.hint}"><span>${this.done.has(c.id) ? '✓' : '○'}</span>${c.name}${this.done.has(c.id) ? '' : `<small>${c.hint}</small>`}</li>`).join('')}</ul></details>` +
+        `<h3>발견한 반응 ${found}개, 상태 변화 ${entries.length - found}개</h3>` +
         (entries.length ? entries.slice().reverse().map((e) => `<details class="entry"><summary><b>${e.name}</b><code>${e.eq}</code></summary><span>${e.note || ''}</span></details>`).join('')
           : '<p class="hint">아직 발견한 반응이 없습니다. 물질들을 만나게 해 보세요.</p>');
       pane.onclick = null;
+      const det = pane.querySelector('.challenges');
+      det.ontoggle = () => { this.challengesOpen = det.open; };
     }
 
     // ---- 입력 ----
@@ -3646,13 +3805,34 @@ Og|오가네손|294|noble|7|50|80|1`;
     }
 
     afterStep() {
+      let found = false;
       for (const e of this.world.drainEvents()) {
         if (this.codex.has(e.id)) continue;
         this.codex.set(e.id, e);
         this.storage.save('codex', [...this.codex.values()]);
         this.toast(e);
         this.emit('discover', e);
+        found = true;
         if (this.tab === 'codex' || this.tab === 'info') this.renderPane();
+      }
+      // 새 발견이 있을 때와 가끔(온도처럼 상태로 판정하는 과제) 도전 과제를 확인한다.
+      if (found || this.world.tick % 120 === 0) this.checkChallenges();
+    }
+
+    checkChallenges() {
+      const w = this.world, d = w.data;
+      const count = (id) => { const k = d.idOf[id]; if (k == null) return 0; let n = 0; for (let i = 0; i < w.mat.length; i++) if (w.mat[i] === k) n++; return n; };
+      const ctx = {
+        has: (id) => this.codex.has(id), ids: () => [...this.codex.keys()], any: (re) => [...this.codex.keys()].some((k) => re.test(k)),
+        count, cells: (id, f) => { const k = d.idOf[id]; let n = 0; for (let i = 0; i < w.mat.length; i++) if (w.mat[i] === k && f(w.T[i])) n++; return n; },
+      };
+      for (const c of SL.CHALLENGES || []) {
+        if (this.done.has(c.id) || !c.check(ctx)) continue;
+        this.done.add(c.id);
+        this.storage.save('challenges', [...this.done]);
+        this.toast({ name: '도전 과제 완료: ' + c.name, eq: `${this.done.size} / ${SL.CHALLENGES.length}` });
+        this.emit('challenge', { id: c.id, name: c.name, done: this.done.size, total: SL.CHALLENGES.length });
+        if (this.tab === 'codex') this.renderPane();
       }
     }
 
@@ -3836,7 +4016,7 @@ Og|오가네손|294|noble|7|50|80|1`;
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.8.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.9.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);
@@ -3847,6 +4027,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       world: app.world,
       loadScene: (id) => app.loadScene(id),
       undo: () => app.undo(),
+      challenges: () => (SL.CHALLENGES || []).map((c) => ({ id: c.id, name: c.name, hint: c.hint, done: app.done.has(c.id) })),
       pause: () => app.setRunning(false),
       resume: () => app.setRunning(true),
       setView: (v) => app.setView(v),

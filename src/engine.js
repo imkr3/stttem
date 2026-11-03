@@ -43,7 +43,7 @@
       up: [], down: [], decay: [], explicit: new Map(), cache: new Map(), reactive: new Uint8Array(n), base: new Uint16Array(n),
       fast: new Float32Array(n), thermal: new Float32Array(n), spont: new Float32Array(n), emitter: new Uint8Array(n),
       moder: new Uint8Array(n), absorb: new Float32Array(n), heat: new Float32Array(n), armor: new Uint8Array(n),
-      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
+      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
     };
     materials.forEach((d, i) => {
       c.state[i] = STATES[d.state];
@@ -65,7 +65,8 @@
       // 칸마다 밝기를 조금씩 달리하는 정도(질감): 액체는 매끈하게, 금속은 고르게, 가루와 바위는 거칠게.
       c.grain[i] = d.grain != null ? d.grain : d.state === 'liquid' ? 5 : d.state === 'gas' ? 7 : d.metal ? 7 : d.state === 'solid' ? 16 : 13;
       if (d.electrode) c.anyElectrode = true;
-      c.conductor[i] = d.electrode || (d.metal && d.state !== 'gas') ? 1 : 0; // 전기가 통하는 고체·액체 금속
+      c.conductor[i] = d.electrode || d.wire || (d.metal && d.state !== 'gas') ? 1 : 0; // 전기가 통하는 고체·액체 금속, 도선
+      c.load[i] = d.load ? 1 : 0; // 전구처럼 전류가 지나가며 일을 하는 것
     });
     const add = (a, b, entry) => {
       const key = a * n + b;
@@ -469,7 +470,9 @@
           let t = T[cell] + dT;
           if (r.T != null) t = Math.max(t, r.T);
           if (to == null) { if (!this.data.fixed[this.mat[cell]]) T[cell] = t; return; }
-          this.setCell(cell, pick(to), t);
+          const next = pick(to);
+          if (next === this.mat[cell]) { T[cell] = t; return; } // 그대로 남는 칸은 고정 상태·잠열을 지킨다.
+          this.setCell(cell, next, t);
         };
         apply(i, e.toSelf);
         apply(j, e.toOther);
@@ -566,6 +569,20 @@
       };
       flood(1, 1, this.anodes);
       flood(2, 2, this.cathodes);
+      // 전구는 도체가 아니라 짐(부하)이다. 한쪽은 (+)극 쪽, 다른 쪽은 (−)극 쪽 도체에 닿으면 전류가 흘러 켜진다.
+      const seen = new Uint8Array(size);
+      for (let i = 0; i < size; i++) {
+        if (seen[i] || !d.load[mat[i]]) continue;
+        const group = [], st = [i];
+        let a = false, c = false;
+        seen[i] = 1;
+        while (st.length) {
+          const k = st.pop();
+          group.push(k);
+          nb(k, (j) => { if (role[j] & 1) a = true; if (role[j] & 2) c = true; if (!seen[j] && d.load[mat[j]]) { seen[j] = 1; st.push(j); } });
+        }
+        if (a && c) for (const k of group) this.lit.add(k);
+      }
       if (!this.anodes.length || !this.cathodes.length) return;
       if (this.anodes.some((i) => role[i] & 2)) { // 합선
         this.note('short', () => ({ type: 'reaction', id: 'short', name: '합선', kind: 'physical', eq: '(+)극 ─ 금속 ─ (−)극', note: '두 전극이 금속으로 바로 이어지면 전류가 용액을 지나지 않아 전기 분해가 일어나지 않습니다.' }));
@@ -580,11 +597,104 @@
       this.circuit = this.anodes.some((i) => { let ok = false; nb(i, (j) => { if (role[j] & 4) ok = true; }); return ok; });
     }
 
+    // 화학 전지: 도선이나 금속끼리 이어진 덩어리 안에 반응성이 다른 두 금속이 같은 전해질에 잠겨 있으면 전류가 흐른다.
+    // 반응성이 큰 금속이 녹아 전자를 내놓고(−극), 작은 금속 표면에서 수소가 나오거나 금속이 석출된다(+극).
+    findGalvanic() {
+      const { w, h, mat } = this, d = this.data, size = w * h, role = this.role;
+      this.cells = [];
+      const nb = (i, f) => { const x = i % w; if (x > 0) f(i - 1); if (x < w - 1) f(i + 1); if (i >= w) f(i - w); if (i + w < size) f(i + w); };
+      const elab = this.elab && this.elab.length === size ? this.elab.fill(0) : (this.elab = new Int32Array(size));
+      const clab = this.clab && this.clab.length === size ? this.clab.fill(0) : (this.clab = new Int32Array(size));
+      let regions = 0, clusters = 0;
+      for (let i = 0; i < size; i++) {
+        if (elab[i] || !this.isElectrolyte(mat[i])) continue;
+        const r = ++regions, st = [i]; elab[i] = r;
+        while (st.length) { const k = st.pop(); nb(k, (j) => { if (!elab[j] && this.isElectrolyte(mat[j])) { elab[j] = r; st.push(j); } }); }
+      }
+      if (!regions) return;
+      const rank = (el) => SL.CHEM.SERIES.indexOf(el);
+      for (let i = 0; i < size; i++) {
+        const m0 = mat[i];
+        if (clab[i] || !(d.conductor[m0] || d.load[m0]) || d.electrode[m0] || (role && role[i] & 3)) continue;
+        const id = ++clusters, st = [i], wet = new Map(), bulbs = [];
+        clab[i] = id;
+        while (st.length) {
+          const k = st.pop(), def = d.defs[mat[k]];
+          if (d.load[mat[k]]) bulbs.push(k);
+          if (def.metal && rank(def.metal) >= 0) nb(k, (j) => { if (elab[j]) { const key = def.metal + '|' + elab[j]; if (!wet.has(key)) wet.set(key, []); wet.get(key).push(k); } });
+          nb(k, (j) => { const mj = mat[j]; if (!clab[j] && (d.conductor[mj] || d.load[mj]) && !d.electrode[mj] && !(role && role[j] & 3)) { clab[j] = id; st.push(j); } });
+        }
+        // 전해질 영역마다 가장 활발한 금속(−극)과 가장 덜 활발한 금속(+극)을 고른다.
+        const byRegion = new Map();
+        for (const [key, list] of wet) { const [el, r] = key.split('|'); if (!byRegion.has(r)) byRegion.set(r, []); byRegion.get(r).push([el, list]); }
+        for (const metals of byRegion.values()) {
+          if (metals.length < 2) continue;
+          metals.sort((a, b) => rank(a[0]) - rank(b[0]));
+          const [aEl, anode] = metals[0], [cEl, cathode] = metals[metals.length - 1];
+          const diff = rank(cEl) - rank(aEl);
+          if (diff <= 0 || !SL.CHEM.METALS[aEl] || !SL.CHEM.METALS[aEl].cat) continue;
+          this.cells.push({ anode, cathode, rate: Math.min(3, 0.12 * diff), bulbs, aEl, cEl, ea: 0, ec: 0 });
+          for (const b of bulbs) this.lit.add(b);
+        }
+      }
+    }
+
+    // 회로 상태에 따라 전구를 켜고 끈다.
+    updateBulbs() {
+      const d = this.data, on = d.idOf['bulb:on'], off = d.idOf.bulb, mat = this.mat;
+      if (on == null) return;
+      for (let i = 0; i < mat.length; i++) {
+        if (mat[i] === on && !this.lit.has(i)) { const T = this.T[i]; this.setCell(i, off, T); this.anchor[i] = 1; }
+        else if (mat[i] === off && this.lit.has(i)) {
+          const T = this.T[i]; this.setCell(i, on, T + 5); this.anchor[i] = 1;
+          this.note('bulb', () => ({ type: 'reaction', id: 'bulb', name: '전구에 불이 들어옴', kind: 'physical', eq: '전류 → 필라멘트가 뜨거워져 빛남', note: '회로가 닫혀 전류가 흐르면 전구가 켜집니다. 전류가 흐르려면 전원이나 화학 전지와, 끊기지 않은 길이 필요합니다.' }));
+        }
+      }
+    }
+
+    stepGalvanic() {
+      if (!this.cells || !this.cells.length) return;
+      const { w, mat } = this, d = this.data, size = mat.length;
+      const pickNb = (i) => { const r = Math.random(), x = i % w; return r < 0.25 ? (x > 0 ? i - 1 : -1) : r < 0.5 ? (x < w - 1 ? i + 1 : -1) : r < 0.75 ? (i >= w ? i - w : -1) : (i + w < size ? i + w : -1); };
+      const apply = (j, res) => {
+        this.setCell(j, pick(d.resolve(res.to)), this.T[j] + 1);
+        this.note(res.key, () => ({ type: 'reaction', id: res.key, name: res.name, kind: 'chemical', eq: res.eq, note: res.note }));
+      };
+      for (const cell of this.cells) {
+        cell.ec += cell.rate; cell.ea += cell.rate;
+        let did = false;
+        for (let t = 0; t < 20 && cell.ec > 0; t++) {
+          const i = cell.cathode[(Math.random() * cell.cathode.length) | 0], j = pickNb(i);
+          if (j < 0 || d.defs[mat[i]].metal !== cell.cEl || !this.isElectrolyte(mat[j])) continue;
+          const res = SL.CHEM.electrolysis(d.defs[mat[j]], 'cathode');
+          if (!res) continue;
+          apply(j, res); cell.ec -= res.e; did = true;
+          if (res.deposit) this.anchor[j] = 1;
+        }
+        for (let t = 0; t < 20 && cell.ea > 0; t++) {
+          const i = cell.anode[(Math.random() * cell.anode.length) | 0], j = pickNb(i);
+          if (j < 0 || d.defs[mat[i]].metal !== cell.aEl || !this.isElectrolyte(mat[j])) continue;
+          const res = SL.CHEM.anodeDissolve(d.defs[mat[i]], d.defs[mat[j]]);
+          if (!res) continue;
+          // 금속 한 칸에는 이온이 수십 배 많으므로, 녹아 나온 이온은 대개 옆 용액으로 들어가고 금속 칸은 가끔만 사라진다.
+          apply(Math.random() < 0.12 ? i : j, res); cell.ea -= res.e; did = true;
+        }
+        cell.ea = Math.min(cell.ea, cell.rate); cell.ec = Math.min(cell.ec, cell.rate);
+        if (did) this.note('galvanic', () => ({ type: 'reaction', id: 'galvanic', name: '화학 전지', kind: 'chemical', eq: `${cell.aEl} → ${cell.aEl}ⁿ⁺ + ne⁻ (−극) │ 전자가 도선을 따라 ${cell.cEl}(+극)으로`, note: '반응성이 다른 두 금속을 전해질에 담그고 도선으로 이으면, 반응성이 큰 금속이 녹으며 내놓은 전자가 도선으로 흘러 전류가 됩니다. 볼타 전지·다니엘 전지·레몬 전지의 원리입니다.' }));
+      }
+    }
+
     stepElectro() {
       const d = this.data;
-      if (!d.anyElectrode || !SL.CHEM || !SL.CHEM.electrolysis) return;
-      if (this.tick % 20 === 1 || !this.role) this.findCircuit();
-      if (!this.circuit) return;
+      if (!SL.CHEM || !SL.CHEM.electrolysis) return;
+      if (this.tick % 20 === 1 || !this.lit) {
+        this.lit = new Set();
+        if (d.anyElectrode) this.findCircuit(); else { this.role = null; this.circuit = false; }
+        this.findGalvanic();
+        this.updateBulbs();
+      }
+      this.stepGalvanic();
+      if (!d.anyElectrode || !this.circuit) return;
       const { w, mat, role } = this, size = mat.length;
       const pickNb = (i) => { const r = Math.random(), x = i % w; return r < 0.25 ? (x > 0 ? i - 1 : -1) : r < 0.5 ? (x < w - 1 ? i + 1 : -1) : r < 0.75 ? (i >= w ? i - w : -1) : (i + w < size ? i + w : -1); };
       // 패러데이 법칙: 전류가 일정하므로 한 틱에 오가는 전자 수가 정해져 있다. 두 극에서 같은 수의 전자가 오간다.
@@ -611,7 +721,10 @@
         if (j < 0 || !(role[j] & 4) || !this.isElectrolyte(mat[j])) continue;
         if (!d.electrode[mat[i]]) { // 금속 (+)극은 스스로 녹는다
           const res = SL.CHEM.anodeDissolve(d.defs[mat[i]], d.defs[mat[j]]);
-          if (res) { apply(i, res, this.T[i]); role[i] = 4; this.eAnod -= res.e; continue; }
+          if (res) {
+            if (Math.random() < 0.12) { apply(i, res, this.T[i]); role[i] = 4; } else apply(j, res, this.T[i]); // 금속 칸은 가끔만 사라진다
+            this.eAnod -= res.e; continue;
+          }
         }
         const res = SL.CHEM.electrolysis(d.defs[mat[j]], 'anode');
         if (!res) continue;
@@ -877,7 +990,7 @@
       this.bodies = s.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] }));
       this.selected = null; this.fq = [];
       if (s.probe) this.setProbe(s.probe.x, s.probe.y); else this.probe = null;
-      this.role = null; // 전기 회로를 다시 찾는다.
+      this.role = null; this.lit = null; // 전기 회로를 다시 찾는다.
     }
 
     // ---- 저장/복원 (포함될 사이트에서 서버에 저장할 수 있도록 순수 JSON) ----

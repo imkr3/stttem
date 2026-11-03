@@ -40,9 +40,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 메서드 | `loadScene(id)`, `scenes()`, `undo()`, `pause()`, `resume()`, `setView('normal'｜'heat'｜'density')`, `save()`, `restore(data)`, `discoveries()`, `destroy()` |
+| 메서드 | `loadScene(id)`, `scenes()`, `undo()`, `challenges()`, `pause()`, `resume()`, `setView('normal'｜'heat'｜'density')`, `save()`, `restore(data)`, `discoveries()`, `destroy()` |
 | 버전 | `SandLab.version` (저장 데이터나 공개 API가 바뀌면 올림) |
-| 이벤트 | `sandlab:ready`, `sandlab:scenechange`, `sandlab:discover` |
+| 이벤트 | `sandlab:ready`, `sandlab:scenechange`, `sandlab:discover`, `sandlab:challenge`(도전 과제 완료: `id`, `name`, `done`, `total`) |
 | 색상 변경 | 사이트 CSS에서 `--sl-accent`, `--sl-bg`, `--sl-panel` 등을 지정 |
 
 전역 이름은 `SandLab` 하나만 쓰고, 화면은 Shadow DOM 안에 있어 사이트 CSS와 섞이지 않습니다.
