@@ -52,6 +52,9 @@
   input[type=checkbox] { width:18px; height:18px; accent-color:var(--sl-accent); }
   .val { font-variant-numeric:tabular-nums; min-width:62px; text-align:right; }
   .hint { color:var(--sl-muted); font-size:13px; line-height:1.55; margin:6px 0; }
+  .partner-list summary { cursor:pointer; color:var(--sl-muted); font-size:13px; padding:4px 0; min-height:28px; }
+  .partner-list .chips { margin:4px 0 8px; }
+  .partners:not(:empty) { border-bottom:1px solid var(--sl-line); margin-bottom:6px; }
   .scene { display:block; width:100%; text-align:left; padding:8px 10px; margin-bottom:5px; }
   .scene small { display:block; color:inherit; opacity:.8; line-height:1.45; margin-top:2px; font-weight:400; white-space:normal; }
   .graph { position:relative; height:170px; margin-top:6px; background:var(--sl-bg); border:1px solid var(--sl-line); border-radius:6px; }
@@ -237,6 +240,7 @@
         <div class="row"><input type="search" class="search" placeholder="물질 ${count}종 검색 (예: 황산, Cu, 소금)" aria-label="물질 검색" value="${this.query}"></div>
         <div class="chips cats">${SL.CATEGORIES.map(([k, n]) => `<button class="chip" data-cat="${k}">${n}</button>`).join('')}</div>
         <p class="hint selected"></p>
+        <div class="partners"></div>
         <div class="palette"></div>
         <p class="hint">모의 실험입니다. 유독하거나 위험한 물질이 많으니 실제로 따라 하지 마세요.</p>`;
       pane.onclick = (e) => {
@@ -290,7 +294,28 @@
       if (this.tool.kind === 'mat') {
         const d = this.world.data.defs[this.world.data.idOf[this.tool.id]];
         info.innerHTML = `<b>${d.name}</b> ${d.formula} · ${fmt(d.density, d.density < 10 ? 2 : 0)} kg/m³<br>${d.desc || ''}`;
-      } else info.textContent = '';
+        this.renderPartners(d);
+      } else { info.textContent = ''; this.renderPartners(null); }
+    }
+
+    // 고른 물질과 반응하는 재료를 보여 준다. 누르면 그 재료를 고른다.
+    renderPartners(d) {
+      const box = this.$('.pane .partners');
+      if (!box) return;
+      if (!d) { box.innerHTML = ''; return; }
+      this.partnerCache = this.partnerCache || new Map();
+      if (!this.partnerCache.has(d.id)) this.partnerCache.set(d.id, this.world.partnersOf(this.world.data.idOf[d.id]));
+      const all = this.partnerCache.get(d.id);
+      const air = all.find((p) => p.id === 'air');
+      const order = ['basic', 'acid', 'base', 'gas', 'solution', 'indicator', 'organic', 'salt', 'element', 'rock', 'alloy', 'chem', 'cryo', 'nuclear', 'device'];
+      const rank = (p) => { const k = order.indexOf(p.cat); return k < 0 ? 99 : k; };
+      const list = all.filter((p) => p.id !== 'air').sort((x, y) => rank(x) - rank(y) || x.name.localeCompare(y.name, 'ko'));
+      const cond = (p) => (p.minT != null ? ` · ${Math.round(p.minT)}°C 이상` : '') + (p.near ? ` · 옆에 ${p.near.join('/')} 필요` : '');
+      const chip = (p) => `<button class="chip" data-mat="${p.id}" title="${p.reaction}${cond(p)}"><i style="background:${p.color}"></i>${p.name}${p.minT != null ? ' <small>가열</small>' : ''}</button>`;
+      box.innerHTML = (air ? `<p class="hint">공기 중에서: ${air.reaction}${cond(air)}</p>` : '') +
+        (list.length ? `<details class="partner-list"${this.partnersOpen ? ' open' : ''}><summary>함께 떨어뜨려 볼 재료 ${list.length}종</summary><div class="chips">${list.slice(0, 40).map(chip).join('')}</div>${list.length > 40 ? `<p class="hint">외 ${list.length - 40}종</p>` : ''}</details>` : '<p class="hint">재료 목록에서 이 물질과 반응하는 것이 없습니다. 가열·냉각하면 상태가 바뀝니다.</p>');
+      const det = box.querySelector('details');
+      if (det) det.ontoggle = () => { this.partnersOpen = det.open; };
     }
 
     paneScenes(pane) {

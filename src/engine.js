@@ -70,8 +70,9 @@
       const toA = r.toA == null ? null : resolve(r.toA);
       const toB = r.toB == null ? null : resolve(r.toB);
       const near = r.near ? r.near.map(need) : null;
-      add(a, b, { r, toSelf: toA, toOther: toB, near });
-      add(b, a, { r, toSelf: toB, toOther: toA, near });
+      const far = r.farFrom ? r.farFrom.map(need) : null;
+      add(a, b, { r, toSelf: toA, toOther: toB, near, far });
+      add(b, a, { r, toSelf: toB, toOther: toA, near, far });
     });
     compiled.set(materials, c);
     return c;
@@ -453,6 +454,7 @@
         if (r.maxT != null && hi > r.maxT) continue; // 낮은 온도에서만 일어나는 반응(수화, 부동태)
         if (Math.random() > r.prob) continue;
         if (e.near && !this.hasNear(i, e.near) && !this.hasNear(j, e.near)) continue;
+        if (e.far && (this.hasNear(i, e.far) || this.hasNear(j, e.far))) continue; // 이 물질이 옆에 있으면 일어나지 않음
         const dT = r.dT || 0;
         const apply = (cell, to) => {
           let t = T[cell] + dT;
@@ -580,6 +582,31 @@
           if (p && Math.random() < p) { this.fq.push(j * 2 + (thermal ? 1 : 0)); break; }
         }
       }
+    }
+
+    // 이 물질과 반응하는 재료 목록(화면의 힌트용). 재료 목록에 보이는 물질과 공기만 본다.
+    partnersOf(a) {
+      const d = this.data, out = [];
+      const water = d.idOf.water;
+      // 다른 용액에 그냥 녹거나 섞이기만 하는 것은 힌트에서 뺀다. 녹은 뒤 반응한다면 그 반응을 보여 준다.
+      const generic = /^(dissolve:|ice-melt:liquid|nh3-dissolve|hcl-dissolve)/;
+      const meaningful = (x, y) => {
+        const list = reactionsBetween(d, x, y);
+        return list ? list.filter((e) => !e.r.silent && (y === water || !generic.test(e.r.id))) : [];
+      };
+      const def = d.defs[a];
+      const aq = def.salt && SL.SALTS && SL.SALTS[def.salt.c] && SL.SALTS[def.salt.c][def.salt.a] && SL.SALTS[def.salt.c][def.salt.a].aq;
+      const aqId = aq && aq !== def.id ? d.idOf[aq] : null;
+      for (let b = 0; b < d.n; b++) {
+        if (b === a || (!d.defs[b].cat && b !== this.AIR)) continue;
+        let real = meaningful(a, b);
+        if (!real.length && aqId != null && d.defs[b].aq && b !== aqId) real = meaningful(aqId, b); // 녹은 다음의 반응
+        if (!real.length) continue;
+        const minT = Math.min(...real.map((e) => (e.r.minT == null ? -273 : e.r.minT)));
+        const near = real.every((e) => e.near) ? real[0].near.map((k) => d.defs[k].name) : null;
+        out.push({ id: d.defs[b].id, name: d.defs[b].name, cat: d.defs[b].cat, color: d.defs[b].color, reaction: real[0].r.name, minT: minT > 25 ? minT : null, near });
+      }
+      return out;
     }
 
     hasNear(i, ids) {

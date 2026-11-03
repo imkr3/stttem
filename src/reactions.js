@@ -3,7 +3,7 @@
 // - rulesFor: 반응성 계열과 용해도 규칙으로 계산하는 일반 규칙. 두 물질이 처음 만날 때 한 번만 계산한다.
 // 한 칸의 결과는 두 칸 안에서 표현하므로, 화학식의 몰 비까지 칸 수로 지키지는 않는다. 화학식 표시는 항상 균형을 맞춘다.
 // toA, toB: 결과(null이면 그대로, 배열이면 확률 선택) / prob: 틱당 확률 / minT, maxT: 둘 중 높은 온도의 하한·상한
-// dT: 생성물 온도 변화 / T: 생성물 최저 온도 / near: 옆에 이 물질이 있어야 일어남
+// dT: 생성물 온도 변화 / T: 생성물 최저 온도 / near: 옆에 이 물질이 있어야 일어남 / farFrom: 옆에 이 물질이 있으면 일어나지 않음
 (function (SL) {
   'use strict';
 
@@ -140,9 +140,12 @@
           const cold = r < H_RANK && !passive;
           out.push(R('h2so4c:' + elA, A.name + '과 진한 황산', [elA, 'H2SO4'], [oxSal.fx, 'SO2', 'H2O'], { minT: cold ? undefined : 100, prob: cold ? 0.03 : 0.1, toA: formOf(oxSal), toB: 'SO2', dT: 30, note: '진한 황산은 수소 대신 자극적인 이산화황을 냅니다. 수소보다 반응성이 작은 금속은 가열해야 녹습니다.' }));
         } else if (r < H_RANK && !oxidizing) {
-          const pace = Math.max(0.005, 0.5 * (1 - r / H_RANK)) * (B.acid.strength || 0.9);
+          // 반응 속도는 반응성 계열에서 수소와 멀수록 가파르게 커진다(Mg ≫ Zn > Fe > Sn, Pb).
+          const pace = Math.max(0.003, 0.6 * (1 - r / H_RANK) ** 2) * (B.acid.strength || 0.9);
           const insoluble = !sal.aq;
-          out.push(R('acid:' + elA + ':' + a, A.name + '과 ' + B.name, [elA, B.fx], [sal.fx, 'H2'], { prob: insoluble ? pace * 0.1 : pace, toA: formOf(sal), toB: 'H:g', dT: 25 + 60 * (1 - r / H_RANK), note: '수소보다 활발한 금속이 산에 녹으며 수소를 냅니다.' + (insoluble ? ' 생성물이 물에 녹지 않아 표면을 덮어 느려집니다.' : '') }));
+          // 몰 수: 금속 1cm³에는 묽은 산 1cm³보다 수십 배 많은 원자가 있다. 그래서 반응할 때마다 산 칸은 다 쓰이지만(염 용액이나 수소 거품),
+          // 금속 칸은 가끔만 녹아 없어진다. 녹지 않는 염이 생기면 금속 표면을 덮어 반응이 느려진다.
+          out.push(R('acid:' + elA + ':' + a, A.name + '과 ' + B.name, [elA, B.fx], [sal.fx, 'H2'], { prob: insoluble ? pace * 0.1 : pace, toA: insoluble ? formOf(sal) : [[A.id, 0.85], ['H:g', 0.15]], toB: insoluble ? 'H:g' : [[formOf(sal), 0.6], ['H:g', 0.4]], dT: 25 + 60 * (1 - r / H_RANK), note: '수소보다 활발한 금속이 산에 녹으며 수소를 냅니다.' + (insoluble ? ' 생성물이 물에 녹지 않아 표면을 덮어 느려집니다.' : '') }));
         }
       }
     }
@@ -550,9 +553,15 @@
     Object.assign({}, WOOD, { a: 'wood', b: 'fire', prob: 0.5, toA: 'ember', T: 600 }),
     ...OX.map((ox) => Object.assign({}, WOOD, { a: 'ember', b: ox, prob: ox === 'air' ? 0.12 : 0.3, toA: [['fire', 0.7], ['ash', 0.3]], toB: 'fire', T: 900 })),
     Object.assign({}, WOOD, { a: 'ember', b: 'wood', prob: 0.08, toB: 'ember', T: 600, near: OX }),
+    // 재는 구멍이 많아 공기가 통하고, 불꽃의 상승 기류에 날려 올라간다. 그래서 재가 덮여도 모닥불은 계속 탄다.
+    Object.assign({}, WOOD, { a: 'ember', b: 'ash', near: OX, prob: 0.06, toA: [['fire', 0.7], ['ash', 0.3]], T: 900 }),
+    { id: 'ash_lift', name: '재가 날림', kind: 'physical', eq: '불꽃의 상승 기류 → 재가 날아오름', a: 'fire', b: 'ash', prob: 0.05, toB: 'smoke', silent: true, note: '' },
 
     // 수소는 공기와 섞인 채 불이 붙으면 "펑" 하고 터지고, 순수한 산소와 2:1로 섞이면(산수소) 훨씬 세게 터진다.
     ...OX.map((ox) => ({ id: 'h2_burn', name: '수소의 연소', reactants: ['H2', 'O2'], products: ['H2O'], a: 'hydrogen', b: ox, minT: 500, prob: 0.6, toA: 'fire', toB: 'steam', T: 1100, explode: ox === 'air' ? 1.5 : 3, explodeP: ox === 'air' ? 0.15 : 0.4, note: '수소가 타면 물만 생깁니다. 공기나 산소와 섞인 수소에 불이 붙으면 폭발합니다.' })),
+    // 불꽃 옆의 수소는 산소나 공기와 맞닿아 있으면 바로 탄다. 불꽃이 혼합 기체 전체로 순식간에 번진다.
+    { id: 'h2_burn', name: '수소의 연소', reactants: ['H2', 'O2'], products: ['H2O'], a: 'hydrogen', b: 'fire', near: ['O:g'], prob: 0.7, toA: 'fire', T: 1100, explode: 3, explodeP: 0.4, note: '수소가 타면 물만 생깁니다. 공기나 산소와 섞인 수소에 불이 붙으면 폭발합니다.' },
+    { id: 'h2_burn', name: '수소의 연소', reactants: ['H2', 'O2'], products: ['H2O'], a: 'hydrogen', b: 'fire', near: ['air'], prob: 0.6, toA: 'fire', T: 1100, explode: 1.5, explodeP: 0.15, note: '수소가 타면 물만 생깁니다. 공기나 산소와 섞인 수소에 불이 붙으면 폭발합니다.' },
     { id: 'h2_burn', name: '수소의 연소', reactants: ['H2', 'O2'], products: ['H2O'], a: 'hydrogen', b: 'fire', prob: 0.5, T: 550, note: '수소가 타면 물만 생깁니다. 공기나 산소와 섞인 수소에 불이 붙으면 폭발합니다.' },
     ...OX.map((ox) => ({ id: 'c_burn', name: '탄소의 연소', reactants: ['C', 'O2'], products: ['CO2'], a: 'C:s', b: ox, minT: 600, prob: ox === 'air' ? 0.05 : 0.2, toA: 'fire', toB: 'CO2', T: 1200, note: '숯이 타면 이산화탄소가 됩니다.' })),
     { id: 'c_burn', name: '탄소의 연소', reactants: ['C', 'O2'], products: ['CO2'], a: 'C:s', b: 'fire', prob: 0.3, T: 650, note: '숯이 타면 이산화탄소가 됩니다.' },
@@ -669,7 +678,7 @@
     { id: 'tollens', name: '은거울 반응', eq: '환원당 + 2[Ag(NH₃)₂]⁺ → 2Ag↓ + 산화된 당', a: 'A:Ag(NH3)2Cl', b: 'A:glucose', minT: 50, prob: 0.1, toA: 'Ag:s', note: '은 이온이 환원되어 용기 벽에 은이 거울처럼 붙습니다.' },
     // 강한 산화제와 유기물
     { id: 'kmno4_fe2', name: '과망가니즈산 이온과 철(II) 이온', eq: 'MnO₄⁻ + 5Fe²⁺ + 8H⁺ → Mn²⁺ + 5Fe³⁺ + 4H₂O', a: 'A:KMnO4', b: 'A:FeSO4', near: ['H2SO4aq'], prob: 0.3, toA: 'A:MnSO4', toB: 'A:Fe2(SO4)3', note: '산성 용액에서 보라색이 사라집니다. 산화·환원 적정에 씁니다.' },
-    { id: 'kmno4_fe2_neutral', name: '과망가니즈산 이온과 철(II) 이온(중성)', eq: 'MnO₄⁻ + 3Fe²⁺ + … → MnO₂↓ + 3Fe³⁺', a: 'A:KMnO4', b: 'A:FeSO4', prob: 0.05, toA: 'S:MnO2', toB: 'A:Fe2(SO4)3', note: '산이 없으면 보라색이 사라지는 대신 갈색 이산화망가니즈 앙금이 생깁니다.' },
+    { id: 'kmno4_fe2_neutral', name: '과망가니즈산 이온과 철(II) 이온(중성)', eq: 'MnO₄⁻ + 3Fe²⁺ + … → MnO₂↓ + 3Fe³⁺', a: 'A:KMnO4', b: 'A:FeSO4', farFrom: ['H2SO4aq', 'H2SO4'], prob: 0.05, toA: 'S:MnO2', toB: 'A:Fe2(SO4)3', note: '산이 없으면 보라색이 사라지는 대신 갈색 이산화망가니즈 앙금이 생깁니다.' },
     { id: 'kmno4_ethanol', name: '과망가니즈산 칼륨과 에탄올', eq: '4MnO₄⁻ + 3C₂H₅OH → 4MnO₂↓ + 3CH₃COO⁻ + …', a: 'A:KMnO4', b: 'C2H5OH', prob: 0.03, toA: 'S:MnO2', toB: 'vinegar', note: '에탄올이 아세트산으로 산화되며 보라색이 갈색 앙금으로 바뀝니다.' },
     { id: 'breathalyzer', name: '음주 측정 반응', eq: '2Cr₂O₇²⁻ + 3C₂H₅OH + 16H⁺ → 4Cr³⁺ + 3CH₃COOH + 11H₂O', a: 'A:K2Cr2O7', b: 'C2H5OH', near: ['H2SO4aq', 'H2SO4'], prob: 0.2, toA: 'A:Cr2(SO4)3', toB: 'vinegar', note: '주황색이 초록색으로 바뀝니다. 옛 음주 측정기의 원리입니다.' },
     { id: 'h2so4_wood', name: '진한 황산과 나무', reactants: ['C6H10O5'], products: ['C', 'H2O'], a: 'wood', b: 'H2SO4', prob: 0.03, toA: 'C:s', toB: 'H2SO4aq', dT: 40, note: '진한 황산이 나무에서 물을 빼앗아 검게 탄 것처럼 됩니다.' },

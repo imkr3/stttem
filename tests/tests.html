@@ -336,6 +336,16 @@ test('폭발: 세슘+물, 산수소, 쇳물+물이 터지고 주변을 밀어냄
   assert(b.vx > 0.5, `공 속도 ${b.vx}`);
   return '일치';
 });
+test('재료 힌트: 고른 물질과 반응하는 재료 목록', () => {
+  const w = fresh();
+  const ids = (id) => w.partnersOf(w.data.idOf[id]).map((p) => p.id);
+  const salt = ids('S:NaCl'), hcl = ids('A:acid:HCl'), na = ids('Na:s');
+  assert(salt.includes('A:AgNO3') && salt.includes('H2O:l'), '소금: ' + salt.join());
+  assert(salt.length < 30, `소금 힌트가 너무 많음 ${salt.length}`);
+  assert(hcl.includes('Mg:s') && !hcl.includes('Cu:s'), '염산: 구리 포함 여부');
+  assert(na.includes('H2O:l') && na.includes('air'), '나트륨: ' + na.join());
+  return `소금 ${salt.length}종, 염산 ${hcl.length}종, 나트륨 ${na.length}종`;
+});
 test('공기 중 액체 질소는 끓어 기체가 됨', () => {
   const w = fresh(); w.rect('N:l', 100, 60, 130, 70);
   run(w, 30);
@@ -370,7 +380,7 @@ test('모든 실험이 오류 없이 5초 동안 실행됨', () => {
 const sceneTest = (name, id, seconds, check) => test(name, () => {
   const w = fresh(); scene(w, id); run(w, seconds); w.drainEvents; return check(w);
 });
-sceneTest('금속과 염산: 활발한 금속이 먼저 줄고 구리는 그대로', 'series', 15, (w) => {
+sceneTest('금속과 염산: 활발한 금속일수록 빨리 녹고 구리는 그대로 (5초 뒤)', 'series', 5, (w) => {
   const left = ['Mg', 'Zn', 'Fe', 'Cu'].map((e) => count(w, e));
   assert(left[0] <= left[1] && left[1] <= left[2] && left[2] <= left[3], left.join());
   assert(w.discovered.has('acid:Mg:Cl') && !w.discovered.has('acid:Cu:Cl'), [...w.discovered].join());
