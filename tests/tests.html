@@ -368,6 +368,25 @@ test('시간에 따라 일어나는 생활 반응: 화학 정원, 핫 아이스,
   assert(rust(false) && !rust(true), '아연이 철을 지키지 못함'); out.push('아연과 닿은 철은 녹슬지 않음');
   return out.join(', ');
 });
+test('전기 분해: 물(2:1), 소금물, 구리 도금, 전기가 안 통하는 경우', () => {
+  const cell = (liquid, opt) => {
+    const w = fresh(); w.openTop = false; w.rect('stone', 0, 146, 239, 149); w.rect('glass', 60, 60, 62, 145); w.rect('glass', 178, 60, 180, 145); w.rect(liquid, 63, 80, 177, 145);
+    w.rect('electrode+', 90, 70, 93, 140, 20, true); w.rect('electrode-', 147, 70, 150, 140, 20, true);
+    if (opt === 'short') w.rect('copper', 94, 75, 146, 76, 20, true);
+    run(w, 8); return w;
+  };
+  const out = [];
+  const a = cell('H2SO4aq'); const ratio = count(a, 'H:g') / count(a, 'O:g');
+  assert(ratio > 1.6 && ratio < 2.4, `수소:산소 = ${count(a, 'H:g')}:${count(a, 'O:g')}`); out.push(`수소:산소 ${ratio.toFixed(2)}:1`);
+  const b = cell('brine'); assert(count(b, 'Cl:g') > 50 && count(b, 'H:g') > 50 && count(b, 'A:NaOH') > 20, '소금물'); out.push('소금물 → 염소+수소+NaOH');
+  const c = cell('A:CuSO4'); let left = 0, right = 0; const cu = c.data.idOf['Cu:s'];
+  for (let i = 0; i < c.mat.length; i++) if (c.mat[i] === cu) { if (i % c.w < 120) left++; else right++; }
+  assert(right > 100 && left === 0, `구리: (+)쪽 ${left}, (−)쪽 ${right}`); out.push(`(−)극에 구리 ${right}칸`);
+  for (const liq of ['water', 'A:sugar']) { const w = cell(liq); assert(count(w, 'H:g') + count(w, 'O:g') === 0, liq + '에서 전기 분해가 일어남'); }
+  out.push('물·설탕물은 전기가 안 통함');
+  const s = cell('brine', 'short'); assert(s.discovered.has('short') && count(s, 'Cl:g') === 0, '합선'); out.push('합선이면 반응 없음');
+  return out.join(', ');
+});
 test('공기 중 액체 질소는 끓어 기체가 됨', () => {
   const w = fresh(); w.rect('N:l', 100, 60, 130, 70);
   run(w, 30);

@@ -53,10 +53,22 @@
           px[i] = this.densLut[(t * 255) | 0];
         }
       } else {
-        const air = W.AIR, defs = W.data.defs;
+        const air = W.AIR, defs = W.data.defs, st = W.data.state, w = W.w;
         for (let i = 0; i < n; i++) {
           const m = mat[i];
           if (m === air) { px[i] = rgba(16, 21, 27); continue; }
+          // 액체 속의 기체 칸은 밝은 거품으로 그린다(위나 아래가 액체이면).
+          if (st[m] === 3 && !defs[m].flame) {
+            const up = i >= w ? mat[i - w] : -1, dn = i + w < n ? mat[i + w] : -1;
+            const liq = up >= 0 && st[up] === 2 ? up : dn >= 0 && st[dn] === 2 ? dn : -1;
+            if (liq >= 0) {
+              const c = this.base[liq];
+              // 밝은 액체에서는 어둡게, 어두운 액체에서는 밝게 그려 어떤 용액에서도 거품이 보이게 한다.
+              const light = c[0] * 0.3 + c[1] * 0.55 + c[2] * 0.15 > 150;
+              px[i] = light ? rgba(c[0] * 0.55, c[1] * 0.55, c[2] * 0.6) : rgba(c[0] * 0.35 + 165, c[1] * 0.35 + 165, c[2] * 0.35 + 165);
+              continue;
+            }
+          }
           const c = this.base[m];
           const s = shade[i];
           let r = c[0] + s, g = c[1] + s, b = c[2] + s;

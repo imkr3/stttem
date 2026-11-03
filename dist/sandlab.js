@@ -596,6 +596,8 @@ Og|오가네손|294|noble|7|50|80|1`;
     { id: 'graphite', name: '흑연 블록', formula: 'C', fx: 'C', state: 'solid', cat: 'nuclear', color: '#3a3c40', density: 2200, c: 710, k: 120, moderator: true, absorb: 0.001, desc: '중성자를 느리게 만드는 감속재. 아주 뜨거워지면 공기 중에서 탑니다(체르노빌 사고).' },
     { id: 'fallout', name: '핵분열 생성물', formula: '¹³⁷Cs, ⁹⁰Sr, ¹³¹I …', fx: 'Cs', state: 'powder', cat: 'nuclear', color: '#9aa84a', density: 6000, c: 300, k: 2, radioactive: true, decayHeat: 300, absorb: 0.1, lifetime: 2400, decay: [['fallout:old', 1]], desc: '핵분열로 생긴 방사성 원자들. 처음에는 붕괴열이 커서 스스로 뜨거워지고, 시간이 지나면 식습니다. 중성자를 조금 흡수합니다(독물질).' },
     { id: 'fallout:old', name: '식은 핵분열 생성물', formula: '사용후 핵연료 성분', fx: 'Cs', state: 'powder', color: '#7a8450', density: 6000, c: 300, k: 2, radioactive: true, decayHeat: 3, absorb: 0.1, desc: '붕괴열이 줄었지만 여전히 방사성입니다. 오랫동안 냉각하고 격리해야 합니다.' },
+    { id: 'electrode+', name: '(+)극 전극', formula: '흑연, 전원 +', fx: 'C', state: 'solid', cat: 'device', color: '#c84040', density: 2200, c: 710, k: 100, inert: true, electrode: 1, desc: '전원의 + 쪽에 연결된 흑연 전극(산화가 일어나는 곳). (−)극과 같은 전해질 용액에 닿아 있어야 전류가 흐릅니다. 닿아 있는 금속도 전극이 됩니다.' },
+    { id: 'electrode-', name: '(−)극 전극', formula: '흑연, 전원 −', fx: 'C', state: 'solid', cat: 'device', color: '#4060c8', density: 2200, c: 710, k: 100, inert: true, electrode: 2, desc: '전원의 − 쪽에 연결된 흑연 전극(환원이 일어나는 곳). 금속 이온이 여기에 석출되거나 수소가 나옵니다.' },
     { id: 'heater', name: '가열판', formula: '800°C', state: 'solid', cat: 'device', color: '#d8392b', density: 5000, c: 1000, k: 80, T0: 800, fixed: true, inert: true, desc: '항상 800°C를 유지합니다.' },
     { id: 'furnace', name: '용광로판', formula: '2000°C', state: 'solid', cat: 'device', color: '#f07a10', density: 5000, c: 1000, k: 80, T0: 2000, fixed: true, inert: true, desc: '항상 2000°C를 유지합니다. 철도 녹습니다.' },
     { id: 'cooler', name: '냉각판', formula: '-60°C', state: 'solid', cat: 'device', color: '#3bb4d8', density: 5000, c: 1000, k: 80, T0: -60, fixed: true, inert: true, desc: '항상 -60°C를 유지합니다.' },
@@ -1256,7 +1258,50 @@ Og|오가네손|294|noble|7|50|80|1`;
     return side(r.reactants, 0) + ' → ' + side(r.products, r.reactants.length);
   }
 
-  SL.CHEM = { rulesFor, equation, balance, parseFormula, METALS, SERIES };
+  // ---- 전기 분해 ----
+  // 전해질: 이온이 녹아 있어 전기가 통하는 수용액. 순수한 물과 설탕물은 전기가 거의 통하지 않는다.
+  function electrolyteIons(E) {
+    if (!E || E.state !== 'liquid' || !E.aq || E.indicator) return null;
+    if (E.salt) return { c: E.salt.c, a: E.salt.a };
+    if (E.acid) return { c: 'H', a: E.acid.a };
+    return null;
+  }
+  const SUP = { 1: '⁺', 2: '²⁺', 3: '³⁺', 4: '⁴⁺' };
+  const HALOGEN_PRODUCT = { Cl: ['Cl:g', 'Cl₂', '황록색 염소 기체'], Br: ['Br:l', 'Br₂', '적갈색 브로민'], I: ['I:s', 'I₂', '갈색 아이오딘'] };
+  // side: 'cathode'(−, 환원) 또는 'anode'(+, 산화). 전해질 칸이 무엇으로 바뀌는지와 발견 정보를 돌려준다.
+  function electrolysis(E, side) {
+    const ions = electrolyteIons(E);
+    if (!ions) return null;
+    const { c, a } = ions;
+    if (side === 'cathode') {
+      const cat = SL.CATION[c];
+      const el = cat && cat.el;
+      // 알루미늄보다 반응성이 작은 금속 이온은 금속으로 석출된다(전기 도금).
+      if (el && rank(el) > rank('Al')) {
+        const ion = el + (SUP[cat.charge] || '⁺');
+        return { to: el + ':s', deposit: true, e: cat.charge, key: 'electro:metal:' + el, name: '전기 분해: ' + SL.ELEMENTS.find((e) => e.sym === el).name + ' 석출', eq: `${ion} + ${cat.charge}e⁻ → ${el}`, note: '(−)극에서 금속 이온이 전자를 받아 금속이 되어 전극 표면에 붙습니다. 전기 도금과 금속 정련의 원리입니다.' };
+      }
+      // 반응성이 큰 금속 이온 대신 물(또는 수소 이온)이 환원되어 수소가 나오고, 남은 용액은 염기성이 된다.
+      const base = c !== 'H' && salt(c, 'OH');
+      return { to: [['H:g', 0.5], [base && base.aq ? base.aq : E.id, 0.5]], e: 2, key: 'electro:H2', name: '전기 분해: (−)극에서 수소 발생', eq: c === 'H' ? '2H⁺ + 2e⁻ → H₂↑' : '2H₂O + 2e⁻ → H₂↑ + 2OH⁻', note: c === 'H' ? '수소 이온이 전자를 받아 수소 기체가 됩니다.' : '나트륨처럼 반응성이 큰 금속 이온은 환원되지 않고, 대신 물이 환원되어 수소가 나옵니다. 전극 주변은 염기성이 됩니다.' };
+    }
+    const hal = HALOGEN_PRODUCT[a];
+    if (hal) return { to: [[hal[0], 0.5], [E.id, 0.5]], e: 2, key: 'electro:' + a, name: '전기 분해: (+)극에서 ' + hal[2], eq: `2${a}⁻ → ${hal[1]} + 2e⁻`, note: c === 'Na' && a === 'Cl' ? '소금물을 전기 분해하면 (+)극에서 염소, (−)극에서 수소와 수산화나트륨이 생깁니다(염소-알칼리 공업).' : '할로젠화 이온이 전자를 잃고 할로젠이 됩니다.' };
+    const acid = SL.ACIDS[a];
+    return { to: [['O:g', 0.5], [acid && c !== 'H' && a !== 'OH' ? acid.id : E.id, 0.5]], e: 4, key: 'electro:O2', name: '전기 분해: (+)극에서 산소 발생', eq: a === 'OH' ? '4OH⁻ → O₂↑ + 2H₂O + 4e⁻' : '2H₂O → O₂↑ + 4H⁺ + 4e⁻', note: '황산 이온·질산 이온은 산화되지 않고 대신 물이 산화되어 산소가 나옵니다. 수소는 산소의 두 배만큼 나옵니다(물 = H₂O).' };
+  }
+  // 금속을 (+)극으로 쓰면 금속 자체가 녹아 이온이 된다(구리 정련, 도금할 금속 공급). 금·백금은 녹지 않는다.
+  function anodeDissolve(metalDef, E) {
+    const ions = electrolyteIons(E);
+    const m = metalDef.metal && METALS[metalDef.metal];
+    if (!ions || !m || !m.cat || metalDef.metal === 'Au') return null;
+    const sal = salt(m.cat, ions.a);
+    if (!sal || !sal.aq) return null;
+    const el = metalDef.metal, ch = SL.CATION[m.cat].charge;
+    return { to: sal.aq, e: ch, key: 'electro:anode:' + el, name: '전기 분해: (+)극의 ' + metalDef.name + '이(가) 녹음', eq: `${el} → ${el}${SUP[ch] || '⁺'} + ${ch}e⁻`, note: '금속을 (+)극으로 쓰면 전극 자체가 이온으로 녹아 들어갑니다. 구리를 순수하게 만드는 정련과 전기 도금에 씁니다.' };
+  }
+
+  SL.CHEM = { rulesFor, equation, balance, parseFormula, METALS, SERIES, electrolysis, anodeDissolve, electrolyteIons };
 
   // ---- 표로 지정하는 특수 반응 ----
   const WOOD = { id: 'wood_burn', name: '나무의 연소', reactants: ['C6H10O5', 'O2'], products: ['CO2', 'H2O'], note: '공기가 없으면 타지 않습니다.' };
@@ -1545,6 +1590,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       up: [], down: [], decay: [], explicit: new Map(), cache: new Map(), reactive: new Uint8Array(n), base: new Uint16Array(n),
       fast: new Float32Array(n), thermal: new Float32Array(n), spont: new Float32Array(n), emitter: new Uint8Array(n),
       moder: new Uint8Array(n), absorb: new Float32Array(n), heat: new Float32Array(n), armor: new Uint8Array(n),
+      electrode: new Uint8Array(n), conductor: new Uint8Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
     };
     materials.forEach((d, i) => {
       c.state[i] = STATES[d.state];
@@ -1561,6 +1607,9 @@ Og|오가네손|294|noble|7|50|80|1`;
       c.absorb[i] = d.absorb != null ? d.absorb : d.state === 'gas' ? 0 : 0.01;
       c.heat[i] = d.decayHeat || 0; // 방사성 붕괴열 W/kg
       c.armor[i] = d.fixed || d.armor ? 1 : 0; // 폭발에도 부서지지 않는 벽
+      c.electrode[i] = d.electrode || 0;
+      if (d.electrode) c.anyElectrode = true;
+      c.conductor[i] = d.electrode || (d.metal && d.state !== 'gas') ? 1 : 0; // 전기가 통하는 고체·액체 금속
     });
     const add = (a, b, entry) => {
       const key = a * n + b;
@@ -1728,6 +1777,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.stepMotion();
       this.stepHeat();
       this.stepNuclear();
+      this.stepElectro();
       this.stepCells();
       this.stepBodies();
       this.record();
@@ -2027,6 +2077,89 @@ Og|오가네손|294|noble|7|50|80|1`;
         type: 'reaction', id: 'explosion:' + (r >= 6 ? 'big' : 'small'), name: r >= 6 ? '큰 폭발' : '폭발', kind: 'physical',
         eq: '빠른 반응 → 짧은 시간에 많은 열과 기체 → 충격파', note: '반응이 아주 빠르면 생긴 열과 기체가 빠져나갈 틈이 없어 주변을 밀어냅니다.',
       }));
+    }
+
+    // ---- 전기 분해 ----
+    // 20틱마다 회로를 찾는다: 각 전극에서 닿은 금속을 따라 도체를 넓히고, (−)극 도체에 닿은 전해질에서 시작해
+    // 이어진 전해질을 따라가 (+)극 도체에 닿으면 전류가 흐른다. 두 극이 금속으로 바로 이어지면 합선이다.
+    isElectrolyte(m) {
+      const d = this.data;
+      if (d.elyte[m] < 0) d.elyte[m] = SL.CHEM && SL.CHEM.electrolyteIons(d.defs[m]) ? 1 : 0;
+      return d.elyte[m] === 1;
+    }
+
+    findCircuit() {
+      const { w, h, mat } = this, d = this.data, size = w * h;
+      if (!this.role || this.role.length !== size) this.role = new Uint8Array(size);
+      const role = this.role;
+      role.fill(0);
+      this.cathodes = []; this.anodes = []; this.circuit = false;
+      const nb = (i, f) => { const x = i % w; if (x > 0) f(i - 1); if (x < w - 1) f(i + 1); if (i >= w) f(i - w); if (i + w < size) f(i + w); };
+      const flood = (kind, bit, list) => {
+        const stack = [];
+        for (let i = 0; i < size; i++) if (d.electrode[mat[i]] === kind) { role[i] |= bit; stack.push(i); }
+        while (stack.length) {
+          const i = stack.pop();
+          list.push(i);
+          nb(i, (j) => { if (!(role[j] & bit) && d.conductor[mat[j]] && !d.electrode[mat[j]]) { role[j] |= bit; stack.push(j); } });
+        }
+      };
+      flood(1, 1, this.anodes);
+      flood(2, 2, this.cathodes);
+      if (!this.anodes.length || !this.cathodes.length) return;
+      if (this.anodes.some((i) => role[i] & 2)) { // 합선
+        this.note('short', () => ({ type: 'reaction', id: 'short', name: '합선', kind: 'physical', eq: '(+)극 ─ 금속 ─ (−)극', note: '두 전극이 금속으로 바로 이어지면 전류가 용액을 지나지 않아 전기 분해가 일어나지 않습니다.' }));
+        return;
+      }
+      const stack = [];
+      for (const i of this.cathodes) nb(i, (j) => { if (!(role[j] & 4) && this.isElectrolyte(mat[j])) { role[j] |= 4; stack.push(j); } });
+      while (stack.length) {
+        const i = stack.pop();
+        nb(i, (j) => { if (!(role[j] & 4) && this.isElectrolyte(mat[j])) { role[j] |= 4; stack.push(j); } });
+      }
+      this.circuit = this.anodes.some((i) => { let ok = false; nb(i, (j) => { if (role[j] & 4) ok = true; }); return ok; });
+    }
+
+    stepElectro() {
+      const d = this.data;
+      if (!d.anyElectrode || !SL.CHEM || !SL.CHEM.electrolysis) return;
+      if (this.tick % 20 === 1 || !this.role) this.findCircuit();
+      if (!this.circuit) return;
+      const { w, mat, role } = this, size = mat.length;
+      const pickNb = (i) => { const r = Math.random(), x = i % w; return r < 0.25 ? (x > 0 ? i - 1 : -1) : r < 0.5 ? (x < w - 1 ? i + 1 : -1) : r < 0.75 ? (i >= w ? i - w : -1) : (i + w < size ? i + w : -1); };
+      // 패러데이 법칙: 전류가 일정하므로 한 틱에 오가는 전자 수가 정해져 있다. 두 극에서 같은 수의 전자가 오간다.
+      // 수소·구리 이온은 전자 2개, 산소는 4개, 은 이온은 1개가 드므로 수소가 산소의 두 배 나온다.
+      const ELECTRONS = 4; // 틱당 전자 수(전류). 모자라거나 남은 몫은 다음 틱으로 넘겨 평균이 정확하도록 한다.
+      this.eCath = (this.eCath || 0) + ELECTRONS;
+      this.eAnod = (this.eAnod || 0) + ELECTRONS;
+      const apply = (j, res, hostT) => {
+        this.setCell(j, pick(d.resolve(res.to)), Math.max(this.T[j], hostT) + 1); // 전류가 흐르며 조금 데워진다(줄열)
+        this.note(res.key, () => ({ type: 'reaction', id: res.key, name: res.name, kind: 'chemical', eq: res.eq, note: res.note }));
+      };
+      const cathodes = this.cathodes, anodes = this.anodes;
+      for (let tries = 0; tries < 30 && this.eCath > 0; tries++) {
+        const i = cathodes[(Math.random() * cathodes.length) | 0], j = pickNb(i);
+        if (j < 0 || !(role[j] & 4) || !this.isElectrolyte(mat[j])) continue;
+        const res = SL.CHEM.electrolysis(d.defs[mat[j]], 'cathode');
+        if (!res) continue;
+        apply(j, res, this.T[i]);
+        this.eCath -= res.e;
+        if (res.deposit) { this.anchor[j] = 1; role[j] = 2; cathodes.push(j); } // 석출된 금속도 전극이 된다
+      }
+      for (let tries = 0; tries < 30 && this.eAnod > 0; tries++) {
+        const i = anodes[(Math.random() * anodes.length) | 0], j = pickNb(i);
+        if (j < 0 || !(role[j] & 4) || !this.isElectrolyte(mat[j])) continue;
+        if (!d.electrode[mat[i]]) { // 금속 (+)극은 스스로 녹는다
+          const res = SL.CHEM.anodeDissolve(d.defs[mat[i]], d.defs[mat[j]]);
+          if (res) { apply(i, res, this.T[i]); role[i] = 4; this.eAnod -= res.e; continue; }
+        }
+        const res = SL.CHEM.electrolysis(d.defs[mat[j]], 'anode');
+        if (!res) continue;
+        apply(j, res, this.T[i]);
+        this.eAnod -= res.e;
+      }
+      // 반응할 자리가 없어 못 쓴 전자는 쌓아 두지 않는다.
+      this.eCath = Math.min(this.eCath, ELECTRONS); this.eAnod = Math.min(this.eAnod, ELECTRONS);
     }
 
     // ---- 핵분열 ----
@@ -2797,10 +2930,22 @@ Og|오가네손|294|noble|7|50|80|1`;
           px[i] = this.densLut[(t * 255) | 0];
         }
       } else {
-        const air = W.AIR, defs = W.data.defs;
+        const air = W.AIR, defs = W.data.defs, st = W.data.state, w = W.w;
         for (let i = 0; i < n; i++) {
           const m = mat[i];
           if (m === air) { px[i] = rgba(16, 21, 27); continue; }
+          // 액체 속의 기체 칸은 밝은 거품으로 그린다(위나 아래가 액체이면).
+          if (st[m] === 3 && !defs[m].flame) {
+            const up = i >= w ? mat[i - w] : -1, dn = i + w < n ? mat[i + w] : -1;
+            const liq = up >= 0 && st[up] === 2 ? up : dn >= 0 && st[dn] === 2 ? dn : -1;
+            if (liq >= 0) {
+              const c = this.base[liq];
+              // 밝은 액체에서는 어둡게, 어두운 액체에서는 밝게 그려 어떤 용액에서도 거품이 보이게 한다.
+              const light = c[0] * 0.3 + c[1] * 0.55 + c[2] * 0.15 > 150;
+              px[i] = light ? rgba(c[0] * 0.55, c[1] * 0.55, c[2] * 0.6) : rgba(c[0] * 0.35 + 165, c[1] * 0.35 + 165, c[2] * 0.35 + 165);
+              continue;
+            }
+          }
           const c = this.base[m];
           const s = shade[i];
           let r = c[0] + s, g = c[1] + s, b = c[2] + s;

@@ -573,7 +573,50 @@
     return side(r.reactants, 0) + ' → ' + side(r.products, r.reactants.length);
   }
 
-  SL.CHEM = { rulesFor, equation, balance, parseFormula, METALS, SERIES };
+  // ---- 전기 분해 ----
+  // 전해질: 이온이 녹아 있어 전기가 통하는 수용액. 순수한 물과 설탕물은 전기가 거의 통하지 않는다.
+  function electrolyteIons(E) {
+    if (!E || E.state !== 'liquid' || !E.aq || E.indicator) return null;
+    if (E.salt) return { c: E.salt.c, a: E.salt.a };
+    if (E.acid) return { c: 'H', a: E.acid.a };
+    return null;
+  }
+  const SUP = { 1: '⁺', 2: '²⁺', 3: '³⁺', 4: '⁴⁺' };
+  const HALOGEN_PRODUCT = { Cl: ['Cl:g', 'Cl₂', '황록색 염소 기체'], Br: ['Br:l', 'Br₂', '적갈색 브로민'], I: ['I:s', 'I₂', '갈색 아이오딘'] };
+  // side: 'cathode'(−, 환원) 또는 'anode'(+, 산화). 전해질 칸이 무엇으로 바뀌는지와 발견 정보를 돌려준다.
+  function electrolysis(E, side) {
+    const ions = electrolyteIons(E);
+    if (!ions) return null;
+    const { c, a } = ions;
+    if (side === 'cathode') {
+      const cat = SL.CATION[c];
+      const el = cat && cat.el;
+      // 알루미늄보다 반응성이 작은 금속 이온은 금속으로 석출된다(전기 도금).
+      if (el && rank(el) > rank('Al')) {
+        const ion = el + (SUP[cat.charge] || '⁺');
+        return { to: el + ':s', deposit: true, e: cat.charge, key: 'electro:metal:' + el, name: '전기 분해: ' + SL.ELEMENTS.find((e) => e.sym === el).name + ' 석출', eq: `${ion} + ${cat.charge}e⁻ → ${el}`, note: '(−)극에서 금속 이온이 전자를 받아 금속이 되어 전극 표면에 붙습니다. 전기 도금과 금속 정련의 원리입니다.' };
+      }
+      // 반응성이 큰 금속 이온 대신 물(또는 수소 이온)이 환원되어 수소가 나오고, 남은 용액은 염기성이 된다.
+      const base = c !== 'H' && salt(c, 'OH');
+      return { to: [['H:g', 0.5], [base && base.aq ? base.aq : E.id, 0.5]], e: 2, key: 'electro:H2', name: '전기 분해: (−)극에서 수소 발생', eq: c === 'H' ? '2H⁺ + 2e⁻ → H₂↑' : '2H₂O + 2e⁻ → H₂↑ + 2OH⁻', note: c === 'H' ? '수소 이온이 전자를 받아 수소 기체가 됩니다.' : '나트륨처럼 반응성이 큰 금속 이온은 환원되지 않고, 대신 물이 환원되어 수소가 나옵니다. 전극 주변은 염기성이 됩니다.' };
+    }
+    const hal = HALOGEN_PRODUCT[a];
+    if (hal) return { to: [[hal[0], 0.5], [E.id, 0.5]], e: 2, key: 'electro:' + a, name: '전기 분해: (+)극에서 ' + hal[2], eq: `2${a}⁻ → ${hal[1]} + 2e⁻`, note: c === 'Na' && a === 'Cl' ? '소금물을 전기 분해하면 (+)극에서 염소, (−)극에서 수소와 수산화나트륨이 생깁니다(염소-알칼리 공업).' : '할로젠화 이온이 전자를 잃고 할로젠이 됩니다.' };
+    const acid = SL.ACIDS[a];
+    return { to: [['O:g', 0.5], [acid && c !== 'H' && a !== 'OH' ? acid.id : E.id, 0.5]], e: 4, key: 'electro:O2', name: '전기 분해: (+)극에서 산소 발생', eq: a === 'OH' ? '4OH⁻ → O₂↑ + 2H₂O + 4e⁻' : '2H₂O → O₂↑ + 4H⁺ + 4e⁻', note: '황산 이온·질산 이온은 산화되지 않고 대신 물이 산화되어 산소가 나옵니다. 수소는 산소의 두 배만큼 나옵니다(물 = H₂O).' };
+  }
+  // 금속을 (+)극으로 쓰면 금속 자체가 녹아 이온이 된다(구리 정련, 도금할 금속 공급). 금·백금은 녹지 않는다.
+  function anodeDissolve(metalDef, E) {
+    const ions = electrolyteIons(E);
+    const m = metalDef.metal && METALS[metalDef.metal];
+    if (!ions || !m || !m.cat || metalDef.metal === 'Au') return null;
+    const sal = salt(m.cat, ions.a);
+    if (!sal || !sal.aq) return null;
+    const el = metalDef.metal, ch = SL.CATION[m.cat].charge;
+    return { to: sal.aq, e: ch, key: 'electro:anode:' + el, name: '전기 분해: (+)극의 ' + metalDef.name + '이(가) 녹음', eq: `${el} → ${el}${SUP[ch] || '⁺'} + ${ch}e⁻`, note: '금속을 (+)극으로 쓰면 전극 자체가 이온으로 녹아 들어갑니다. 구리를 순수하게 만드는 정련과 전기 도금에 씁니다.' };
+  }
+
+  SL.CHEM = { rulesFor, equation, balance, parseFormula, METALS, SERIES, electrolysis, anodeDissolve, electrolyteIons };
 
   // ---- 표로 지정하는 특수 반응 ----
   const WOOD = { id: 'wood_burn', name: '나무의 연소', reactants: ['C6H10O5', 'O2'], products: ['CO2', 'H2O'], note: '공기가 없으면 타지 않습니다.' };

@@ -43,6 +43,7 @@
       up: [], down: [], decay: [], explicit: new Map(), cache: new Map(), reactive: new Uint8Array(n), base: new Uint16Array(n),
       fast: new Float32Array(n), thermal: new Float32Array(n), spont: new Float32Array(n), emitter: new Uint8Array(n),
       moder: new Uint8Array(n), absorb: new Float32Array(n), heat: new Float32Array(n), armor: new Uint8Array(n),
+      electrode: new Uint8Array(n), conductor: new Uint8Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
     };
     materials.forEach((d, i) => {
       c.state[i] = STATES[d.state];
@@ -59,6 +60,9 @@
       c.absorb[i] = d.absorb != null ? d.absorb : d.state === 'gas' ? 0 : 0.01;
       c.heat[i] = d.decayHeat || 0; // 방사성 붕괴열 W/kg
       c.armor[i] = d.fixed || d.armor ? 1 : 0; // 폭발에도 부서지지 않는 벽
+      c.electrode[i] = d.electrode || 0;
+      if (d.electrode) c.anyElectrode = true;
+      c.conductor[i] = d.electrode || (d.metal && d.state !== 'gas') ? 1 : 0; // 전기가 통하는 고체·액체 금속
     });
     const add = (a, b, entry) => {
       const key = a * n + b;
@@ -226,6 +230,7 @@
       this.stepMotion();
       this.stepHeat();
       this.stepNuclear();
+      this.stepElectro();
       this.stepCells();
       this.stepBodies();
       this.record();
@@ -525,6 +530,89 @@
         type: 'reaction', id: 'explosion:' + (r >= 6 ? 'big' : 'small'), name: r >= 6 ? '큰 폭발' : '폭발', kind: 'physical',
         eq: '빠른 반응 → 짧은 시간에 많은 열과 기체 → 충격파', note: '반응이 아주 빠르면 생긴 열과 기체가 빠져나갈 틈이 없어 주변을 밀어냅니다.',
       }));
+    }
+
+    // ---- 전기 분해 ----
+    // 20틱마다 회로를 찾는다: 각 전극에서 닿은 금속을 따라 도체를 넓히고, (−)극 도체에 닿은 전해질에서 시작해
+    // 이어진 전해질을 따라가 (+)극 도체에 닿으면 전류가 흐른다. 두 극이 금속으로 바로 이어지면 합선이다.
+    isElectrolyte(m) {
+      const d = this.data;
+      if (d.elyte[m] < 0) d.elyte[m] = SL.CHEM && SL.CHEM.electrolyteIons(d.defs[m]) ? 1 : 0;
+      return d.elyte[m] === 1;
+    }
+
+    findCircuit() {
+      const { w, h, mat } = this, d = this.data, size = w * h;
+      if (!this.role || this.role.length !== size) this.role = new Uint8Array(size);
+      const role = this.role;
+      role.fill(0);
+      this.cathodes = []; this.anodes = []; this.circuit = false;
+      const nb = (i, f) => { const x = i % w; if (x > 0) f(i - 1); if (x < w - 1) f(i + 1); if (i >= w) f(i - w); if (i + w < size) f(i + w); };
+      const flood = (kind, bit, list) => {
+        const stack = [];
+        for (let i = 0; i < size; i++) if (d.electrode[mat[i]] === kind) { role[i] |= bit; stack.push(i); }
+        while (stack.length) {
+          const i = stack.pop();
+          list.push(i);
+          nb(i, (j) => { if (!(role[j] & bit) && d.conductor[mat[j]] && !d.electrode[mat[j]]) { role[j] |= bit; stack.push(j); } });
+        }
+      };
+      flood(1, 1, this.anodes);
+      flood(2, 2, this.cathodes);
+      if (!this.anodes.length || !this.cathodes.length) return;
+      if (this.anodes.some((i) => role[i] & 2)) { // 합선
+        this.note('short', () => ({ type: 'reaction', id: 'short', name: '합선', kind: 'physical', eq: '(+)극 ─ 금속 ─ (−)극', note: '두 전극이 금속으로 바로 이어지면 전류가 용액을 지나지 않아 전기 분해가 일어나지 않습니다.' }));
+        return;
+      }
+      const stack = [];
+      for (const i of this.cathodes) nb(i, (j) => { if (!(role[j] & 4) && this.isElectrolyte(mat[j])) { role[j] |= 4; stack.push(j); } });
+      while (stack.length) {
+        const i = stack.pop();
+        nb(i, (j) => { if (!(role[j] & 4) && this.isElectrolyte(mat[j])) { role[j] |= 4; stack.push(j); } });
+      }
+      this.circuit = this.anodes.some((i) => { let ok = false; nb(i, (j) => { if (role[j] & 4) ok = true; }); return ok; });
+    }
+
+    stepElectro() {
+      const d = this.data;
+      if (!d.anyElectrode || !SL.CHEM || !SL.CHEM.electrolysis) return;
+      if (this.tick % 20 === 1 || !this.role) this.findCircuit();
+      if (!this.circuit) return;
+      const { w, mat, role } = this, size = mat.length;
+      const pickNb = (i) => { const r = Math.random(), x = i % w; return r < 0.25 ? (x > 0 ? i - 1 : -1) : r < 0.5 ? (x < w - 1 ? i + 1 : -1) : r < 0.75 ? (i >= w ? i - w : -1) : (i + w < size ? i + w : -1); };
+      // 패러데이 법칙: 전류가 일정하므로 한 틱에 오가는 전자 수가 정해져 있다. 두 극에서 같은 수의 전자가 오간다.
+      // 수소·구리 이온은 전자 2개, 산소는 4개, 은 이온은 1개가 드므로 수소가 산소의 두 배 나온다.
+      const ELECTRONS = 4; // 틱당 전자 수(전류). 모자라거나 남은 몫은 다음 틱으로 넘겨 평균이 정확하도록 한다.
+      this.eCath = (this.eCath || 0) + ELECTRONS;
+      this.eAnod = (this.eAnod || 0) + ELECTRONS;
+      const apply = (j, res, hostT) => {
+        this.setCell(j, pick(d.resolve(res.to)), Math.max(this.T[j], hostT) + 1); // 전류가 흐르며 조금 데워진다(줄열)
+        this.note(res.key, () => ({ type: 'reaction', id: res.key, name: res.name, kind: 'chemical', eq: res.eq, note: res.note }));
+      };
+      const cathodes = this.cathodes, anodes = this.anodes;
+      for (let tries = 0; tries < 30 && this.eCath > 0; tries++) {
+        const i = cathodes[(Math.random() * cathodes.length) | 0], j = pickNb(i);
+        if (j < 0 || !(role[j] & 4) || !this.isElectrolyte(mat[j])) continue;
+        const res = SL.CHEM.electrolysis(d.defs[mat[j]], 'cathode');
+        if (!res) continue;
+        apply(j, res, this.T[i]);
+        this.eCath -= res.e;
+        if (res.deposit) { this.anchor[j] = 1; role[j] = 2; cathodes.push(j); } // 석출된 금속도 전극이 된다
+      }
+      for (let tries = 0; tries < 30 && this.eAnod > 0; tries++) {
+        const i = anodes[(Math.random() * anodes.length) | 0], j = pickNb(i);
+        if (j < 0 || !(role[j] & 4) || !this.isElectrolyte(mat[j])) continue;
+        if (!d.electrode[mat[i]]) { // 금속 (+)극은 스스로 녹는다
+          const res = SL.CHEM.anodeDissolve(d.defs[mat[i]], d.defs[mat[j]]);
+          if (res) { apply(i, res, this.T[i]); role[i] = 4; this.eAnod -= res.e; continue; }
+        }
+        const res = SL.CHEM.electrolysis(d.defs[mat[j]], 'anode');
+        if (!res) continue;
+        apply(j, res, this.T[i]);
+        this.eAnod -= res.e;
+      }
+      // 반응할 자리가 없어 못 쓴 전자는 쌓아 두지 않는다.
+      this.eCath = Math.min(this.eCath, ELECTRONS); this.eAnod = Math.min(this.eAnod, ELECTRONS);
     }
 
     // ---- 핵분열 ----
