@@ -140,6 +140,8 @@
     ['CCl4', '사염화탄소', 'CCl4', 153.8, 1.59, -23, 76.7, 'organic', '#c0d0c0', { rhoL: 1.59, k: 0.1, c: 860, flow: 4, desc: '물보다 무겁고 물과 섞이지 않습니다.' }],
     ['C3H8O3', '글리세롤', 'C3H8O3', 92.09, 1.26, 17.8, 290, 'organic', '#e0e4d8', { rhoL: 1.26, k: 0.29, c: 2430, flow: 1, misc: true, std: 'l', tags: fuel(370, 0.1, CH, 1000) }],
     ['C25H52', '파라핀', 'C25H52', 352.7, 0.9, 58, 370, 'organic', '#ece6cc', { k: 0.25, c: 2500, tags: fuel(245, 0.15, CH, 1000), desc: '양초의 재료. 녹으면 불이 잘 붙습니다.' }],
+    ['CH3Cl', '클로로메테인', 'CH3Cl', 50.49, 0.99, -97.4, -24.2, 'organic', '#c8d0c0', { gasColor: '#262c26', k: 0.1, c: 810, desc: '메테인과 염소가 빛을 받아 생기는 기체. 냉매로 쓰였습니다.' }],
+    ['O3', '오존', 'O3', 48.0, 1.35, -192.2, -112, 'gas', '#4a6ad0', { gasColor: '#2a3a6a', k: 0.1, c: 820, gasOnly: true, desc: '산소 원자 셋으로 된 엷은 파란 기체. 강한 산화제로 살균·표백을 하고, 시간이 지나면 산소로 돌아갑니다. 성층권에서 자외선을 막아 줍니다.' }],
     ['N2O', '아산화질소', 'N2O', 44.01, 1.23, -90.9, -88.5, 'gas', '#c8d0d8', { gasColor: '#222830', k: 0.1, c: 880, desc: '웃음 기체. 뜨거우면 산소를 내놓아 불씨를 다시 타오르게 합니다.' }],
     ['C2H4Br2', '1,2-다이브로모에테인', 'C2H4Br2', 187.9, 2.18, 9.8, 131.6, 'organic', '#d8d0c0', { rhoL: 2.18, k: 0.1, c: 730, flow: 4, desc: '에틸렌이 브로민과 첨가 반응해 생긴 무색 액체. 물보다 무겁습니다.' }],
     ['C10H8', '나프탈렌', 'C10H8', 128.2, 1.14, 80.3, 218, 'organic', '#f0f0ea', { k: 0.3, c: 1300, tags: fuel(525, 0.2, CH, 1200) }],
@@ -180,6 +182,7 @@
     ['F', 1, '플루오린화', 'F', 0], ['Cl', 1, '염화', 'Cl', 0], ['Br', 1, '브로민화', 'Br', 0], ['I', 1, '아이오딘화', 'I', 0], ['OH', 1, '수산화', 'OH', 1], ['NO3', 1, '질산', 'NO3', 1],
     ['SO4', 2, '황산', 'SO4', 1], ['CO3', 2, '탄산', 'CO3', 1], ['HCO3', 1, '탄산수소', 'HCO3', 1], ['S', 2, '황화', 'S', 0], ['PO4', 3, '인산', 'PO4', 1], ['CH3COO', 1, '아세트산', 'CH3COO', 1],
     ['O', 2, '산화', 'O', 0], ['CrO4', 2, '크로뮴산', 'CrO4', 1], ['MnO4', 1, '과망가니즈산', 'MnO4', 1],
+    ['SO3', 2, '아황산', 'SO3', 1], ['NO2', 1, '아질산', 'NO2', 1], ['ClO3', 1, '염소산', 'ClO3', 1], ['C2O4', 2, '옥살산', 'C2O4', 1], ['H', 1, '수소화', 'H', 0],
   ];
   const ALKALI = new Set(['Li', 'Na', 'K', 'Rb', 'Cs', 'NH4']);
 
@@ -187,6 +190,11 @@
     if (cat[4]) return cat[4].includes(a);
     if (a === 'HCO3') return ['Na', 'K', 'NH4'].includes(c);
     if (a === 'MnO4') return ['Na', 'K'].includes(c);
+    if (a === 'ClO3') return ['Na', 'K'].includes(c); // 염소산염은 산소를 얻는 실험에 쓰는 나트륨·칼륨염만
+    if (a === 'H') return ['Li', 'Na', 'K', 'Rb', 'Cs', 'Mg', 'Ca', 'Sr', 'Ba'].includes(c); // 금속 수소화물은 활발한 금속만
+    if (a === 'NO2') return ['Na', 'K', 'NH4', 'Ca', 'Ba', 'Ag'].includes(c);
+    if (a === 'SO3' && ['Al', 'Fe3', 'Cr3', 'Au3', 'Pd2', 'Ti4', 'W6', 'U6', 'Pu4', 'Sb3', 'Bi3', 'Ga3', 'Be'].includes(c)) return false;
+    if (a === 'C2O4' && ['Au3', 'Pd2', 'Ti4', 'W6', 'U6', 'Pu4', 'Sb3', 'Bi3', 'Ga3', 'Be', 'Mn4'].includes(c)) return false;
     if (a === 'CrO4') return ['Na', 'K', 'Ba', 'Ag', 'Pb2'].includes(c);
     if (a === 'OH' && (c === 'Ag' || c === 'Hg2')) return false; // 곧바로 산화물이 된다.
     if (a === 'O' && c === 'NH4') return false;
@@ -198,7 +206,9 @@
 
   // 교과서의 용해도 규칙.
   function soluble(c, a) {
-    if (a === 'O') return false;
+    if (a === 'O' || a === 'H') return false; // 수소화물은 물과 반응해 녹지 않는다.
+    if (a === 'NO2') return c !== 'Ag';
+    if (a === 'ClO3') return true;
     if (ALKALI.has(c)) return true;
     switch (a) {
       case 'NO3': case 'CH3COO': case 'MnO4': case 'HCO3': return true;
@@ -228,6 +238,10 @@
     KMnO4: [2.7, null, '#4a1a68'], NaMnO4: [2.7, null, '#4a1a68'], K2CrO4: [2.73, 968, '#e8d020'], Na2CrO4: [2.72, 792, '#e8d020'], BaCrO4: [4.5, null, '#e8d840'], Ag2CrO4: [5.63, null, '#a02818'], PbCrO4: [6.12, 844, '#f0c010'],
     NaCH3COO: [1.53, 324], KCH3COO: [1.57, 292], 'Ca(CH3COO)2': [1.5, null], 'Cu(CH3COO)2': [1.88, null, '#2a7a70'], 'Pb(CH3COO)2': [3.25, 280],
   };
+  Object.assign(DATA, {
+    NaNO2: [2.17, 271, '#f2ecc4'], KNO2: [1.92, 441, '#f0eac0'], KClO3: [2.32, 356], NaClO3: [2.49, 248], Na2SO3: [2.63, null], K2SO3: [2.6, null], CaSO3: [2.5, null],
+    CaC2O4: [2.2, null], Na2C2O4: [2.34, null], FeC2O4: [2.28, null, '#e8d040'], LiH: [0.78, 689, '#d8d8d4'], NaH: [1.39, null], KH: [1.43, null], CaH2: [1.7, 816], MgH2: [1.45, null],
+  });
   DATA['Ca3(PO4)2'] = DATA.Ca3PO42;
 
   const COMMON = { NaCl: '소금', NaHCO3: '베이킹소다', Na2CO3: '탄산소다', CaCO3: '석회암', CaO: '생석회', 'Ca(OH)2': '소석회', Fe2O3: '녹', NaOH: '가성소다', NH4OH: '암모니아수', CaSO4: '석고', CuSO4: '황산구리', SiO2: '석영', TiO2: '티타니아' };
@@ -245,7 +259,7 @@
   // 고체 염의 색: 양이온(전이 금속)과 음이온이 정한다. 측정한 색(DATA)이 있으면 그것을 쓴다.
   const SOLID_CATION_COLOR = { Cu2: '#5a9ee0', Ni2: '#5cb070', Co2: '#d0607e', Fe2: '#b6d4a4', Fe3: '#d4923a', Mn2: '#f0c8d2', Cr3: '#4e8060', Au3: '#d0a030', Pd2: '#8a5a3a', U6: '#e8d040', Ag: '#e6e4dc' };
   const SULFIDE_COLOR = { Zn: '#ece8d8', Cd: '#e8c020', Mn2: '#c08898', Sn2: '#4a3a22', Na: '#e8e0a8', K: '#e4dca0', Li: '#ece4b0', Ca: '#e8e4d0', Mg: '#e6e2d4', Ba: '#e4e0d0', Sr: '#e6e2d2', Rb: '#e4dca8', Cs: '#e0d8a0', NH4: '#e8e0a0' };
-  const SPECIAL = { CrO4: '#e8c818', MnO4: '#3a1050' };
+  const SPECIAL = { CrO4: '#e8c818', MnO4: '#3a1050', H: '#c8c8c0' };
   function solidColor(c, a, fx) {
     if (SPECIAL[a]) return SPECIAL[a];
     if (a === 'S') return SULFIDE_COLOR[c] || '#2a2826';
@@ -263,7 +277,7 @@
   const DISSOLVE_HEAT = { NaOH: 40, KOH: 45, NH4NO3: -25, KNO3: -12, CaCl2: 25, NH4Cl: -12, K2CO3: 8, Na2CO3: 6, MgSO4: 8, NaCl: -1 };
 
   // 0.1 mol/L 정도 수용액의 대략적인 pH. 약산의 음이온은 염기성, 약염기의 양이온과 작은 고전하 금속 이온은 산성을 띤다(가수 분해).
-  const ANION_PH = { OH: 13, CO3: 11.6, HCO3: 8.3, PO4: 12.1, S: 12.5, CH3COO: 8.9, F: 7.9, CrO4: 8.8 };
+  const ANION_PH = { OH: 13, CO3: 11.6, HCO3: 8.3, PO4: 12.1, S: 12.5, CH3COO: 8.9, F: 7.9, CrO4: 8.8, SO3: 9.8, NO2: 8.2, C2O4: 8.3 };
   const CATION_PH = {
     NH4: 5.1, Be: 3.5, Mg: 6.5, Al: 3, Cr3: 3, Mn2: 5.5, Fe2: 4.5, Fe3: 2, Co2: 5.5, Ni2: 5.5, Cu2: 4, Zn: 5.2, Ag: 6, Cd: 5.5, Sn2: 2, Pb2: 4, Hg2: 3.5,
     Au3: 2, Pd2: 2, Ti4: 1, Zr4: 1.5, Sb3: 1.5, Bi3: 1.5, In3: 3.5, Ga3: 3, Tl: 6.5, Sc3: 4, Y3: 5,
@@ -333,7 +347,8 @@
   const ACIDS = [
     ['HCl', '염산', 'HCl', 'Cl', '#86c4cc', 'HClg', 0.9, 1], ['HBr', '브로민화수소산', 'HBr', 'Br', '#c8bc8c', 'HBrg', 0.9, 1], ['HI', '아이오딘화수소산', 'HI', 'I', '#c89a64', 'HIg', 0.9, 1],
     ['HF', '플루오린화수소산', 'HF', 'F', '#94ccc0', 'HFg', 0.4, 2.1], ['HNO3aq', '묽은 질산', 'HNO3', 'NO3', '#a4c6d6', 'NO2', 0.9, 1], ['H2SO4aq', '묽은 황산', 'H2SO4', 'SO4', '#8cb4d6', 'SO2', 0.9, 1],
-    ['H3PO4', '인산', 'H3PO4', 'PO4', '#9cc0d0', null, 0.3, 1.6], ['CH3COOHaq', '식초(아세트산)', 'CH3COOH', 'CH3COO', '#c8c49a', 'CH3COOH', 0.15, 2.9], ['H2CO3', '탄산수', 'H2CO3', 'CO3', '#a8d0e0', 'CO2', 0.05, 4], ['H2SO3', '아황산', 'H2SO3', 'SO3x', '#c8d8c0', 'SO2', 0.2, 1.8],
+    ['H3PO4', '인산', 'H3PO4', 'PO4', '#9cc0d0', null, 0.3, 1.6], ['CH3COOHaq', '식초(아세트산)', 'CH3COOH', 'CH3COO', '#c8c49a', 'CH3COOH', 0.15, 2.9], ['H2CO3', '탄산수', 'H2CO3', 'CO3', '#a8d0e0', 'CO2', 0.05, 4], ['H2SO3', '아황산', 'H2SO3', 'SO3', '#b8d0c4', 'SO2', 0.2, 1.8],
+    ['H2C2O4', '옥살산 용액', 'H2C2O4', 'C2O4', '#c4d4cc', null, 0.4, 1.3],
   ];
   for (const [key, name, fx, a, color, gas, strength, pH] of ACIDS) {
     const id = 'A:acid:' + key;
@@ -407,6 +422,10 @@
     { id: 'eggwhite:cooked', name: '굳은 흰자', formula: '변성 단백질', fx: 'C', state: 'powder', color: '#fafaf4', density: 1040, c: 3500, k: 0.5, fuel: { ign: 300, prob: 0.05, prods: ['CO2'], T: 800 }, desc: '열이나 산으로 단백질의 구조가 풀려 굳은 것. 식혀도 다시 투명해지지 않습니다.' },
     { id: 'eggwhite:yellow', name: '노랗게 변한 단백질', formula: '잔토프로테인', fx: 'C', state: 'powder', color: '#e8c020', density: 1100, c: 3000, k: 0.5, desc: '진한 질산이 단백질의 고리 구조와 반응해 노랗게 변한 것(잔토프로테인 반응).' },
     { id: 'biuret', name: '보라색 단백질 용액', formula: '뷰렛 반응', fx: 'C', state: 'liquid', color: '#8a3ab8', density: 1050, c: 3800, k: 0.5, flow: 3, misc: true, aq: true, desc: '염기성에서 구리 이온이 단백질의 펩타이드 결합과 결합한 보라색(뷰렛 반응).' },
+    { id: 'leaf', name: '식물 잎', formula: '엽록체', fx: 'C', state: 'solid', cat: 'organic', color: '#3a9a3a', density: 700, c: 3500, k: 0.4, fuel: { ign: 300, prob: 0.05, prods: ['CO2'], T: 800 }, desc: '빛을 받으면 이산화탄소와 물로 포도당을 만들고 산소를 내놓습니다(광합성). 어두우면 호흡해 산소를 쓰고 이산화탄소를 냅니다. 너무 뜨거우면 시듭니다.', up: { at: 70, to: 'leaf:dead', L: 5e4 } },
+    { id: 'leaf:dead', name: '시든 잎', formula: '죽은 식물', fx: 'C', state: 'solid', color: '#8a7a3a', density: 600, c: 3000, k: 0.3, fuel: { ign: 280, prob: 0.08, prods: ['CO2'], T: 800 }, desc: '열로 죽은 잎. 광합성을 하지 않습니다.' },
+    { id: 'A:Ni(NH3)6', name: '헥사암민니켈(II) 용액', formula: '[Ni(NH₃)₆]²⁺(aq)', fx: 'Ni(NH3)6(OH)2', state: 'liquid', color: '#6a5ad8', density: 1020, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 11, desc: '초록 니켈 이온에 암모니아가 결합한 푸른 보라색 착이온.' },
+    { id: 'A:Zn(NH3)4', name: '테트라암민아연 용액', formula: '[Zn(NH₃)₄]²⁺(aq)', fx: 'Zn(NH3)4(OH)2', state: 'liquid', color: '#4a92d8', density: 1020, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 11, desc: '흰 수산화아연이 암모니아수에 녹은 무색 용액.' },
     { id: 'liver', name: '생간 조각', formula: '카탈레이스 효소', fx: 'C', state: 'solid', cat: 'organic', color: '#7a2a2a', density: 1060, c: 3500, k: 0.5, desc: '카탈레이스 효소가 과산화수소를 빠르게 분해합니다. 익히면(70°C 이상) 효소가 망가져 작용하지 않습니다.', up: { at: 70, to: 'liver:cooked', L: 5e4 } },
     { id: 'liver:cooked', name: '익은 간', formula: '변성된 효소', fx: 'C', state: 'solid', color: '#5a3a2a', density: 1060, c: 3500, k: 0.5, fuel: { ign: 300, prob: 0.05, prods: ['CO2'], T: 800 }, desc: '효소가 열로 변성되어 과산화수소를 분해하지 못합니다.' },
     // ---- 지시약 ----
@@ -480,6 +499,8 @@
     { id: 'wire', name: '도선', formula: '피복 구리선', fx: 'Cu', state: 'solid', cat: 'device', color: '#c06a30', density: 8900, c: 385, k: 50, inert: true, wire: true, grain: 3, desc: '겉을 감싼 구리선. 전기는 통하지만 용액과는 반응하지 않습니다. 금속·전극·전구를 이어 회로를 만듭니다.' },
     { id: 'bulb', name: '전구', formula: '꼬마전구', fx: 'W', state: 'solid', cat: 'device', color: '#5a5a48', density: 2500, c: 800, k: 2, inert: true, load: true, grain: 2, desc: '회로에 전류가 흐르면 켜집니다. 전원의 (+)·(−)극 사이나, 서로 다른 두 금속으로 만든 화학 전지 사이에 이어 보세요.' },
     { id: 'bulb:on', name: '켜진 전구', formula: '꼬마전구', fx: 'W', state: 'solid', color: '#fff2a0', density: 2500, c: 800, k: 2, inert: true, load: true, glow: [255, 240, 150], desc: '전류가 흘러 필라멘트가 빛납니다.' },
+    { id: 'lamp', name: '전등', formula: '가시광선', fx: 'W', state: 'solid', cat: 'device', color: '#fff4c8', density: 2500, c: 800, k: 1, inert: true, glow: [255, 244, 200], desc: '빛을 비춥니다. 옆(1칸 거리)에 있는 식물 잎은 광합성을 합니다.' },
+    { id: 'uvlamp', name: '자외선 램프', formula: '자외선', fx: 'Hg', state: 'solid', cat: 'device', color: '#a070ff', density: 2500, c: 800, k: 1, inert: true, glow: [170, 110, 255], desc: '자외선을 비춥니다. 옆의 물질에 빛으로 일어나는 반응(광분해, 광화학 반응)을 일으킵니다.' },
     { id: 'heater', name: '가열판', formula: '800°C', state: 'solid', cat: 'device', color: '#d8392b', density: 5000, c: 1000, k: 80, T0: 800, fixed: true, inert: true, desc: '항상 800°C를 유지합니다.' },
     { id: 'furnace', name: '용광로판', formula: '2000°C', state: 'solid', cat: 'device', color: '#f07a10', density: 5000, c: 1000, k: 80, T0: 2000, fixed: true, inert: true, desc: '항상 2000°C를 유지합니다. 철도 녹습니다.' },
     { id: 'cooler', name: '냉각판', formula: '-60°C', state: 'solid', cat: 'device', color: '#3bb4d8', density: 5000, c: 1000, k: 80, T0: -60, fixed: true, inert: true, desc: '항상 -60°C를 유지합니다.' },
@@ -575,6 +596,10 @@
   const sl = byId('S:l');
   add(Object.assign({}, sl, { id: 'S:l:dark', name: '진하게 끈적한 황', color: '#7a2414', flow: 1, T0: 200, cat: null, desc: '160°C 넘게 가열한 황. 분자가 긴 사슬로 이어져 진한 적갈색이 되고 잘 흐르지 않습니다. 찬물에 부으면 고무상 황이 됩니다.', down: { at: 160, to: 'S:l', L: 1e4 } }));
   sl.up = { at: 160, to: 'S:l:dark', L: 1e4 };
+  // 갇힌 기체의 압력을 견디는 정도(기압, 1cm 두께 기준의 대략값). 정하지 않은 고체는 12, 금속은 40, 가루는 3.
+  const STRENGTH = { glass: 6, glassshards: 2, quartz: 15, stone: 20, basalt: 25, marble: 18, concrete: 20, ceramic: 12, gypsum: 6, wood: 8, ember: 3, 'H2O:s': 4, ice: 4 };
+  for (const [id, v] of Object.entries(STRENGTH)) { const m = byId(id); if (m) m.strength = v; }
+
   // 폭발에 맞으면 부서지는 고체
   for (const id of ['stone', 'basalt', 'marble', 'quartz', 'concrete', 'ceramic', 'gypsum']) byId(id).shatter = 'gravel';
   byId('glass').shatter = 'glassshards';

@@ -425,7 +425,7 @@
     panePhysics(pane) {
       const w = this.world;
       pane.innerHTML = `<h3>측정</h3>
-        <div class="chips">${[['v', '수직 속도'], ['h', '높이'], ['E', '역학적 에너지'], ['T', '온도계']].map(([k, n]) => `<button class="chip${this.graphMode === k ? ' on' : ''}" data-graph="${k}">${n}</button>`).join('')}</div>
+        <div class="chips">${[['v', '수직 속도'], ['h', '높이'], ['E', '역학적 에너지'], ['T', '온도계'], ['P', '압력계']].map(([k, n]) => `<button class="chip${this.graphMode === k ? ' on' : ''}" data-graph="${k}">${n}</button>`).join('')}</div>
         <div class="graph"><canvas class="plot"></canvas></div><div class="legend"></div><div class="stats"></div>
         <h3>중력</h3><div class="chips">${GRAVITY.map(([n, g]) => `<button class="chip${Math.abs(w.g - g) < 0.005 ? ' on' : ''}" data-g="${g}">${n}</button>`).join('')}</div>
         <div class="row"><label>g <input type="range" class="grav" min="0" max="25" step="0.01" value="${w.g}"></label><span class="val gval">${fmt(w.g, 2)} m/s²</span></div>
@@ -610,7 +610,7 @@
       const c = this.hover;
       const info = c && this.world.inspect(c.x, c.y);
       const html = info
-        ? `<b>${info.def.name}</b> ${info.def.formula} · ${fmt(info.T, 1)}°C · ${info.rho >= 10 ? fmt(info.rho, 0) : fmt(info.rho, 2)} kg/m³`
+        ? `<b>${info.def.name}</b> ${info.def.formula} · ${fmt(info.T, 1)}°C · ${info.rho >= 10 ? fmt(info.rho, 0) : fmt(info.rho, 2)} kg/m³${Math.abs(info.P - 1) > 0.02 ? ` · <b>${fmt(info.P, 2)}기압</b>` : ''}`
         : '실험 공간 위에 커서를 올리면 그 칸의 물질과 온도가 보입니다. 관찰 도구로 누르면 정보 탭에 자세히 나옵니다.';
       if (html !== this.statusHtml) { el.innerHTML = html; this.statusHtml = html; }
     }
@@ -650,10 +650,11 @@
     // 그래프 하나, 축 하나. 측정값은 실선, 이론값은 점선으로 구분한다.
     plotData() {
       const w = this.world, m = this.graphMode;
-      if (m === 'T') {
+      if (m === 'T' || m === 'P') {
         const p = w.probe;
-        if (!p) return { empty: '온도계 도구로 측정할 곳을 눌러 주세요.' };
+        if (!p) return { empty: '온도계 도구로 측정할 곳을 눌러 주세요. 압력은 밀폐 용기 안의 기체에서 잽니다.' };
         const t0 = p.log.length ? p.log[0].t : 0;
+        if (m === 'P') return { unit: '기압', xs: p.log.map((s) => s.t - t0), ys: p.log.map((s) => s.P || 1), label: '압력' };
         return { unit: '°C', xs: p.log.map((s) => s.t - t0), ys: p.log.map((s) => s.T), label: '온도' };
       }
       const b = w.selected;
@@ -741,7 +742,14 @@
       if (!box) return;
       const stat = (n, v) => `<div class="stat"><small>${n}</small>${v}</div>`;
       let html = '';
-      if (this.graphMode === 'T') {
+      if (this.graphMode === 'P') {
+        if (w.probe) {
+          const i = w.index(w.probe.x, w.probe.y), P = w.pressureAt(i), T = w.T[i];
+          // 게이뤼삭 법칙: 부피가 일정하면 P/T(절대 온도)가 일정하다.
+          html = stat('현재 압력', fmt(P, 2) + ' 기압') + stat('그 칸의 온도', fmt(T, 1) + ' °C') + stat('P ÷ T(K)', fmt(P / (T + 273.15) * 1000, 3) + ' ×10⁻³') +
+            stat('도움말', P === 1 ? '열린 곳은 1기압' : '닫힌 용기 안');
+        }
+      } else if (this.graphMode === 'T') {
         if (w.probe) {
           const log = w.probe.log, here = w.inspect(w.probe.x, w.probe.y);
           html = stat('현재 온도', fmt(here.T, 1) + ' °C') + stat('현재 물질', here.def.name) +
@@ -777,7 +785,7 @@
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.9.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.10.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);

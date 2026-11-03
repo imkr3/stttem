@@ -176,7 +176,13 @@ const SHOULD = [
   ['점토+물', 'clay', 'water', null, 'clay_wet'], ['표백제+암모니아수', 'A:NaClO', 'NH4OH:aq', null, 'naclo_nh3'], ['물유리+금속염(화학 정원)', 'S:CuSO4', 'A:Na2SiO3', null, 'garden'], ['물유리+염산', 'A:Na2SiO3', 'hcl', null, 'silicagel:HCl'],
   ['다이크로뮴산암모늄+불', 'S:(NH4)2Cr2O7', 'fire', null, 'volcano'], ['설탕+베이킹소다(가열)', 'sugar', 'S:NaHCO3', 300, 'sugar_snake'],
   // 가열·냉각, 폭발
-  ['뜨거운 유리+물(열 충격)', 'glass', 'water', 300, 'glass_shock'], ['달군 강철+물(담금질)', 'steel', 'water', 800, 'quench'], ['설탕 가열(캐러멜)', 'sugar', 'air', 170, 'caramel'], ['캐러멜 더 가열', 'caramel', 'air', 250, 'sugar_heat'],
+  ['뜨거운 유리+물(열 충격)', 'glass', 'water', 300, 'glass_shock'],
+  // 새 음이온·빛·공업 반응
+  ['수소화나트륨+물', 'S:NaH', 'water', null, 'hydride-water:NaH'], ['나트륨+수소(가열)', 'Na', 'hydrogen', 350, 'hydride:Na'], ['염산+아황산나트륨', 'hcl', 'S:Na2SO3', null, 'sulfite-acid:HCl:Na2SO3'], ['염산+아질산나트륨', 'hcl', 'A:NaNO2', null, 'nitrite-acid:HCl:NaNO2'],
+  ['이산화황+NaOH(탈황)', 'SO2', 'naoh', null, 'so2-base:NaOH'], ['아황산나트륨+아이오딘', 'A:Na2SO3', 'A:KI3', null, 'sulfite-redox:A:KI3'], ['염소산칼륨 가열', 'S:KClO3', 'air', 450, 'decomp:KClO3'], ['염소산칼륨+MnO2', 'S:KClO3', 'S:MnO2', 250, 'chlorate-mno2:KClO3'],
+  ['질산칼륨 가열(아질산염)', 'S:KNO3', 'air', 450, 'decomp:KNO3'], ['옥살산칼슘 앙금', 'A:CaCl2', 'A:Na2C2O4', null, 'precip:CaCl2:Na2C2O4'], ['옥살산칼슘 가열', 'S:CaC2O4', 'air', 500, 'decomp:CaC2O4'], ['과망가니즈산칼륨+옥살산(데움)', 'A:KMnO4', 'A:acid:H2C2O4', 70, 'kmno4_oxalic'],
+  ['니켈 암모니아 착이온', 'S:Ni(OH)2', 'NH4OH:aq', null, 'ni_nh3'], ['아연 암모니아 착이온', 'S:Zn(OH)2', 'NH4OH:aq', null, 'zn_nh3'], ['과산화수소+철(II)', 'H2O2', 'A:FeSO4', null, 'h2o2_fe2'], ['질소 만들기', 'A:NaNO2', 'A:NH4Cl', 70, 'nitrogen_make'],
+  ['설탕 가수 분해', 'A:sugar', 'hcl', 70, 'sucrose_hydrolysis'], ['오존 분해', 'O3', 'air', null, 'ozone_decay'], ['오존 표백', 'litmus', 'O3', null, 'ozone_bleach'], ['산소+자외선(오존)', 'oxygen', 'uvlamp', null, 'ozone'], ['달군 강철+물(담금질)', 'steel', 'water', 800, 'quench'], ['설탕 가열(캐러멜)', 'sugar', 'air', 170, 'caramel'], ['캐러멜 더 가열', 'caramel', 'air', 250, 'sugar_heat'],
   ['진한 황+찬물', 'S:l:dark', 'water', null, 'plastic_sulfur'], ['아이오딘 승화', 'I', 'air', 60, 'iodine_sublime'], ['아이오딘 증기+찬 유리', 'I:vapor', 'glass', null, 'iodine_deposit'], ['질산칼륨 용액 식히기', 'A:KNO3', 'glass', 5, 'recrystal:KNO3'],
   ['얼음+바위(동결 풍화)', 'ice', 'stone', -5, 'frost'], ['주석+혹한', 'Sn', 'air', -30, 'tin_pest'], ['과산화수소+불', 'H2O2', 'fire', null, 'h2o2_blast'], ['밀가루+공기(가열)', 'flour', 'air', 400, 'burn:flour'], ['녹은 철+수증기 없음 확인용: 생석회+수증기', 'quicklime', 'steam', null, 'oxide-water:CaO'],
 ];
@@ -203,7 +209,7 @@ const SHOULD_NOT = [
 ['사염화탄소+물', 'CCl4', 'water'],
   ['브로민수+메테인 (포화 탄화수소)', 'brominewater', 'CH4'], ['과망가니즈산칼륨+에테인', 'A:KMnO4', 'C2H6'], ['익은 간+과산화수소 (효소 변성)', 'liver:cooked', 'H2O2'], ['흰자+물', 'eggwhite', 'water'], ['구리+염화철(II)', 'Cu', 'A:FeCl2'],
   ['천연 우라늄+물', 'U', 'water'], ['농축 우라늄+공기 (화학 반응 없음)', 'HEU', 'nitrogen'],
-  ['루미놀+과산화수소 (촉매 없음)', 'luminol', 'H2O2'], ['박하 사탕+물', 'mentos', 'water'], ['설탕물+효모가 아닌 죽은 효모', 'yeast:dead', 'A:sugar'], ['물풀+물', 'glue', 'water'], ['우유+물', 'milk', 'water'],
+  ['루미놀+과산화수소 (촉매 없음)', 'luminol', 'H2O2'], ['메테인+염소 (어두움)', 'CH4', 'Cl'], ['잎+이산화탄소 (빛 없음)', 'leaf', 'co2'], ['과망가니즈산칼륨+옥살산 (데우지 않음)', 'A:KMnO4', 'A:acid:H2C2O4'], ['박하 사탕+물', 'mentos', 'water'], ['설탕물+효모가 아닌 죽은 효모', 'yeast:dead', 'A:sugar'], ['물풀+물', 'glue', 'water'], ['우유+물', 'milk', 'water'],
 ];
 test(`반응이 일어나지 않아야 하는 ${SHOULD_NOT.length}쌍`, () => {
   const bad = [];
@@ -468,6 +474,32 @@ test('도전 과제: 이름이 겹치지 않고 판정이 오류 없이 돌아�
   const ctx = { has: () => false, ids: () => [], any: () => false, count: () => 0, cells: () => 0 };
   for (const c of SandLab.CHALLENGES) assert(c.check(ctx) === false && c.hint, c.id);
   return `${ids.length}개`;
+});
+test('세 물질이 있어야 하는 반응: 빛(광합성·광화학), 백금 촉매(오스트발트·접촉법), 산성에서 아이오딘', () => {
+  const tri = (a, b, c, want, T) => { const w = new SandLab.World({ width: 40, height: 20 }); w.rect(a, 0, 0, 19, 19, T); w.rect(b, 20, 0, 39, 19, T); w.rect(c, 18, 8, 21, 11, T); for (let i = 0; i < 3000 && !w.discovered.has(want); i++) w.stepCells(); return w.discovered.has(want); };
+  const cases = [['leaf', 'co2', 'lamp', 'photosynthesis'], ['CH4', 'Cl', 'uvlamp', 'ch4_cl2'], ['NH3', 'air', 'Pt', 'ostwald', 400], ['SO2', 'oxygen', 'Pt', 'contact', 450], ['C8H18:g', 'sand', 'stone', 'cracking', 500], ['H2O2', 'A:KI', 'hcl', 'h2o2_iodide'], ['S:AgCl', 'air', 'uvlamp', 'photo_ag']];
+  for (const [a, b, c, want, T] of cases) assert(tri(a, b, c, want, T), want);
+  return `${cases.length}개`;
+});
+test('압력: 밀폐 용기의 기체는 PV=nRT를 따르고, 견디는 압력을 넘으면 터짐', () => {
+  const jar = () => { const w = fresh(); const W = 'glass'; w.rect(W, 100, 100, 140, 103, 20, true); w.rect(W, 100, 100, 103, 145, 20, true); w.rect(W, 137, 100, 140, 145, 20, true); w.rect(W, 100, 142, 140, 145, 20, true); return w; };
+  const pi = (w) => w.index(120, 120);
+  const a = jar(); for (let y = 104; y < 142; y++) for (let x = 104; x < 137; x++) a.T[a.index(x, y)] = 293; a.stepPressure();
+  const P1 = a.pressureAt(pi(a)), want = (293 + 273.15) / 293.15;
+  assert(Math.abs(P1 - want) / want < 0.02, `293°C에서 ${P1.toFixed(3)}기압, 기대 ${want.toFixed(3)}`);
+  const b = jar(); for (let y = 104; y < 142; y++) for (let x = 104; x < 137; x++) { const i = b.index(x, y); b.setCell(i, b.data.idOf.steam, 150); b.gas[i] = 6; } b.stepPressure();
+  assert(b.discovered.has('burst') && count(b, 'glassshards') > 0, '수증기가 가득 찬 유리병이 터지지 않음');
+  const o = fresh(); o.rect('glass', 100, 100, 103, 145, 20, true); o.rect('glass', 137, 100, 140, 145, 20, true); o.rect('glass', 100, 142, 140, 145, 20, true); o.stepPressure();
+  assert(o.pressureAt(o.index(120, 120)) === 1, '뚜껑 없는 병이 1기압이 아님');
+  const s2 = jar(); s2.rect('salt', 104, 100, 136, 103); s2.stepPressure();
+  assert(s2.pressureAt(s2.index(120, 120)) === 1, '가루 뚜껑이 기체를 가둠');
+  return `게이뤼삭 ${P1.toFixed(3)}기압(이론 ${want.toFixed(3)}), 파열·열린 병·가루 뚜껑 확인`;
+});
+test('열복사: 공기에 드러난 뜨거운 철이 단열벽에 싸인 철보다 빨리 식음', () => {
+  const cool = (wrap) => { const w = fresh(); if (wrap) w.rect('wall', 110, 55, 130, 75, 20, true); w.rect('Fe', 115, 60, 125, 70, 1400, true); for (let i = 0; i < 120; i++) w.step(); return w.T[w.index(115, 60)]; };
+  const open = cool(false), wrapped = cool(true);
+  assert(open < wrapped - 50, `드러난 철 ${open.toFixed(0)}°C, 싸인 철 ${wrapped.toFixed(0)}°C`);
+  return `2초 뒤 모서리: 드러남 ${open.toFixed(0)}°C, 단열벽 ${wrapped.toFixed(0)}°C`;
 });
 test('공기 중 액체 질소는 끓어 기체가 됨', () => {
   const w = fresh(); w.rect('N:l', 100, 60, 130, 70);

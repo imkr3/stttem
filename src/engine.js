@@ -19,6 +19,11 @@
   const NUKE_T = 3000; // 빠른 연쇄 반응에서 이 온도를 넘으면 폭발
   const MAX_FISSIONS = 3000; // 틱당 처리할 최대 핵분열 수
 
+  // 압력(이상 기체 PV = nRT). 한 칸의 기체량 n은 보통 1이고, 액체·고체가 끓거나 반응해 기체가 되면 훨씬 많다
+  // (실제로 물 1cm³가 수증기가 되면 약 1700배로 늘어나지만, 칸이 고정되어 있으므로 갇힌 공간의 압력으로 나타낸다).
+  const GAS_FROM_CONDENSED = 6;
+  const SIGMA = 5.67e-8, EMISSIVITY = 0.8; // 슈테판-볼츠만 상수, 복사율
+
   // 물질 표를 엔진이 빠르게 읽을 수 있는 배열로 바꾼다.
   const compiled = new Map(); // 같은 표를 쓰는 세계는 컴파일 결과와 반응 캐시를 공유한다.
 
@@ -43,7 +48,7 @@
       up: [], down: [], decay: [], explicit: new Map(), cache: new Map(), reactive: new Uint8Array(n), base: new Uint16Array(n),
       fast: new Float32Array(n), thermal: new Float32Array(n), spont: new Float32Array(n), emitter: new Uint8Array(n),
       moder: new Uint8Array(n), absorb: new Float32Array(n), heat: new Float32Array(n), armor: new Uint8Array(n),
-      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
+      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
     };
     materials.forEach((d, i) => {
       c.state[i] = STATES[d.state];
@@ -67,6 +72,8 @@
       if (d.electrode) c.anyElectrode = true;
       c.conductor[i] = d.electrode || d.wire || (d.metal && d.state !== 'gas') ? 1 : 0; // 전기가 통하는 고체·액체 금속, 도선
       c.load[i] = d.load ? 1 : 0; // 전구처럼 전류가 지나가며 일을 하는 것
+      // 갇힌 기체의 압력을 견디는 정도(기압). 액체는 밀려날 뿐 터지지 않으므로 경계로 치지 않는다.
+      c.strength[i] = d.strength != null ? d.strength : d.fixed || d.armor ? 1e9 : d.state === 'liquid' ? 1e9 : d.state === 'powder' ? (d.metal ? 30 : 3) : d.metal ? 40 : 12;
     });
     const add = (a, b, entry) => {
       const key = a * n + b;
@@ -123,6 +130,7 @@
       this.anchor = new Uint8Array(size); // 고정된 덩어리 칸. 가루처럼 흘러내리지 않는다.
       this.T = new Float32Array(size);
       this.store = new Float32Array(size); // 상변화 중 축적된 잠열 J/kg (+가열, -냉각)
+      this.gas = new Float32Array(size); // 기체 칸의 기체량(보통 1)
       this.vy = new Float32Array(size);
       this.life = new Uint16Array(size);
       this.shade = new Int8Array(size);
@@ -142,9 +150,9 @@
     }
 
     reset() {
-      this.tick = 0; this.time = 0; this.fq = []; this.slowAvg = 0;
+      this.tick = 0; this.time = 0; this.fq = []; this.slowAvg = 0; this.pRegions = null;
       this.bodies = []; this.selected = null; this.probe = null; this.nextBodyId = 1;
-      for (let i = 0; i < this.mat.length; i++) this.setCell(i, this.AIR, this.ambient);
+      for (let i = 0; i < this.mat.length; i++) { this.setCell(i, this.AIR, this.ambient); this.gas[i] = 1; }
     }
 
     setHeatBoost(v) { this.heatBoost = v; }
@@ -164,6 +172,8 @@
     inside(x, y) { return x >= 0 && y >= 0 && x < this.w && y < this.h; }
 
     setCell(i, m, T) {
+      const st = this.data.state;
+      this.gas[i] = st[m] === GAS ? (st[this.mat[i]] === GAS ? 1 : GAS_FROM_CONDENSED) : 0;
       this.mat[i] = m;
       this.T[i] = T;
       this.store[i] = 0;
@@ -185,6 +195,7 @@
       t = vy[i]; vy[i] = vy[j]; vy[j] = t;
       t = life[i]; life[i] = life[j]; life[j] = t;
       t = shade[i]; shade[i] = shade[j]; shade[j] = t;
+      t = this.gas[i]; this.gas[i] = this.gas[j]; this.gas[j] = t;
       this.stamp[i] = this.stamp[j] = this.tick;
     }
 
@@ -203,6 +214,7 @@
         if (m !== this.AIR && Math.random() > density) return;
         if (onlyEmpty && this.mat[i] !== this.AIR) return;
         this.setCell(i, m, m === this.AIR ? this.ambient : this.data.t0[m]);
+        if (s === GAS) this.gas[i] = 1; // 사람이 놓은 기체는 1기압
         if (anchored && s === POWDER) this.anchor[i] = 1;
       });
     }
@@ -223,6 +235,7 @@
         if (!this.inside(x, y)) continue;
         const i = this.index(x, y);
         this.setCell(i, m, T == null ? this.data.t0[m] : T);
+        if (this.data.state[m] === GAS) this.gas[i] = 1;
         if (anchored) this.anchor[i] = 1;
       }
     }
@@ -236,6 +249,7 @@
       this.stepHeat();
       this.stepNuclear();
       this.stepElectro();
+      if (this.tick % 20 === 0) this.stepPressure();
       this.stepCells();
       this.stepBodies();
       this.record();
@@ -402,6 +416,18 @@
           if (m === this.AIR) { T[i] += (this.ambient - T[i]) * 0.002; continue; } // 외부로의 열 손실
           // 방사성 붕괴열. 열이 주로 공기로 빠져나가므로, 공기 쪽 열전도 가속 배율(최대 50)과 같은 배율을 써야 실제와 비슷한 평형 온도가 된다.
           if (d.heat[m]) T[i] += d.heat[m] * this.dt * Math.min(this.heatBoost, 50) / d.cp[m];
+          // 열복사(슈테판-볼츠만): 아주 뜨거운 물체는 공기와 닿은 면으로 T⁴에 비례하는 열을 빛으로 내보낸다. 1cm 칸 한 면은 1cm².
+          if (T[i] > 500 && d.state[m] !== GAS) {
+            let f = 0;
+            if (x > 0 && d.state[mat[i - 1]] === GAS) f++;
+            if (x < w - 1 && d.state[mat[i + 1]] === GAS) f++;
+            if (y > 0 && d.state[mat[i - w]] === GAS) f++;
+            if (y < h - 1 && d.state[mat[i + w]] === GAS) f++;
+            if (f) {
+              const k = T[i] + 273.15, a = this.ambient + 273.15;
+              T[i] -= EMISSIVITY * SIGMA * (k * k * k * k - a * a * a * a) * f * 1e-4 * this.dt / (d.heatCap[m] * 1e-6);
+            }
+          }
           if (d.spont[m] && Math.random() < d.spont[m]) { // 자발 핵분열·중성자원
             if (d.emitter[m]) this.emitNeutrons(i, 2, false); else this.fq.push(i * 2);
           }
@@ -735,6 +761,55 @@
       this.eCath = Math.min(this.eCath, ELECTRONS); this.eAnod = Math.min(this.eAnod, ELECTRONS);
     }
 
+    // ---- 압력 ----
+    // 이어진 기체 칸을 한 공간으로 묶는다. 액체는 압력을 그대로 전하므로(파스칼 원리) 액체로 이어진 기체도 같은 공간이다.
+    // 맨 위가 열려 있으면 대기와 통하므로 1기압으로 풀린다.
+    // 닫힌 공간은 P = Σ n·T / (V·293K)로 압력을 구하고, 가장 약한 벽이 견디는 압력을 넘으면 그곳이 터진다.
+    stepPressure() {
+      const { w, h, mat, T, anchor } = this, d = this.data, size = w * h, gas = this.gas, st = d.state, str = d.strength;
+      const lab = this.plab && this.plab.length === size ? this.plab.fill(0) : (this.plab = new Int32Array(size));
+      const stack = this.pstack && this.pstack.length === size ? this.pstack : (this.pstack = new Int32Array(size));
+      const regions = [null];
+      // 기체·액체·고정되지 않은 가루는 공간에 포함하고, 나머지(고체, 고정한 가루)는 벽이다.
+      const inside = (j) => { const s2 = st[mat[j]]; return s2 === GAS || s2 === LIQUID || (s2 === POWDER && !anchor[j]); };
+      for (let s0 = 0; s0 < size; s0++) {
+        if (lab[s0] || st[mat[s0]] !== GAS) continue;
+        const id = regions.length;
+        let top = 0, V = 0, nT = 0, Tsum = 0, open = false, weak = -1, weakS = Infinity;
+        stack[top++] = s0; lab[s0] = id;
+        const first = s0;
+        while (top) {
+          const i = stack[--top];
+          if (st[mat[i]] === GAS) { V++; nT += gas[i] * (T[i] + 273.15); Tsum += T[i]; }
+          if (i < w) { if (this.openTop) open = true; } else { const j = i - w; if (!lab[j]) { if (inside(j)) { lab[j] = id; stack[top++] = j; } else if (str[mat[j]] < weakS) { weakS = str[mat[j]]; weak = j; } } }
+          if (i + w < size) { const j = i + w; if (!lab[j]) { if (inside(j)) { lab[j] = id; stack[top++] = j; } else if (str[mat[j]] < weakS) { weakS = str[mat[j]]; weak = j; } } }
+          const x = i % w;
+          if (x > 0) { const j = i - 1; if (!lab[j]) { if (inside(j)) { lab[j] = id; stack[top++] = j; } else if (str[mat[j]] < weakS) { weakS = str[mat[j]]; weak = j; } } }
+          if (x < w - 1) { const j = i + 1; if (!lab[j]) { if (inside(j)) { lab[j] = id; stack[top++] = j; } else if (str[mat[j]] < weakS) { weakS = str[mat[j]]; weak = j; } } }
+        }
+        if (!V) { regions.push({ P: 1, V: 0, open, T: 20 }); continue; }
+        const big = V > 6000; // 아주 큰 공간은 방 전체의 공기로 보고 대기와 통한다고 본다.
+        const P = open || big ? 1 : nT / 293.15 / V;
+        regions.push({ P, V, open: open || big, T: Tsum / V, first });
+        if (open || big) continue;
+        if (weak >= 0 && P > weakS) {
+          const r = Math.max(2, Math.min(8, 1.5 + (P - weakS) * 0.6));
+          this.note('burst', () => ({ type: 'reaction', id: 'burst', name: '밀폐 용기 파열', kind: 'physical', eq: `압력 ${P.toFixed(1)}기압 > 용기가 견디는 압력 ${weakS}기압`, note: '갇힌 기체를 데우거나 액체가 끓어 기체가 생기면 압력이 커집니다(PV = nRT). 용기가 견딜 수 있는 압력을 넘으면 가장 약한 곳이 터집니다. 압력솥에 안전밸브가 있는 이유입니다.' }));
+          this.explode(weak, r, Math.max(200, Tsum / V));
+          for (let k = 0; k < size; k++) if (lab[k] === id && gas[k] > 1) gas[k] = 1;
+        }
+      }
+      // 열린 공간으로 나온 압축 기체는 대기 속으로 퍼져 1기압이 된다.
+      for (let k = 0; k < size; k++) if (gas[k] > 1) { const r = regions[lab[k]]; if (!r || r.open) gas[k] = 1 + (gas[k] - 1) * 0.5; }
+      this.pRegions = regions;
+    }
+    // 그 칸이 속한 기체 공간의 압력(기압). 기체가 아니거나 열린 공간이면 1.
+    pressureAt(i) {
+      if (!this.pRegions || !this.plab || this.data.state[this.mat[i]] !== GAS) return 1;
+      const r = this.pRegions[this.plab[i]];
+      return r ? r.P : 1;
+    }
+
     // ---- 핵분열 ----
     stepNuclear() {
       if (!this.fq.length) return;
@@ -956,7 +1031,8 @@
       }
       const p = this.probe;
       if (p && this.tick % 6 === 0) {
-        p.log.push({ t: this.time, T: this.T[this.index(p.x, p.y)], m: this.mat[this.index(p.x, p.y)] });
+        const pi = this.index(p.x, p.y);
+        p.log.push({ t: this.time, T: this.T[pi], m: this.mat[pi], P: this.pressureAt(pi) });
         if (p.log.length > 1200) p.log.shift();
       }
     }
@@ -975,18 +1051,18 @@
     inspect(x, y) {
       if (!this.inside(x, y)) return null;
       const i = this.index(x, y), def = this.data.defs[this.mat[i]];
-      return { def, T: this.T[i], rho: this.effRho(i) };
+      return { def, T: this.T[i], rho: this.effRho(i), P: this.pressureAt(i) };
     }
 
     // ---- 되돌리기용 스냅숏 (메모리 안에서만, 빠르게) ----
     snapshot() {
       return {
-        mat: this.mat.slice(), T: this.T.slice(), anchor: this.anchor.slice(), store: this.store.slice(), vy: this.vy.slice(), life: this.life.slice(), shade: this.shade.slice(),
+        mat: this.mat.slice(), T: this.T.slice(), gas: this.gas.slice(), anchor: this.anchor.slice(), store: this.store.slice(), vy: this.vy.slice(), life: this.life.slice(), shade: this.shade.slice(),
         bodies: this.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] })), probe: this.probe && { x: this.probe.x, y: this.probe.y },
       };
     }
     restoreSnapshot(s) {
-      this.mat.set(s.mat); this.T.set(s.T); this.anchor.set(s.anchor); this.store.set(s.store); this.vy.set(s.vy); this.life.set(s.life); this.shade.set(s.shade);
+      this.mat.set(s.mat); this.T.set(s.T); if (s.gas) this.gas.set(s.gas); this.anchor.set(s.anchor); this.store.set(s.store); this.vy.set(s.vy); this.life.set(s.life); this.shade.set(s.shade);
       this.bodies = s.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] }));
       this.selected = null; this.fq = [];
       if (s.probe) this.setProbe(s.probe.x, s.probe.y); else this.probe = null;
@@ -1018,7 +1094,7 @@
       const mats = dec(o.mat, Uint16Array), temps = dec(o.T, Float32Array), anchors = dec(o.anchor, Uint8Array);
       // 물질 목록이 나중에 바뀌어도 복원되도록 저장된 이름으로 다시 찾는다.
       const remap = o.materials.map((id) => (id in this.data.idOf ? this.data.idOf[id] : this.AIR));
-      for (let i = 0; i < mats.length; i++) { this.setCell(i, remap[mats[i]], temps[i]); this.anchor[i] = anchors[i]; }
+      for (let i = 0; i < mats.length; i++) { this.setCell(i, remap[mats[i]], temps[i]); this.anchor[i] = anchors[i]; if (this.data.state[this.mat[i]] === GAS) this.gas[i] = 1; }
       this.g = o.g; this.vacuum = o.vacuum; this.setHeatBoost(o.heatBoost);
       o.bodies.forEach((b) => this.addBody(b));
     }
