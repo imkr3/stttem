@@ -133,6 +133,8 @@
     ['CCl4', '사염화탄소', 'CCl4', 153.8, 1.59, -23, 76.7, 'organic', '#c0d0c0', { rhoL: 1.59, k: 0.1, c: 860, flow: 4, desc: '물보다 무겁고 물과 섞이지 않습니다.' }],
     ['C3H8O3', '글리세롤', 'C3H8O3', 92.09, 1.26, 17.8, 290, 'organic', '#e0e4d8', { rhoL: 1.26, k: 0.29, c: 2430, flow: 1, misc: true, std: 'l', tags: fuel(370, 0.1, CH, 1000) }],
     ['C25H52', '파라핀', 'C25H52', 352.7, 0.9, 58, 370, 'organic', '#ece6cc', { k: 0.25, c: 2500, tags: fuel(245, 0.15, CH, 1000), desc: '양초의 재료. 녹으면 불이 잘 붙습니다.' }],
+    ['N2O', '아산화질소', 'N2O', 44.01, 1.23, -90.9, -88.5, 'gas', '#c8d0d8', { gasColor: '#222830', k: 0.1, c: 880, desc: '웃음 기체. 뜨거우면 산소를 내놓아 불씨를 다시 타오르게 합니다.' }],
+    ['C2H4Br2', '1,2-다이브로모에테인', 'C2H4Br2', 187.9, 2.18, 9.8, 131.6, 'organic', '#d8d0c0', { rhoL: 2.18, k: 0.1, c: 730, flow: 4, desc: '에틸렌이 브로민과 첨가 반응해 생긴 무색 액체. 물보다 무겁습니다.' }],
     ['C10H8', '나프탈렌', 'C10H8', 128.2, 1.14, 80.3, 218, 'organic', '#f0f0ea', { k: 0.3, c: 1300, tags: fuel(525, 0.2, CH, 1200) }],
     ['C4H8O2', '아세트산 에틸', 'C4H8O2', 88.11, 0.902, -83.6, 77.1, 'organic', '#e4ecd8', { rhoL: 0.902, k: 0.14, c: 1920, flow: 5, tags: fuel(426, 0.3, CH, 1100), desc: '과일 향이 나는 에스터. 매니큐어 제거제에도 쓰입니다. 물에 조금만 녹아 위에 뜹니다.' }],
   ];
@@ -159,7 +161,7 @@
     ['Au3', '금(III)', 3, 'Au', OXCL], ['Pd2', '팔라듐(II)', 2, 'Pd', OX_ONLY], ['Mn4', '망가니즈(IV)', 4, 'Mn', ['O']], ['Ti4', '타이타늄(IV)', 4, 'Ti', OXCL], ['V5', '바나듐(V)', 5, 'V', ['O']], ['Mo6', '몰리브데넘(VI)', 6, 'Mo', ['O']],
     ['W6', '텅스텐(VI)', 6, 'W', ['O']], ['Zr4', '지르코늄(IV)', 4, 'Zr', OX_ONLY], ['Hf4', '하프늄(IV)', 4, 'Hf', ['O']], ['Nb5', '나이오븀(V)', 5, 'Nb', ['O']], ['Ta5', '탄탈럼(V)', 5, 'Ta', ['O']], ['Ge4', '저마늄(IV)', 4, 'Ge', ['O']],
     ['Sb3', '안티모니(III)', 3, 'Sb', OX_ONLY], ['Bi3', '비스무트(III)', 3, 'Bi', OX_ONLY], ['In3', '인듐(III)', 3, 'In', OX_ONLY], ['Ga3', '갈륨(III)', 3, 'Ga', OX_ONLY], ['Tl', '탈륨(I)', 1, 'Tl', OX_ONLY], ['Sc3', '스칸듐', 3, 'Sc', RE], ['Y3', '이트륨', 3, 'Y', RE],
-    ['Th4', '토륨(IV)', 4, 'Th', ['O']], ['U6', '우라늄(VI)', 6, 'U', ['O']],
+    ['Th4', '토륨(IV)', 4, 'Th', ['O']], ['U6', '우라늄(VI)', 6, 'U', ['O']], ['Pu4', '플루토늄(IV)', 4, 'Pu', ['O']],
   ];
   'La 란타넘,Ce 세륨,Pr 프라세오디뮴,Nd 네오디뮴,Sm 사마륨,Eu 유로퓸,Gd 가돌리늄,Tb 터븀,Dy 디스프로슘,Ho 홀뮴,Er 어븀,Tm 툴륨,Yb 이터븀,Lu 루테튬'.split(',').forEach((s) => {
     const [el, name] = s.split(' ');
@@ -362,6 +364,20 @@
     { id: 'A:Na2S2O3', name: '싸이오황산나트륨 용액', formula: 'Na₂S₂O₃(aq)', fx: 'Na2S2O3', state: 'liquid', cat: 'solution', color: '#3f93c4', density: 1080, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 7.5, desc: '산을 만나면 서서히 뿌옇게 황이 생깁니다(반응 속도 실험). 아이오딘의 색을 없앱니다.' },
     { id: 'oleic', name: '지방산 (올레산)', formula: 'C₁₈H₃₄O₂', fx: 'C18H34O2', state: 'liquid', cat: 'organic', color: '#c8b070', density: 895, c: 2000, k: 0.15, flow: 3, fuel: { ign: 360, prob: 0.2, prods: CH, T: 1000 }, down: { at: 13, to: 'fat', L: 1.4e5 }, desc: '비누에 산을 넣으면 생기는 기름 같은 산. 물에 뜨고 섞이지 않습니다.' },
     { id: 'ethoxide', name: '소듐 에톡사이드 용액', formula: 'C₂H₅ONa(에탄올)', fx: 'C2H5ONa', state: 'liquid', color: '#d8d0b0', density: 870, c: 2400, k: 0.17, flow: 4, misc: true, pH: 13, fuel: { ign: 365, prob: 0.2, prods: ['Na2CO3', 'CO2', 'H2O'], T: 1000 }, desc: '나트륨이 에탄올과 반응해 생긴 강한 염기. 물을 만나면 수산화나트륨과 에탄올이 됩니다.' },
+    { id: 'S:Fe3O4', name: '사산화삼철 (자철석)', formula: 'Fe₃O₄', fx: 'Fe3O4', state: 'powder', cat: 'salt', color: '#2c2c30', density: 5170, c: 650, k: 2, mp: 1597, desc: '뜨거운 철이 수증기나 산소와 만나 생기는 검은 산화철. 자석에 붙습니다.' },
+    { id: 'S:Mg3N2', name: '질화마그네슘', formula: 'Mg₃N₂', fx: 'Mg3N2', state: 'powder', cat: 'salt', color: '#c8c88c', density: 2710, c: 1000, k: 1, desc: '마그네슘이 질소 속에서 타며 생기는 노란빛 가루. 물을 만나면 암모니아를 냅니다.' },
+    { id: 'S:Li3N', name: '질화리튬', formula: 'Li₃N', fx: 'Li3N', state: 'powder', cat: 'salt', color: '#8a3038', density: 1270, c: 1500, k: 1, mp: 813, desc: '리튬은 상온에서도 질소와 반응하는 유일한 알칼리 금속입니다. 물을 만나면 암모니아를 냅니다.' },
+    { id: 'amalgam', name: '금 아말감', formula: 'Au-Hg', fx: 'AuHg', state: 'powder', cat: 'alloy', color: '#cfc6a8', density: 15000, c: 140, k: 8, desc: '수은에 금이 녹은 반죽. 가열하면 수은이 증발하고 금이 남습니다(옛 금 정련법, 수은 증기는 매우 유독).' },
+    { id: 'brominewater', name: '브로민수', formula: 'Br₂(aq)', fx: 'Br2', state: 'liquid', cat: 'solution', color: '#d0801c', density: 1010, c: 4000, k: 0.6, flow: 5, aq: true, misc: true, pH: 5, desc: '브로민이 녹은 주황색 물. 에틸렌 같은 이중 결합 물질을 만나면 색이 사라집니다(불포화 검출).' },
+    { id: 'tincture', name: '아이오딘 팅크', formula: 'I₂(에탄올)', fx: 'I2', state: 'liquid', cat: 'indicator', color: '#6a2a10', density: 830, c: 2400, k: 0.2, flow: 5, misc: true, desc: '아이오딘을 에탄올에 녹인 갈색 소독약. 녹말을 만나면 청람색이 됩니다.' },
+    { id: 'A:K2MnO4', name: '망가니즈산칼륨 용액', formula: 'K₂MnO₄(aq)', fx: 'K2MnO4', state: 'liquid', color: '#2c8a3c', density: 1060, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 13, desc: '초록색. 염기성에서 과망가니즈산 이온이 환원된 중간 단계입니다(카멜레온 반응).' },
+    { id: 'emulsion', name: '비누에 유화된 기름', formula: '미셀(aq)', fx: 'C57H104O6', state: 'liquid', cat: null, color: '#e4dcc4', density: 990, c: 3500, k: 0.4, flow: 4, misc: true, aq: true, desc: '비누 분자가 기름 방울을 감싸 물에 섞이게 된 뿌연 액체. 비누가 때를 빼는 원리입니다.' },
+    { id: 'eggwhite', name: '달걀흰자', formula: '단백질(aq)', fx: 'C', state: 'liquid', cat: 'organic', color: '#e8e8c8', density: 1040, c: 3700, k: 0.5, flow: 1, misc: true, desc: '단백질 용액. 약 62°C 넘게 데우거나 산·알코올·중금속 이온을 만나면 굳습니다(변성).', up: { at: 65, to: 'eggwhite:cooked', L: 2e4 } },
+    { id: 'eggwhite:cooked', name: '굳은 흰자', formula: '변성 단백질', fx: 'C', state: 'powder', color: '#fafaf4', density: 1040, c: 3500, k: 0.5, fuel: { ign: 300, prob: 0.05, prods: ['CO2'], T: 800 }, desc: '열이나 산으로 단백질의 구조가 풀려 굳은 것. 식혀도 다시 투명해지지 않습니다.' },
+    { id: 'eggwhite:yellow', name: '노랗게 변한 단백질', formula: '잔토프로테인', fx: 'C', state: 'powder', color: '#e8c020', density: 1100, c: 3000, k: 0.5, desc: '진한 질산이 단백질의 고리 구조와 반응해 노랗게 변한 것(잔토프로테인 반응).' },
+    { id: 'biuret', name: '보라색 단백질 용액', formula: '뷰렛 반응', fx: 'C', state: 'liquid', color: '#8a3ab8', density: 1050, c: 3800, k: 0.5, flow: 3, misc: true, aq: true, desc: '염기성에서 구리 이온이 단백질의 펩타이드 결합과 결합한 보라색(뷰렛 반응).' },
+    { id: 'liver', name: '생간 조각', formula: '카탈레이스 효소', fx: 'C', state: 'solid', cat: 'organic', color: '#7a2a2a', density: 1060, c: 3500, k: 0.5, desc: '카탈레이스 효소가 과산화수소를 빠르게 분해합니다. 익히면(70°C 이상) 효소가 망가져 작용하지 않습니다.', up: { at: 70, to: 'liver:cooked', L: 5e4 } },
+    { id: 'liver:cooked', name: '익은 간', formula: '변성된 효소', fx: 'C', state: 'solid', color: '#5a3a2a', density: 1060, c: 3500, k: 0.5, fuel: { ign: 300, prob: 0.05, prods: ['CO2'], T: 800 }, desc: '효소가 열로 변성되어 과산화수소를 분해하지 못합니다.' },
     { id: 'S:CaC2', name: '탄화칼슘 (카바이드)', formula: 'CaC₂', fx: 'CaC2', state: 'powder', cat: 'salt', color: '#5a5650', density: 2220, c: 950, k: 1, mp: 2160, desc: '물을 만나면 아세틸렌을 냅니다. 녹는점 2160°C.' },
 
     { id: 'sand', name: '모래', formula: 'SiO₂', fx: 'SiO2', state: 'powder', cat: 'rock', color: '#d3b673', density: 1600, c: 830, k: 0.3, mp: 1713, cast: true, desc: '녹는점 1713°C. 녹았다 식으면 유리가 됩니다.', up: { at: 1713, to: 'moltenglass', L: 1.4e5 } },
@@ -373,8 +389,15 @@
     { id: 'glass', name: '유리', formula: 'SiO₂ 유리', fx: 'SiO2', state: 'solid', cat: 'rock', color: '#9fd6d8', density: 2500, c: 840, k: 1, desc: '약 1400°C에서 흐르기 시작합니다. 플루오린화수소산에 녹습니다.', up: { at: 1400, to: 'moltenglass', L: 1.4e5 } },
     { id: 'moltenglass', name: '녹은 유리', formula: 'SiO₂(l)', fx: 'SiO2', state: 'liquid', cat: null, color: '#ffb347', density: 2300, c: 1000, k: 1.5, T0: 1500, flow: 1, desc: '식으면 유리가 됩니다.', down: { at: 1100, to: 'glass', L: 1.4e5 } },
 
-    { id: 'wall', name: '단열벽', formula: '-', state: 'solid', cat: 'device', color: '#3a424c', density: 2000, c: 1000, k: 0.001, inert: true, desc: '열을 거의 전달하지 않는 벽.' },
-    { id: 'firebrick', name: '내화벽돌', formula: 'Al₂O₃+SiO₂', state: 'solid', cat: 'device', color: '#a8644a', density: 2000, c: 1000, k: 1, inert: true, desc: '녹지 않고 열을 천천히 전달합니다. 용광로의 안쪽 벽입니다.' },
+    { id: 'wall', name: '단열벽', formula: '-', state: 'solid', cat: 'device', color: '#3a424c', density: 2000, c: 1000, k: 0.001, inert: true, armor: true, desc: '열을 거의 전달하지 않는 벽. 폭발에도 부서지지 않습니다.' },
+    { id: 'firebrick', name: '내화벽돌', formula: 'Al₂O₃+SiO₂', state: 'solid', cat: 'device', color: '#a8644a', density: 2000, c: 1000, k: 1, inert: true, armor: true, desc: '녹지 않고 열을 천천히 전달합니다. 용광로의 안쪽 벽입니다.' },
+
+    // 핵·방사성 (개념 학습용 단순화 모형)
+    { id: 'nsource', name: '중성자원 (Am-Be)', formula: '²⁴¹Am+Be', state: 'solid', cat: 'nuclear', color: '#c8a0f0', density: 5000, c: 500, k: 20, inert: true, spont: 0.03, decayHeat: 5, desc: '계속 중성자를 내보내는 장치. 원자로를 켤 때 씁니다. 스스로 연쇄 반응을 하지는 않습니다.' },
+    { id: 'controlrod', name: '제어봉 (탄화붕소)', formula: 'B₄C', state: 'solid', cat: 'nuclear', color: '#4a4a56', density: 2520, c: 950, k: 30, inert: true, absorb: 0.95, desc: '중성자를 흡수해 연쇄 반응을 멈춥니다. 원자로의 브레이크입니다.' },
+    { id: 'graphite', name: '흑연 블록', formula: 'C', fx: 'C', state: 'solid', cat: 'nuclear', color: '#3a3c40', density: 2200, c: 710, k: 120, moderator: true, absorb: 0.001, desc: '중성자를 느리게 만드는 감속재. 아주 뜨거워지면 공기 중에서 탑니다(체르노빌 사고).' },
+    { id: 'fallout', name: '핵분열 생성물', formula: '¹³⁷Cs, ⁹⁰Sr, ¹³¹I …', fx: 'Cs', state: 'powder', cat: 'nuclear', color: '#9aa84a', density: 6000, c: 300, k: 2, radioactive: true, decayHeat: 300, absorb: 0.1, lifetime: 2400, decay: [['fallout:old', 1]], desc: '핵분열로 생긴 방사성 원자들. 처음에는 붕괴열이 커서 스스로 뜨거워지고, 시간이 지나면 식습니다. 중성자를 조금 흡수합니다(독물질).' },
+    { id: 'fallout:old', name: '식은 핵분열 생성물', formula: '사용후 핵연료 성분', fx: 'Cs', state: 'powder', color: '#7a8450', density: 6000, c: 300, k: 2, radioactive: true, decayHeat: 3, absorb: 0.1, desc: '붕괴열이 줄었지만 여전히 방사성입니다. 오랫동안 냉각하고 격리해야 합니다.' },
     { id: 'heater', name: '가열판', formula: '800°C', state: 'solid', cat: 'device', color: '#d8392b', density: 5000, c: 1000, k: 80, T0: 800, fixed: true, inert: true, desc: '항상 800°C를 유지합니다.' },
     { id: 'furnace', name: '용광로판', formula: '2000°C', state: 'solid', cat: 'device', color: '#f07a10', density: 5000, c: 1000, k: 80, T0: 2000, fixed: true, inert: true, desc: '항상 2000°C를 유지합니다. 철도 녹습니다.' },
     { id: 'cooler', name: '냉각판', formula: '-60°C', state: 'solid', cat: 'device', color: '#3bb4d8', density: 5000, c: 1000, k: 80, T0: -60, fixed: true, inert: true, desc: '항상 -60°C를 유지합니다.' },
@@ -391,11 +414,45 @@
     });
   });
 
+  // 농축 우라늄: 우라늄-235 비율을 높인 우라늄. 화학적으로는 우라늄과 같다.
+  family({ key: 'HEU', name: '농축 우라늄', fx: 'U', M: 235, rho: 19.05, mp: 1132, bp: 4131, k: 27, c: 116, color: '#6c7a52', cat: 'nuclear', flow: 2, metal: 'U', radioactive: true,
+    tags: { fissile: { fast: 0.09, thermal: 0.4 }, spont: 1e-4, decayHeat: 0.06, absorb: 0 },
+    desc: '우라늄-235를 많이 담은 우라늄. 작은 덩어리는 중성자가 빠져나가 안전하지만, 임계 질량을 넘게 모이면 연쇄 반응이 일어납니다. 물이나 흑연이 중성자를 느리게 하면 더 적은 양으로도 반응합니다.' });
+
+  // 핵분열 성질과 방사성 붕괴열(W/kg, 대표 동위원소 기준 대략값)
+  const NUCLEAR = {
+    U: { fissile: { fast: 0.002, thermal: 0.012 }, spont: 1e-6, absorb: 0.02, decayHeat: 1e-5, note: '천연 우라늄은 우라늄-235가 0.7%뿐이라 그대로 쌓아서는 연쇄 반응이 일어나지 않습니다.' },
+    Pu: { fissile: { fast: 0.12, thermal: 0.45 }, spont: 5e-4, absorb: 0, decayHeat: 2.5, note: '우라늄-235보다 임계 질량이 작고, 자발 핵분열로 중성자를 스스로 냅니다. 만지면 약간 따뜻합니다.' },
+    Po: { decayHeat: 140000, note: '폴로늄-210은 붕괴열이 매우 커서 스스로 수백 °C까지 달아오르고 증발합니다.' },
+    Ra: { decayHeat: 30, note: '라듐은 붕괴열로 주변보다 조금 따뜻합니다.' },
+    Am: { decayHeat: 110, note: '아메리슘-241은 화재 감지기에 들어 있습니다.' },
+    Cm: { decayHeat: 2800, note: '퀴륨-244는 붕괴열이 커서 우주 탐사선의 전원으로 연구되었습니다.' },
+    Cf: { decayHeat: 39000, spont: 0.02, emitter: true, note: '캘리포늄-252는 자발 핵분열로 많은 중성자를 내는 강한 중성자원입니다.' },
+    Cd: { absorb: 0.9, note: '카드뮴은 중성자를 아주 잘 흡수해 제어봉에 씁니다.' },
+    B: { absorb: 0.8, note: '붕소는 중성자를 잘 흡수합니다. 원자로 냉각수에 붕산으로 녹여 씁니다.' },
+    Gd: { absorb: 0.95 }, Hf: { absorb: 0.5 }, In: { absorb: 0.4 }, Ag: { absorb: 0.3 },
+  };
+  for (const d of list) {
+    const nu = NUCLEAR[d.sp];
+    if (!nu || !d.el) continue;
+    if (nu.fissile) d.fissile = nu.fissile;
+    if (nu.spont) d.spont = nu.spont;
+    if (nu.absorb != null) d.absorb = nu.absorb;
+    if (nu.decayHeat && d.state !== 'gas') d.decayHeat = nu.decayHeat;
+    if (nu.emitter) d.fissile = null;
+    if (nu.note) d.desc = (d.desc ? d.desc + ' ' : '') + nu.note;
+  }
+  // 감속재: 가벼운 원자(수소, 탄소)가 많은 물질
+  for (const id of ['H2O:l', 'H2O:s', 'C:s', 'C25H52:s', 'C25H52:l']) list.find((d) => d.id === id).moderator = true;
+  list.find((d) => d.id === 'H2O:l').absorb = 0.01;
+
   // 불꽃. 불꽃 반응 색은 금속마다 다르다.
   const FLAME_COLORS = { Li: [230, 30, 60], Na: [255, 200, 30], K: [190, 130, 240], Rb: [200, 60, 170], Cs: [120, 110, 255], Ca: [255, 110, 40], Sr: [240, 25, 45], Ba: [150, 230, 80], Cu: [50, 220, 150], Mg: [255, 255, 245] };
   const mkFire = (id, name, rgb) => add({ id, name, formula: '연소 기체', state: 'gas', cat: id === 'fire' ? 'basic' : null, color: '#ff8a2a', density: 0.3, c: 1100, k: 0.08, T0: 1000, lifetime: 40, rise: 0.12, flame: rgb, inert: false, decay: [['smoke', 0.85], ['CO2', 0.15]], aliasOf: id === 'fire' ? null : 'fire', desc: '수명이 짧은 고온의 기체.' });
   mkFire('fire', '불꽃', [255, 130, 30]);
   for (const [el, rgb] of Object.entries(FLAME_COLORS)) mkFire('fire:' + el, SL.ELEMENTS.find((e) => e.sym === el).name + ' 불꽃', rgb);
+  // 핵폭발의 불덩이: 아주 뜨겁고 오래 남아 위로 솟으며 연기(버섯구름)가 된다.
+  add({ id: 'fireball', name: '불덩이(화구)', formula: '플라스마·고온 기체', state: 'gas', color: '#fff0c8', density: 0.1, c: 1100, k: 0.05, T0: 5000, lifetime: 260, rise: 0.4, flame: [255, 236, 190], decay: [['smoke', 0.8], ['fallout', 0.2]], aliasOf: 'fire', desc: '핵폭발로 생긴 수천 °C의 불덩이. 위로 솟아오르며 식어 연기와 방사성 낙진이 됩니다.' });
 
   // 비활성 기체는 반응하지 않는다.
   list.forEach((d) => { if (d.elCat === 'noble') d.inert = true; });
@@ -415,7 +472,7 @@
 
   SL.CATEGORIES = [
     ['element', '원소'], ['basic', '기본'], ['rock', '암석·광물'], ['alloy', '합금'], ['acid', '산'], ['base', '염기'], ['salt', '염·산화물'], ['solution', '용액'],
-    ['indicator', '지시약'], ['organic', '유기물'], ['gas', '기체'], ['chem', '기타 화학'], ['cryo', '극저온'], ['device', '장치'],
+    ['indicator', '지시약'], ['organic', '유기물'], ['gas', '기체'], ['chem', '기타 화학'], ['cryo', '극저온'], ['device', '장치'], ['nuclear', '핵·방사성'],
   ];
 
   SL.BALLS = {

@@ -8,6 +8,17 @@
   const EARTH_G = 9.81;
   const MAX_FALL = 8; // 칸/틱. 터널링 방지용 상한
 
+  // 핵분열 모형(개념 학습용 단순화). 실제 핵물리 값이 아니라 임계 질량·감속재·제어봉의 관계를 보여 주는 값이다.
+  // - 핵분열 한 번에 중성자 2~3개가 무작위 방향으로 직진한다(최대 NEUTRON_RANGE칸).
+  // - 감속재(물, 흑연, 파라핀)를 지나면 느린 중성자가 되어 핵분열 확률이 커지고, 감속재 안에서는 산란되어 방향이 바뀐다(반사체).
+  // - 흡수재(카드뮴, 붕소, 제어봉)는 중성자를 잡아 연쇄 반응을 멈춘다.
+  // - 빠른 중성자로만 이어지는 연쇄 반응이 순식간에 커지면 폭발하고, 감속재로 이어지는 연쇄(원자로)는 녹아내릴 뿐 핵폭발하지 않는다.
+  const NEUTRON_RANGE = 20;
+  const FISSION_HEAT = 500; // 핵분열 한 번에 오르는 칸의 온도(°C)
+  const FISSION_BURNUP = 0.03; // 핵분열 후 그 칸이 핵분열 생성물이 될 확률
+  const NUKE_T = 3000; // 빠른 연쇄 반응에서 이 온도를 넘으면 폭발
+  const MAX_FISSIONS = 3000; // 틱당 처리할 최대 핵분열 수
+
   // 물질 표를 엔진이 빠르게 읽을 수 있는 배열로 바꾼다.
   const compiled = new Map(); // 같은 표를 쓰는 세계는 컴파일 결과와 반응 캐시를 공유한다.
 
@@ -30,6 +41,8 @@
       heatCap: new Float32Array(n), k: new Float32Array(n), flow: new Uint8Array(n),
       fixed: new Uint8Array(n), lifetime: new Uint16Array(n), t0: new Float32Array(n), rise: new Float32Array(n), misc: new Uint8Array(n),
       up: [], down: [], decay: [], explicit: new Map(), cache: new Map(), reactive: new Uint8Array(n), base: new Uint16Array(n),
+      fast: new Float32Array(n), thermal: new Float32Array(n), spont: new Float32Array(n), emitter: new Uint8Array(n),
+      moder: new Uint8Array(n), absorb: new Float32Array(n), heat: new Float32Array(n), armor: new Uint8Array(n),
     };
     materials.forEach((d, i) => {
       c.state[i] = STATES[d.state];
@@ -40,6 +53,12 @@
       c.decay[i] = d.decay ? resolve(d.decay) : null;
       c.reactive[i] = d.inert ? 0 : 1;
       c.base[i] = d.aliasOf ? need(d.aliasOf) : i; // 색만 다른 불꽃은 불꽃과 같은 반응을 한다.
+      if (d.fissile) { c.fast[i] = d.fissile.fast; c.thermal[i] = d.fissile.thermal; }
+      c.spont[i] = d.spont || 0; c.emitter[i] = d.spont && !d.fissile ? 1 : 0;
+      c.moder[i] = d.moderator ? 1 : 0;
+      c.absorb[i] = d.absorb != null ? d.absorb : d.state === 'gas' ? 0 : 0.01;
+      c.heat[i] = d.decayHeat || 0; // 방사성 붕괴열 W/kg
+      c.armor[i] = d.fixed || d.armor ? 1 : 0; // 폭발에도 부서지지 않는 벽
     });
     const add = (a, b, entry) => {
       const key = a * n + b;
@@ -106,11 +125,15 @@
       this.openTop = true;
       this.discovered = new Set();
       this.events = [];
+      this.fq = []; // 다음 틱에 일어날 핵분열(칸 번호*2 + 느린 중성자 여부)
+      this.prompt = false; // 이번 세대가 빠른 중성자 연쇄인지
+      this.boomBudget = 40;
+      this.slowAvg = 0;
       this.reset();
     }
 
     reset() {
-      this.tick = 0; this.time = 0;
+      this.tick = 0; this.time = 0; this.fq = []; this.slowAvg = 0;
       this.bodies = []; this.selected = null; this.probe = null; this.nextBodyId = 1;
       for (let i = 0; i < this.mat.length; i++) this.setCell(i, this.AIR, this.ambient);
     }
@@ -198,8 +221,10 @@
     step() {
       this.tick++;
       this.time += this.dt;
+      this.boomBudget = 40;
       this.stepMotion();
       this.stepHeat();
+      this.stepNuclear();
       this.stepCells();
       this.stepBodies();
       this.record();
@@ -364,6 +389,11 @@
           const m = mat[i];
           if (d.fixed[m]) { T[i] = d.t0[m]; continue; }
           if (m === this.AIR) { T[i] += (this.ambient - T[i]) * 0.002; continue; } // 외부로의 열 손실
+          // 방사성 붕괴열. 열이 주로 공기로 빠져나가므로, 공기 쪽 열전도 가속 배율(최대 50)과 같은 배율을 써야 실제와 비슷한 평형 온도가 된다.
+          if (d.heat[m]) T[i] += d.heat[m] * this.dt * Math.min(this.heatBoost, 50) / d.cp[m];
+          if (d.spont[m] && Math.random() < d.spont[m]) { // 자발 핵분열·중성자원
+            if (d.emitter[m]) this.emitNeutrons(i, 2, false); else this.fq.push(i * 2);
+          }
           if (d.up[m] || d.down[m]) this.phase(i, m);
           if (d.lifetime[mat[i]] && mat[i] === m) {
             if (this.life[i] <= 1) {
@@ -432,8 +462,123 @@
         };
         apply(i, e.toSelf);
         apply(j, e.toOther);
+        if (r.explode && (r.explodeP == null || Math.random() < r.explodeP)) this.explode(j, r.explode, r.T != null ? Math.max(r.T, 1500) : 1500);
         if (!r.silent) this.note(r.id, () => ({ type: 'reaction', id: r.id, name: r.name, eq: SL.CHEM ? SL.CHEM.equation(r) : r.eq, kind: r.kind || 'chemical', note: r.note }));
         return;
+      }
+    }
+
+    // ---- 폭발 ----
+    // 중심 근처의 기체는 불꽃이 되고, 주변은 뜨거워지며, 가루·액체·기체는 바깥으로 밀려난다. 반지름 4 이상이면 고체도 부서진다.
+    explode(ci, r, T, fallout) {
+      if (this.boomBudget <= 0) return;
+      this.boomBudget -= r >= 4 ? 8 : 1;
+      const { w, h, mat } = this, d = this.data, Tm = this.T;
+      const cx = ci % w, cy = (ci / w) | 0, R = Math.ceil(r);
+      const fire = fallout && d.idOf.fireball != null ? d.idOf.fireball : d.idOf.fire, ash = d.idOf.fallout;
+      for (let y = Math.max(0, cy - R); y <= Math.min(h - 1, cy + R); y++) {
+        for (let x = Math.max(0, cx - R); x <= Math.min(w - 1, cx + R); x++) {
+          const dist = Math.hypot(x - cx, y - cy);
+          if (dist > r) continue;
+          const i = y * w + x, m = mat[i];
+          if (d.armor[m]) continue;
+          const f = 1 - dist / (r + 0.5), s = d.state[m];
+          const heat = this.ambient + (T - this.ambient) * f;
+          if (f > (fallout ? 0.3 : 0.45) && (s === GAS || r >= 4)) {
+            const to = fallout && ash != null && Math.random() < 0.2 ? ash : fire;
+            this.setCell(i, to, Math.max(heat, Tm[i]));
+          } else if (Tm[i] < heat) Tm[i] = heat;
+        }
+      }
+      // 바깥쪽부터 밀어내어 칸이 겹치지 않게 한다.
+      for (let ring = R; ring >= 1; ring--) {
+        for (let y = Math.max(0, cy - ring); y <= Math.min(h - 1, cy + ring); y++) {
+          for (let x = Math.max(0, cx - ring); x <= Math.min(w - 1, cx + ring); x++) {
+            const dist = Math.hypot(x - cx, y - cy);
+            if (dist > ring || dist <= ring - 1 || dist < 0.5) continue;
+            const i = y * w + x, s = d.state[mat[i]];
+            if (s === GAS || s === SOLID || this.anchor[i] || d.armor[mat[i]]) continue;
+            const ux = (x - cx) / dist, uy = (y - cy) / dist;
+            const reach = Math.max(1, Math.round((1 - dist / (r + 1)) * r * (fallout ? 3 : 1.5)));
+            let to = -1;
+            for (let k = 1; k <= reach; k++) {
+              const nx = Math.round(x + ux * k), ny = Math.round(y + uy * k);
+              if (!this.inside(nx, ny)) break;
+              const j = ny * w + nx;
+              if (d.state[mat[j]] !== GAS) break;
+              to = j;
+            }
+            if (to >= 0) this.swap(i, to);
+          }
+        }
+      }
+      const kick = 1.5 * r;
+      for (const b of this.bodies) {
+        const bx = b.x / this.dx - cx, by = b.y / this.dx - cy, dist = Math.hypot(bx, by);
+        if (dist > r * 3 || dist < 1e-6) continue;
+        const v = kick * (1 - dist / (r * 3)) * Math.min(1, 2000 / b.density);
+        b.vx += bx / dist * v; b.vy += by / dist * v;
+      }
+      this.note('explosion:' + (r >= 6 ? 'big' : 'small'), () => ({
+        type: 'reaction', id: 'explosion:' + (r >= 6 ? 'big' : 'small'), name: r >= 6 ? '큰 폭발' : '폭발', kind: 'physical',
+        eq: '빠른 반응 → 짧은 시간에 많은 열과 기체 → 충격파', note: '반응이 아주 빠르면 생긴 열과 기체가 빠져나갈 틈이 없어 주변을 밀어냅니다.',
+      }));
+    }
+
+    // ---- 핵분열 ----
+    stepNuclear() {
+      if (!this.fq.length) return;
+      const list = this.fq;
+      this.fq = [];
+      const n = Math.min(list.length, MAX_FISSIONS);
+      if (list.length > 30) this.note('chain', () => ({ type: 'reaction', id: 'chain', name: '핵분열 연쇄 반응', kind: 'nuclear', eq: '중성자 1개 → 핵분열 → 중성자 2~3개 → …', note: '핵분열에서 나온 중성자가 다른 원자핵을 쪼개면 반응이 기하급수적으로 늘어납니다. 덩어리가 작으면 중성자가 밖으로 빠져나가 이어지지 않습니다(임계 질량).' }));
+      // 이번 세대가 거의 빠른 중성자로만 이어질 때만 폭발할 수 있다. 감속된 연쇄 반응은 세대가 느려서 폭발 전에 녹거나 물이 끓어 멈춘다.
+      let slow = 0;
+      for (let k = 0; k < n; k++) slow += list[k] & 1;
+      this.slowAvg = 0.8 * this.slowAvg + 0.2 * (slow / n); // 느린 중성자 비율의 이동 평균
+      this.prompt = n >= 40 && this.slowAvg < 0.05;
+      this.genSize = n;
+      for (let k = 0; k < n; k++) this.fission(list[k] >> 1, (list[k] & 1) === 1);
+    }
+
+    fission(i, thermal) {
+      const d = this.data, m = this.mat[i];
+      if (!d.fast[m] && !d.thermal[m]) return; // 이미 다른 물질이 되었다.
+      this.note('fission', () => ({ type: 'reaction', id: 'fission', name: '핵분열', kind: 'nuclear', eq: '²³⁵U + n → 핵분열 생성물 + 2~3n + 에너지', note: '무거운 원자핵이 중성자를 흡수해 둘로 쪼개지며 화학 반응보다 수백만 배 많은 에너지를 냅니다.' }));
+      this.T[i] += FISSION_HEAT;
+      if (Math.random() < FISSION_BURNUP && d.idOf.fallout != null) this.setCell(i, d.idOf.fallout, this.T[i]);
+      this.emitNeutrons(i, Math.random() < 0.5 ? 2 : 3, thermal);
+      if (!thermal && this.prompt && this.T[i] > NUKE_T) {
+        this.note('nuke', () => ({ type: 'reaction', id: 'nuke', name: '핵폭발', kind: 'nuclear', eq: '빠른 중성자 연쇄 반응 → 순식간에 막대한 에너지', note: '임계 질량을 넘은 핵분열 물질에서 빠른 중성자로 연쇄 반응이 폭주하면 폭발합니다. 폭발로 덩어리가 흩어지면 연쇄 반응은 멈추고 방사성 낙진이 남습니다.' }));
+        this.explode(i, Math.min(24, 8 + this.genSize / 30), 6000, true); // 한 세대의 핵분열이 많을수록 폭발이 크다.
+      } else if (thermal && this.T[i] > 1100) {
+        this.note('meltdown', () => ({ type: 'reaction', id: 'meltdown', name: '노심 용융', kind: 'nuclear', eq: '감속된 연쇄 반응의 열 > 냉각', note: '감속재로 이어지는 연쇄 반응은 핵폭탄처럼 터지지 않지만, 열을 식히지 못하면 연료가 녹아내립니다. 물이 끓어 수증기가 되면 감속이 줄어 반응이 약해집니다.' }));
+      }
+    }
+
+    emitNeutrons(i, count, thermal0) {
+      const { w, h, mat } = this, d = this.data;
+      const x0 = i % w, y0 = (i / w) | 0;
+      for (let c = 0; c < count; c++) {
+        let a = Math.random() * Math.PI * 2, ux = Math.cos(a), uy = Math.sin(a);
+        let x = x0 + 0.5, y = y0 + 0.5, thermal = thermal0 && d.moder[mat[i]] === 1, last = i;
+        for (let step = 0; step < NEUTRON_RANGE; step++) {
+          x += ux; y += uy;
+          const cx = x | 0, cy = y | 0;
+          if (cx < 0 || cy < 0 || cx >= w || cy >= h) break;
+          const j = cy * w + cx;
+          if (j === last) continue;
+          last = j;
+          const m = mat[j];
+          if (Math.random() < d.absorb[m]) break; // 흡수
+          if (d.moder[m]) {
+            thermal = true;
+            if (Math.random() < 0.2) { a = Math.random() * Math.PI * 2; ux = Math.cos(a); uy = Math.sin(a); } // 산란
+            continue;
+          }
+          const p = thermal ? d.thermal[m] : d.fast[m];
+          if (p && Math.random() < p) { this.fq.push(j * 2 + (thermal ? 1 : 0)); break; }
+        }
       }
     }
 

@@ -153,6 +153,18 @@ const SHOULD = [
   ['아이오딘+KI 용액', 'I', 'A:KI', null, 'iodine_ki'], ['녹말+아이오딘 용액', 'starch', 'A:KI3', null, 'starch_iodine'], ['싸이오황산나트륨+염산', 'A:Na2S2O3', 'hcl', 60, 'thio_acid'], ['싸이오황산나트륨+아이오딘', 'A:Na2S2O3', 'A:KI3', null, 'thio_iodine'],
   ['베네딕트+포도당(가열)', 'benedict', 'A:glucose', 80, 'benedict'], ['은거울', 'A:Ag(NH3)2Cl', 'A:glucose', 60, 'tollens'], ['과망가니즈산칼륨+에탄올', 'A:KMnO4', 'C2H5OH', null, 'kmno4_ethanol'], ['진한 황산+나무', 'wood', 'H2SO4', null, 'h2so4_wood'],
   ['나트륨+에탄올', 'Na', 'C2H5OH', null, 'na_ethanol'], ['안티모니 가열', 'Sb', 'air', 600, 'ox:Sb'], ['아세톤 증발', 'C3H6O', 'air', null, 'evap:C3H6O'], ['브로민 증발', 'Br', 'air', null, 'evap:Br'],
+  // 더 많은 조합
+  ['나트륨+수증기', 'Na', 'steam', null, 'water:Na'], ['나트륨+얼음', 'Na', 'ice', null, 'water:Na'], ['불붙은 나트륨+이산화탄소', 'Na', 'co2', 400, 'co2:Na'], ['마그네슘+드라이아이스(가열)', 'Mg', 'CO2:s', 700, 'co2:Mg'],
+  ['마그네슘+질소(고온)', 'Mg', 'nitrogen', 800, 'nitride:Mg'], ['리튬+질소', 'Li', 'nitrogen', null, 'nitride:Li'], ['마그네슘+모래(고온)', 'Mg', 'sand', 900, 'silicon:Mg'], ['철+수증기(고온)', 'Fe', 'steam', 600, 'steam:Fe'], ['쇳물+물', 'Fe:l', 'water', null, 'steamblast:Fe'],
+  ['소금+진한 황산', 'salt', 'H2SO4', null, 'h2so4-salt:NaCl'], ['형석+진한 황산', 'S:CaF2', 'H2SO4', 80, 'h2so4-salt:CaF2'], ['KI+진한 황산', 'S:KI', 'H2SO4', null, 'h2so4-salt:KI'], ['질산칼륨+진한 황산', 'S:KNO3', 'H2SO4', 100, 'h2so4-salt:KNO3'],
+  ['숯+진한 황산(가열)', 'C', 'H2SO4', 150, 'oxacid:C:S'], ['황+진한 질산', 'S', 'HNO3', 75, 'oxacid:S:N'], ['얼음+소금물', 'ice', 'brine', -5, 'ice-melt:liquid'], ['얼음+진한 황산', 'ice', 'H2SO4', null, 'ice-melt:H2SO4'], ['황화수소+황산구리', 'H2S', 'A:CuSO4', null, 'h2s-ion:CuSO4'],
+  ['질산암모늄 가열', 'S:NH4NO3', 'air', 250, 'an_decomp'], ['아산화질소+불씨', 'ember', 'N2O', null, 'n2o_ember'], ['질화마그네슘+물', 'S:Mg3N2', 'water', null, 'nitride_water'], ['숯+자철석(고온)', 'C', 'S:Fe3O4', 900, 'smelt:Fe3O4'],
+  ['수소+녹은 황', 'hydrogen', 'S:l', 350, 'h2_s'], ['염소+염화철(II)', 'Cl', 'A:FeCl2', null, 'cl2_fe2'], ['과망가니즈산칼륨+염산', 'S:KMnO4', 'hcl', null, 'kmno4_hcl'], ['이산화망가니즈+염산(가열)', 'S:MnO2', 'hcl', 80, 'mno2_hcl'],
+  ['구리+염화철(III)(에칭)', 'Cu', 'A:FeCl3', null, 'cu_fecl3'], ['금+수은', 'Au', 'Hg', null, 'au_hg'], ['아말감 가열', 'amalgam', 'air', 400, 'amalgam_heat'], ['산화은+암모니아수', 'S:Ag2O', 'NH4OH:aq', null, 'ag2o_nh3'],
+  ['브로민+물', 'Br', 'water', null, 'br_water'], ['브로민수+에틸렌', 'brominewater', 'C2H4', null, 'br_alkene'], ['과망가니즈산칼륨+에틸렌', 'A:KMnO4', 'C2H4', null, 'kmno4_alkene'], ['에탄올+진한 황산(170°C)', 'C2H5OH', 'H2SO4', 180, 'ethylene_make'],
+  ['산화구리+에탄올(가열)', 'S:CuO', 'C2H5OH', 300, 'cuo_ethanol'], ['아이오딘+에탄올', 'I', 'C2H5OH', null, 'tincture'], ['녹말+아이오딘 팅크', 'starch', 'tincture', null, 'starch_iodine'], ['기름+비누', 'oil', 'soap', null, 'emulsify'],
+  ['굳은 기름+NaOH', 'fat', 'naoh', 50, 'soap'], ['흰자+진한 질산', 'eggwhite', 'HNO3', null, 'xanthoprotein'], ['흰자+염산', 'eggwhite', 'hcl', null, 'denature'], ['흰자+에탄올', 'eggwhite', 'C2H5OH', null, 'denature'], ['생간+과산화수소', 'H2O2', 'liver', null, 'catalase'],
+  ['플루토늄 가열', 'Pu', 'air', 400, 'ox:Pu'], ['녹은 철+수증기 없음 확인용: 생석회+수증기', 'quicklime', 'steam', null, 'oxide-water:CaO'],
 ];
 test(`반응이 일어나야 하는 ${SHOULD.length}쌍`, () => {
   const fails = [];
@@ -175,6 +187,8 @@ const SHOULD_NOT = [
   ['마그네슘+이산화탄소 저온', 'Mg', 'co2'], ['숯+수증기 저온', 'C', 'steam'], ['뜨겁지 않은 기름+물', 'oil', 'water'],
   ['수소+공기 (불씨·촉매 없음)', 'hydrogen', 'air'], ['소금+소금물 (포화)', 'salt', 'brine'], ['백금+염산', 'Pt', 'hcl'], ['베네딕트+포도당 (데우지 않음)', 'benedict', 'A:glucose'], ['녹말+물', 'starch', 'water'],
   ['물+공기 (물은 증발 없음)', 'water', 'air'], ['사염화탄소+물', 'CCl4', 'water'],
+  ['브로민수+메테인 (포화 탄화수소)', 'brominewater', 'CH4'], ['과망가니즈산칼륨+에테인', 'A:KMnO4', 'C2H6'], ['익은 간+과산화수소 (효소 변성)', 'liver:cooked', 'H2O2'], ['흰자+물', 'eggwhite', 'water'], ['구리+염화철(II)', 'Cu', 'A:FeCl2'],
+  ['천연 우라늄+물', 'U', 'water'], ['농축 우라늄+공기 (화학 반응 없음)', 'HEU', 'nitrogen'],
 ];
 test(`반응이 일어나지 않아야 하는 ${SHOULD_NOT.length}쌍`, () => {
   const bad = [];
@@ -283,6 +297,44 @@ test('반응이 거의 없던 드문 화합물을 정리함', () => {
   for (const id of ['S:LaCl3', 'A:Nd(NO3)3', 'S:TlCl', 'S:BiCl3', 'S:ZrCl4', 'S:CuI2', 'S:FeI3', 'S:Fe2S3', 'S:BeSO4']) assert(!ids.has(id), id + ' 남아 있음');
   for (const id of ['S:La2O3', 'S:La(OH)3', 'S:Sb2O3', 'S:ZrO2', 'S:TiCl4', 'S:AuCl3']) assert(ids.has(id), id + ' 없음');
   return `물질 전체 ${ids.size}종`;
+});
+test('핵분열: 임계 질량, 감속재, 제어봉', () => {
+  const trial = (mat, r, env) => {
+    const w = fresh(); w.rect('stone', 0, 146, 239, 149);
+    if (env === 'water') w.rect('water', 60, 90, 180, 145);
+    w.forDisc(120, 120, r, (i) => w.setCell(i, w.data.idOf[mat], 20));
+    if (env === 'rods') for (let x = 120 - r; x <= 120 + r; x += 3) w.rect('controlrod', x, 120 - r, x, 145);
+    run(w, 10);
+    return w.discovered;
+  };
+  const out = [];
+  const big = trial('HEU', 14); assert(big.has('chain') && big.has('nuke'), '임계 질량을 넘은 농축 우라늄이 폭발하지 않음'); out.push('농축 우라늄 큰 덩어리 폭발');
+  const pu = trial('Pu', 9); assert(pu.has('nuke'), '플루토늄이 더 작은 덩어리로 폭발하지 않음'); out.push('플루토늄은 더 작은 덩어리로 폭발');
+  const small = trial('HEU', 6); assert(!small.has('nuke') && !small.has('chain'), '작은 덩어리가 연쇄 반응함'); out.push('작은 덩어리는 안전');
+  const nat = trial('U', 16); assert(!nat.has('chain') && !nat.has('nuke'), '천연 우라늄이 연쇄 반응함'); out.push('천연 우라늄은 반응 없음');
+  const wat = trial('HEU', 9, 'water'); assert(!wat.has('nuke') && (wat.has('meltdown') || wat.has('chain')), `물속: ${[...wat].join()}`); out.push('물속에서는 녹을 뿐 폭발하지 않음');
+  const rods = trial('HEU', 14, 'rods'); assert(!rods.has('nuke') && !rods.has('chain'), '제어봉이 연쇄 반응을 막지 못함'); out.push('제어봉이 막음');
+  return out.join(', ');
+});
+test('방사성 붕괴열: 폴로늄은 스스로 달아오르고 우라늄은 그대로', () => {
+  const w = fresh(); w.rect('Po', 50, 100, 60, 110); w.rect('U', 150, 100, 160, 110);
+  run(w, 3);
+  const po = w.T[w.index(55, 105)], u = w.T[w.index(155, 105)];
+  assert(po > 250 && u < 25, `폴로늄 ${po.toFixed(0)}°C, 우라늄 ${u.toFixed(1)}°C`);
+  return `3초 뒤 폴로늄 ${po.toFixed(0)}°C, 우라늄 ${u.toFixed(1)}°C`;
+});
+test('폭발: 세슘+물, 산수소, 쇳물+물이 터지고 주변을 밀어냄', () => {
+  const boom = (setup, seconds) => { const w = fresh(); w.rect('stone', 0, 146, 239, 149); setup(w); run(w, seconds); return w; };
+  const cs = boom((w) => { w.rect('water', 60, 120, 180, 145); w.rect('Cs', 110, 100, 130, 110); }, 5);
+  assert(cs.discovered.has('explosion:small') && cs.discovered.has('water:Cs'), [...cs.discovered].join());
+  const hx = boom((w) => { for (let y = 60; y < 140; y++) for (let x = 60; x < 180; x++) w.rect((x + y) % 3 ? 'hydrogen' : 'oxygen', x, y, x, y); w.rect('fire', 115, 135, 125, 140); }, 3);
+  assert(hx.discovered.has('explosion:small'), '산수소 폭발 없음');
+  const fe = boom((w) => { w.rect('water', 60, 130, 180, 145); w.rect('Fe:l', 110, 110, 130, 125, 1600); }, 5);
+  assert(fe.discovered.has('steamblast:Fe'), '쇳물+물 반응 없음');
+  // 폭발은 공을 밀어낸다.
+  const w = fresh(); const b = w.addBody({ type: 'rubber', x: 1.3, y: 1.0, r: 0.04 }); w.explode(w.index(120, 100), 6, 3000);
+  assert(b.vx > 0.5, `공 속도 ${b.vx}`);
+  return '일치';
 });
 test('공기 중 액체 질소는 끓어 기체가 됨', () => {
   const w = fresh(); w.rect('N:l', 100, 60, 130, 70);
