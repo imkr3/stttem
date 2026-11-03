@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>엔진 검증</title>
+<style>
+  body { font: 15px/1.6 system-ui, "Malgun Gothic", sans-serif; background: #fff; color: #111; margin: 20px; }
+  .pass { color: #06603a; } .fail { color: #b00020; font-weight: 700; }
+</style>
+</head>
+<body>
+<h1>엔진 검증</h1>
+<div id="out">실행 중...</div>
+<script src="../src/elements.js"></script>
+<script src="../src/materials.js"></script>
+<script src="../src/reactions.js"></script>
+<script src="../src/engine.js"></script>
+<script src="../src/scenes.js"></script>
+<script>
+const results = [];
+const test = (name, fn) => {
+  try { const detail = fn(); results.push({ name, ok: true, detail }); }
+  catch (e) { results.push({ name, ok: false, detail: e.message }); }
+};
+const assert = (c, msg) => { if (!c) throw new Error(msg); };
+const run = (w, seconds) => { for (let i = 0, n = seconds * 60; i < n; i++) w.step(); };
+const count = (w, id) => { const k = w.data.idOf[id]; return w.mat.reduce((s, m) => s + (m === k ? 1 : 0), 0); };
+const fresh = () => new SandLab.World();
+const scene = (w, id) => SandLab.SCENES.find((s) => s.id === id).setup(w);
+
+// 두 물질을 맞붙여 놓고, 일어난 반응과 생긴 물질을 돌려준다.
+function mix(a, b, T, ticks, want) {
+  const w = new SandLab.World({ width: 40, height: 20 });
+  w.rect(a, 0, 0, 19, 19, T);
+  w.rect(b, 20, 0, 39, 19, T);
+  for (let i = 0; i < (ticks || 800) && !w.discovered.has(want); i++) w.stepCells();
+  const events = w.drainEvents();
+  return { w, ids: events.map((e) => e.id), eq: events.map((e) => e.eq).join(' / '), names: events.map((e) => e.name) };
+}
+
+// ---- 화학 데이터 ----
+test('원소 118종이 모두 있고 주기율표 칸이 겹치지 않음', () => {
+  assert(SandLab.ELEMENTS.length === 118, `원소 ${SandLab.ELEMENTS.length}종`);
+  const seen = new Set();
+  for (const e of SandLab.ELEMENTS) {
+    const key = SandLab.elementCell(e.z).join();
+    assert(!seen.has(key), `${e.sym} 자리 겹침 ${key}`);
+    seen.add(key);
+  }
+  return `물질 전체 ${SandLab.MATERIALS.length}종`;
+});
+
+test('화학식 생성이 원자가와 일치', () => {
+  const need = ['S:NaCl', 'S:CaCl2', 'S:Al2O3', 'S:Fe2O3', 'S:Fe(OH)3', 'S:Ca3(PO4)2', 'S:Al2(SO4)3', 'S:(NH4)2SO4', 'S:Pb(NO3)2', 'S:AgNO3', 'S:KMnO4', 'S:Ca(CH3COO)2', 'S:MnO2', 'S:V2O5', 'S:WO3'];
+  const w = fresh();
+  for (const id of need) assert(w.data.idOf[id] != null, `${id} 없음`);
+  return `${need.length}종 확인`;
+});
+
+test('모든 반응 대상과 생성물이 실제 물질임', () => {
+  const w = fresh();
+  for (const r of SandLab.REACTIONS) for (const id of [r.a, r.b]) assert(w.data.idOf[id] != null, id);
+  return `${SandLab.REACTIONS.length}개 표 규칙`;
+});
+
+test('일반 규칙이 모든 물질 쌍에서 오류 없이 실행되고 생성물이 실제로 있음', () => {
+  const w = fresh(), defs = w.data.defs, res = w.data.resolve;
+  let pairs = 0, rules = 0;
+  const check = (to) => { if (to != null) res(to); };
+  for (const A of defs) for (const B of defs) {
+    pairs++;
+    for (const r of SandLab.CHEM.rulesFor(A, B)) { rules++; check(r.toA); check(r.toB); }
+  }
+  return `${pairs.toLocaleString()}쌍에서 반응 ${rules.toLocaleString()}개`;
+});
+
+test('화학식 균형', () => {
+  const b = (r, p) => SandLab.CHEM.balance(r, p).join(' ');
+  const cases = [
+    [['Na', 'H2O'], ['NaOH', 'H2'], '2 2 2 1'],
+    [['Fe', 'O2'], ['Fe2O3'], '4 3 2'],
+    [['Cu', 'HNO3'], ['Cu(NO3)2', 'NO2', 'H2O'], '1 4 1 2 2'],
+    [['Al', 'HCl'], ['AlCl3', 'H2'], '2 6 2 3'],
+    [['C3H8', 'O2'], ['CO2', 'H2O'], '1 5 3 4'],
+    [['CaCO3', 'HCl'], ['CaCl2', 'CO2', 'H2O'], '1 2 1 1 1'],
+    [['Al', 'Fe2O3'], ['Al2O3', 'Fe'], '2 1 1 2'],
+    [['C57H104O6', 'O2'], ['CO2', 'H2O'], '1 80 57 52'],
+  ];
+  for (const [r, p, want] of cases) assert(b(r, p) === want, `${r}→${p}: ${b(r, p)}`);
+  return `${cases.length}개 일치`;
+});
+
+test('실제로 나타나는 모든 화학 반응식의 원자 수가 맞음', () => {
+  const w = fresh(), defs = w.data.defs;
+  let total = 0; const bad = new Set();
+  for (const A of defs) for (const B of defs) for (const r of SandLab.CHEM.rulesFor(A, B)) {
+    if (r.eq || !r.reactants || !r.reactants.length || r.silent) continue;
+    total++;
+    if (!SandLab.CHEM.balance(r.reactants, r.products)) bad.add(r.reactants.join('+') + '→' + r.products.join('+'));
+  }
+  const sample = [...bad].slice(0, 8).join(' | ');
+  assert(bad.size / total < 0.03, `균형 실패 ${bad.size}/${total}: ${sample}`);
+  return `${total.toLocaleString()}개 중 실패 ${bad.size}개${bad.size ? ': ' + sample : ''}`;
+});
+
+// ---- 반응이 일어나야 하는 경우 ----
+const SHOULD = [
+  ['나트륨+물', 'Na', 'water', null, 'water:Na'], ['칼륨+물', 'K', 'water', null, 'water:K'], ['칼슘+물', 'Ca', 'water', null, 'water:Ca'],
+  ['아연+염산', 'Zn', 'hcl', null, 'acid:Zn:Cl'], ['철+묽은 황산', 'Fe', 'H2SO4aq', null, 'acid:Fe:SO4'], ['마그네슘+식초', 'Mg', 'CH3COOHaq', null, 'acid:Mg:CH3COO'],
+  ['구리+진한 질산', 'Cu', 'HNO3', null, 'hno3:Cu:NO2'], ['은+묽은 질산', 'Ag', 'HNO3aq', null, 'hno3:Ag:NO'], ['구리+진한 황산(고온)', 'Cu', 'H2SO4', 150, 'h2so4c:Cu'],
+  ['금+왕수', 'Au', 'aquaregia', null, 'au_aqua'], ['철+황산구리', 'Fe', 'A:CuSO4', null, 'displace:Fe:Cu2:SO4'], ['구리+질산은', 'Cu', 'A:AgNO3', null, 'displace:Cu:Ag:NO3'], ['아연+황산구리', 'Zn', 'A:CuSO4', null, 'displace:Zn:Cu2:SO4'],
+  ['나트륨+염소', 'Na', 'Cl', null, 'hal:Na:Cl'], ['철+황(고온)', 'Fe', 'S', 300, 'sulfide:Fe'],
+  ['염산+NaOH', 'hcl', 'naoh', null, 'neutral:HCl:NaOH'], ['염산+탄산칼슘', 'hcl', 'limestone', null, 'carbonate:HCl:CaCO3'], ['식초+베이킹소다', 'CH3COOHaq', 'S:NaHCO3', null, 'carbonate:CH3COOH:NaHCO3'], ['염산+산화구리', 'hcl', 'S:CuO', null, 'oxide-acid:HCl:CuO'], ['염산+황화철', 'hcl', 'S:FeS', null, 'sulfide-acid:HCl:FeS'],
+  ['질산은+소금물', 'A:AgNO3', 'brine', null, 'precip:AgNO3:NaCl'], ['질산납+KI', 'A:Pb(NO3)2', 'A:KI', null, 'precip:KI:Pb(NO3)2'], ['황산구리+NaOH', 'A:CuSO4', 'naoh', null, 'precip:CuSO4:NaOH'], ['염화바륨+황산나트륨', 'A:BaCl2', 'A:Na2SO4', null, 'precip:BaCl2:Na2SO4'],
+  ['생석회+물', 'quicklime', 'water', null, 'oxide-water:CaO'], ['이산화황+물', 'SO2', 'water', null, 'oxide-acid-water:SO2'], ['CO2+석회수', 'CO2', 'A:Ca(OH)2', null, 'co2-base:Ca(OH)2'],
+  ['염소+브로민화칼륨', 'Cl', 'A:KBr', null, 'halogen:Cl:KBr'], ['석회암 열분해', 'limestone', 'air', 900, 'decomp:CaCO3'], ['산화수은 열분해', 'S:HgO', 'air', 550, 'decomp:HgO'],
+  ['숯+산화구리', 'C', 'S:CuO', 600, 'smelt:CuO'], ['숯+녹', 'C', 'rust', 900, 'smelt:Fe2O3'], ['수소+산화구리', 'H', 'S:CuO', 350, 'h2-reduce:CuO'], ['테르밋', 'Al', 'rust', 1000, 'thermite:Al:Fe2O3'],
+  ['메테인 연소', 'CH4', 'air', 600, 'burn:CH4'], ['에탄올 연소', 'C2H5OH', 'air', 400, 'burn:C2H5OH'], ['황 연소', 'S', 'air', 250, 's_burn'], ['마그네슘 연소', 'Mg', 'air', 500, 'ox:Mg'],
+  ['과산화수소+MnO2', 'H2O2', 'S:MnO2', null, 'h2o2_mno2'], ['암모니아+염화수소', 'NH3', 'HClg', null, 'nh3_hcl'], ['설탕+진한 황산', 'sugar', 'H2SO4', null, 'sugar_h2so4'], ['페놀프탈레인+염기', 'phth', 'naoh', null, 'indicator:phth:base'], ['불꽃 반응', 'S:CuCl2', 'fire', null, 'flame:Cu'],
+];
+test(`반응이 일어나야 하는 ${SHOULD.length}쌍`, () => {
+  const fails = [];
+  const samples = [];
+  for (const [name, a, b, T, want] of SHOULD) {
+    const r = mix(a, b, T, 3000, want);
+    if (!r.ids.includes(want)) fails.push(`${name}: ${r.ids.join()||'반응 없음'}`);
+    else samples.push(r.eq);
+  }
+  assert(!fails.length, fails.join(' ; '));
+  return samples.slice(0, 6).join(' , ');
+});
+
+// ---- 반응이 일어나지 않아야 하는 경우 ----
+const SHOULD_NOT = [
+  ['구리+염산 (수소보다 약함)', 'Cu', 'hcl'], ['은+염산', 'Ag', 'hcl'], ['금+진한 질산', 'Au', 'HNO3'], ['금+물', 'Au', 'water'], ['백금+염산', 'Pt', 'hcl'], ['헬륨+나트륨', 'He', 'Na'], ['아르곤+마그네슘', 'Ar', 'Mg'],
+  ['구리+황산철 (철이 더 활발)', 'Cu', 'A:FeSO4'], ['철+염화아연', 'Fe', 'A:ZnCl2'], ['질산칼륨+소금물 (앙금 없음)', 'A:KNO3', 'brine'], ['황산바륨+물 (불용성)', 'S:BaSO4', 'water'], ['염화은+물', 'S:AgCl', 'water'], ['기름+물', 'oil', 'water'], ['브로민+염화칼륨 (염소가 더 강함)', 'Br', 'A:KCl'], ['철+차가운 물(산소 차단)', 'iron', 'water'],
+  ['석회암 저온', 'limestone', 'air'], ['메테인 저온', 'CH4', 'air'], ['마그네슘 저온', 'Mg', 'air'],
+];
+test(`반응이 일어나지 않아야 하는 ${SHOULD_NOT.length}쌍`, () => {
+  const bad = [];
+  for (const [name, a, b] of SHOULD_NOT) {
+    const w = new SandLab.World({ width: 40, height: 20 });
+    // 공기가 끼면 다른 반응이 일어날 수 있으므로 두 물질만 채운다.
+    w.rect(a, 0, 0, 19, 19); w.rect(b, 20, 0, 39, 19);
+    for (let i = 0; i < 1500; i++) w.stepCells();
+    const ev = w.drainEvents().filter((e) => e.type === 'reaction');
+    if (ev.length) bad.push(`${name}: ${ev.map((e) => e.id).join()}`);
+  }
+  assert(!bad.length, bad.join(' ; '));
+  return '모두 반응 없음';
+});
+
+// ---- 상태 변화 ----
+const heatTo = (id, T, ticks) => {
+  const w = fresh(); w.rect(id, 100, 50, 110, 60, T);
+  const i = w.index(105, 55);
+  for (let n = 0; n < (ticks || 3000); n++) { w.T[i] = T; w.phase(i, w.mat[i]); }
+  return w.data.defs[w.mat[i]].id;
+};
+test('녹는점과 끓는점: 위에서는 변하고 아래에서는 안 변함', () => {
+  const cases = [['Fe', 1538, 'Fe:l'], ['Cu', 1085, 'Cu:l'], ['Al', 660.3, 'Al:l'], ['Pb', 327.5, 'Pb:l'], ['Ga', 29.8, 'Ga:l'], ['W', 3422, 'W:l'], ['S', 115.2, 'S:l'], ['H2O:s', 0, 'H2O:l'], ['S:NaCl', 801, 'M:NaCl'], ['stone', 1215, 'lava'], ['sand', 1713, 'moltenglass']];
+  for (const [id, at, to] of cases) {
+    const start = fresh().data.defs[fresh().data.idOf[id]].id;
+    assert(heatTo(id, at - 5) === start, `${id}: ${at - 5}°C에서 변함`);
+    assert(heatTo(id, at + 50) === to, `${id}: ${at + 50}°C에서 ${heatTo(id, at + 50)}`);
+  }
+  const boil = [['water', 100, 'H2O:g'], ['Hg', 356.7, 'Hg:g'], ['Br', 58.8, 'Br:g'], ['C2H5OH', 78.4, 'C2H5OH:g'], ['Fe:l', 2862, 'Fe:g']];
+  for (const [id, at, to] of boil) assert(heatTo(id, at + 100, 20000) === to, `${id}: ${heatTo(id, at + 100, 20000)}`);
+  assert(heatTo('CO2:s', -60) === 'CO2:g', '드라이아이스 승화');
+  assert(heatTo('C', 3700) === 'C:g', '탄소 승화');
+  return `${cases.length + boil.length + 2}개 일치`;
+});
+test('20°C 상태: 수은과 브로민은 액체, 산소는 기체, 철은 고체', () => {
+  const idOf = fresh().data.idOf;
+  const want = { Hg: 'Hg:l', Br: 'Br:l', O: 'O:g', Cl: 'Cl:g', Fe: 'Fe:s', Ga: 'Ga:s', He: 'He:g' };
+  for (const k in want) assert(idOf[k] === idOf[want[k]], k);
+  return '일치';
+});
+test('공기 중 액체 질소는 끓어 기체가 됨', () => {
+  const w = fresh(); w.rect('N:l', 100, 60, 130, 70);
+  run(w, 30);
+  assert(count(w, 'N:g') > 0, '기체 없음');
+  return `기체 ${count(w, 'N:g')}칸, 액체 ${count(w, 'N:l')}칸`;
+});
+test('용광로: 납 → 알루미늄 → 구리 → 철 순서로 녹음', () => {
+  const w = fresh(); scene(w, 'furnace');
+  const when = {};
+  for (let i = 0; i < 180 * 60 && when.Fe == null; i++) {
+    w.step();
+    if (i % 10 === 0) for (const el of ['Pb', 'Al', 'Cu', 'Fe']) if (when[el] == null && count(w, el + ':l') > 10) when[el] = i / 60;
+  }
+  assert(when.Pb < when.Al && when.Al < when.Cu && when.Cu < when.Fe, JSON.stringify(when));
+  assert(when.Al - when.Pb > 1 && when.Fe - when.Cu > 1, JSON.stringify(when));
+  return `납 ${when.Pb.toFixed(1)}초, 알루미늄 ${when.Al.toFixed(1)}초, 구리 ${when.Cu.toFixed(1)}초, 철 ${when.Fe.toFixed(1)}초`;
+});
+test('굳은 쇳물은 그 자리에 고정됨', () => {
+  const w = fresh(); w.rect('stone', 0, 146, 239, 149); w.rect('Fe:l', 100, 120, 120, 145, 1545);
+  run(w, 20);
+  const iron = w.data.idOf.Fe; let solid = 0, fixed = 0;
+  for (let i = 0; i < w.mat.length; i++) if (w.mat[i] === iron) { solid++; if (w.anchor[i]) fixed++; }
+  assert(solid > 0 && fixed === solid, `${fixed}/${solid}`);
+  return `${solid}칸 고정`;
+});
+
+// ---- 실험 전체 ----
+test('모든 실험이 오류 없이 5초 동안 실행됨', () => {
+  for (const s of SandLab.SCENES) { const w = fresh(); s.setup(w); run(w, 5); }
+  return `${SandLab.SCENES.length}개`;
+});
+const sceneTest = (name, id, seconds, check) => test(name, () => {
+  const w = fresh(); scene(w, id); run(w, seconds); w.drainEvents; return check(w);
+});
+sceneTest('금속과 염산: 활발한 금속이 먼저 줄고 구리는 그대로', 'series', 15, (w) => {
+  const left = ['Mg', 'Zn', 'Fe', 'Cu'].map((e) => count(w, e));
+  assert(left[0] <= left[1] && left[1] <= left[2] && left[2] <= left[3], left.join());
+  assert(w.discovered.has('acid:Mg:Cl') && !w.discovered.has('acid:Cu:Cl'), [...w.discovered].join());
+  return `남은 칸 Mg ${left[0]}, Zn ${left[1]}, Fe ${left[2]}, Cu ${left[3]}`;
+});
+sceneTest('은 석출: 구리 막대에서 은이 생김', 'displace', 15, (w) => {
+  assert(count(w, 'Ag') > 0, '은 없음');
+  assert(count(w, 'A:Cu(NO3)2') > 0, '질산구리 없음');
+  return `은 ${count(w, 'Ag')}칸, 질산구리 ${count(w, 'A:Cu(NO3)2')}칸`;
+});
+sceneTest('앙금: 네 가지 앙금이 모두 생김', 'precip', 10, (w) => {
+  const c = ['S:PbI2', 'S:Cu(OH)2', 'S:AgCl', 'S:Fe(OH)3'].map((id) => count(w, id));
+  assert(c.every((n) => n > 0), c.join());
+  return c.join(', ') + ' 칸';
+});
+sceneTest('테르밋: 쇳물 또는 철이 나옴', 'thermite', 20, (w) => {
+  const iron = count(w, 'Fe') + count(w, 'Fe:l');
+  assert(iron > 0, `철 없음, 발견: ${[...w.discovered].join()}`);
+  return `철 ${iron}칸, 산화알루미늄 ${count(w, 'S:Al2O3')}칸`;
+});
+sceneTest('제련: 산화철에서 철이 나옴', 'smelt', 40, (w) => {
+  const iron = count(w, 'Fe') + count(w, 'Fe:l');
+  assert(iron > 0, `철 없음, 발견: ${[...w.discovered].join()}`);
+  return `철 ${iron}칸`;
+});
+sceneTest('석회수: 이산화탄소로 앙금이 생김', 'decomp', 15, (w) => {
+  assert(count(w, 'limestone') > 0 || count(w, 'quicklime') > 0, '석회암 없음');
+  assert(w.discovered.has('co2-base:Ca(OH)2'), [...w.discovered].join());
+  return `발견 ${w.discovered.size}건`;
+});
+sceneTest('극저온: 물과 수은이 얼음', 'cold', 40, (w) => {
+  assert(count(w, 'H2O:s') > 0, '얼음 없음');
+  assert(count(w, 'Hg:s') > 0, '고체 수은 없음');
+  return `얼음 ${count(w, 'H2O:s')}칸, 고체 수은 ${count(w, 'Hg:s')}칸`;
+});
+sceneTest('불꽃 반응: 색 있는 불꽃이 생김', 'flame', 15, (w) => {
+  const colored = ['Li', 'Na', 'K', 'Ca', 'Cu', 'Ba'].filter((e) => w.discovered.has('flame:' + e));
+  assert(colored.length >= 4, colored.join());
+  return colored.join(', ');
+});
+
+// ---- 기존 검증 ----
+test('진공 자유낙하: 측정 g가 설정값과 일치', () => {
+  const out = [];
+  for (const g of [1.62, 9.81, 24.79]) {
+    const w = fresh(); w.vacuum = true; w.g = g;
+    const b = w.addBody({ type: 'iron', x: 1, y: 0.1, r: 0.05 }); w.select(b);
+    for (let i = 0; i < 20; i++) w.step();
+    const a = w.measuredAccel(b);
+    assert(Math.abs(a - g) / g < 0.001, `g=${g}인데 측정 ${a}`);
+    out.push(`${g}→${a.toFixed(3)}`);
+  }
+  return out.join(', ');
+});
+test('아르키메데스: 나무·스티로폼은 뜨고 철·고무는 가라앉음', () => {
+  const w = fresh(); scene(w, 'buoyancy');
+  run(w, 6);
+  const [wood, iron, rubber, foam] = w.bodies;
+  assert(wood.y < 0.77 && foam.y < 0.77 && iron.y > 1.2 && rubber.y > 1.2, [wood.y, foam.y, iron.y, rubber.y].join());
+  return '일치';
+});
+test('열 전도: 닫힌 금속 안에서 에너지 보존', () => {
+  const w = fresh(); w.openTop = false;
+  w.rect('iron', 0, 0, 119, 149, 400);
+  w.rect('copper', 120, 0, 239, 149, 20);
+  const energy = () => { let e = 0; for (let i = 0; i < w.mat.length; i++) e += w.T[i] * w.data.heatCap[w.mat[i]]; return e; };
+  const before = energy();
+  for (let i = 0; i < 300; i++) w.stepHeat();
+  const err = Math.abs(energy() - before) / before;
+  assert(err < 1e-3, `오차 ${err}`);
+  return `상대 오차 ${err.toExponential(2)}`;
+});
+test('잠열: 물이 100°C에서 멈춘 뒤 수증기가 됨', () => {
+  const w = fresh(); w.rect('water', 100, 100, 100, 100, 99);
+  const i = w.index(100, 100), water = w.data.idOf.water;
+  let steps = 0;
+  while (w.mat[i] === water && steps < 1000) { w.T[i] += 10; w.phase(i, water); steps++; }
+  const expected = 2.257e6 / (10 * 4186);
+  assert(w.mat[i] === w.data.idOf.steam, '수증기 아님');
+  assert(Math.abs(steps - expected) < 3, `틱 ${steps}, 예상 ${expected}`);
+  return `${steps}틱 (예상 ${expected.toFixed(1)}틱)`;
+});
+test('물 끓이기 실험: 온도계가 100°C 근처에 머무름', () => {
+  const w = fresh(); scene(w, 'water');
+  run(w, 60);
+  const ts = w.probe.log.filter((s) => s.m === w.data.idOf.water).map((s) => s.T);
+  const max = Math.max(...ts), near = ts.filter((t) => t > 90).length;
+  assert(max > 80 && max <= 103, `최고 ${max}`);
+  assert(near > 50, `90°C 초과 ${near}샘플`);
+  assert(w.T[w.index(30, 40)] < 80, `방 공기 ${w.T[w.index(30, 40)]}°C`);
+  return `물 최고 ${max.toFixed(1)}°C, 90°C 초과 ${near}샘플`;
+});
+test('밀도 기둥: 기름 < 물 < 소금물 순서', () => {
+  const w = fresh(); scene(w, 'density');
+  run(w, 25);
+  const meanY = (id) => { const k = w.data.idOf[id]; let s = 0, n = 0; for (let y = 0; y < w.h; y++) for (let x = 0; x < w.w; x++) if (w.mat[w.index(x, y)] === k) { s += y; n++; } return s / n; };
+  const o = meanY('oil'), wa = meanY('water'), b = meanY('brine');
+  assert(o < wa && wa <= b + 3, `기름 ${o}, 물 ${wa}, 소금물 ${b}`);
+  return `평균 y: 기름 ${o.toFixed(0)}, 물 ${wa.toFixed(0)}, 소금물 ${b.toFixed(0)}`;
+});
+test('얼음은 물 위에 뜸', () => {
+  const w = fresh(); w.rect('stone', 0, 146, 239, 149); w.rect('water', 0, 100, 239, 145, 5);
+  w.rect('ice', 100, 130, 120, 140, -2);
+  run(w, 4);
+  let top = 999; const ice = w.data.idOf.ice;
+  for (let y = 0; y < w.h; y++) for (let x = 0; x < w.w; x++) if (w.mat[w.index(x, y)] === ice) top = Math.min(top, y);
+  assert(top < 112, `얼음 최상단 y=${top}`);
+  return `최상단 y=${top} (수면 100)`;
+});
+test('연소와 산소: 막힌 칸의 불은 꺼지고 나무가 남음', () => {
+  const w = fresh(); scene(w, 'oxygen');
+  run(w, 60);
+  let open = 0, sealed = 0; const wood = w.data.idOf.wood, ember = w.data.idOf.ember;
+  for (let y = 0; y < w.h; y++) for (let x = 0; x < w.w; x++) { const m = w.mat[w.index(x, y)]; if (m === wood || m === ember) { if (x < 120) open++; else sealed++; } }
+  assert(open < 2880 * 0.8 && sealed > open + 300, `열림 ${open}, 막힘 ${sealed}`);
+  return `남은 나무: 열림 ${open}, 막힘 ${sealed}`;
+});
+test('저장/복원: 상태가 그대로 돌아옴', () => {
+  const w = fresh(); scene(w, 'volcano');
+  run(w, 1);
+  const snap = JSON.parse(JSON.stringify(w.toJSON()));
+  const copy = fresh(); copy.fromJSON(snap);
+  for (let i = 0; i < w.mat.length; i++) assert(copy.mat[i] === w.mat[i] && copy.T[i] === w.T[i] && copy.anchor[i] === w.anchor[i], `칸 ${i}`);
+  return `${JSON.stringify(snap).length} 바이트`;
+});
+test('성능: 틱당 시간', () => {
+  const out = [];
+  for (const id of ['volcano', 'precip', 'furnace']) {
+    const w = fresh(); scene(w, id);
+    const t = performance.now();
+    for (let i = 0; i < 120; i++) w.step();
+    const ms = (performance.now() - t) / 120;
+    assert(ms < 16, `${id} ${ms}ms`);
+    out.push(`${id} ${ms.toFixed(2)}ms`);
+  }
+  return out.join(', ');
+});
+
+const failed = results.filter((r) => !r.ok).length;
+document.getElementById('out').innerHTML =
+  `<p class="${failed ? 'fail' : 'pass'}" id="summary">${results.length - failed} / ${results.length} 통과</p><ul>` +
+  results.map((r) => `<li class="${r.ok ? 'pass' : 'fail'}">${r.ok ? '통과' : '실패'}: ${r.name} — ${r.detail}</li>`).join('') + '</ul>';
+</script>
+</body>
+</html>

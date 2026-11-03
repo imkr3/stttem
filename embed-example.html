@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>임베드 예시</title>
+<style>
+  /* 일부러 강한 전역 스타일을 넣어 실험실이 영향을 받지 않는지 확인한다. */
+  * { font-family: Georgia, serif; }
+  button { background: hotpink !important; }
+  body { max-width: 900px; margin: 24px auto; padding: 0 16px; background: #f6f3ec; color: #222; line-height: 1.6; }
+  #lab { height: 560px; border-radius: 8px; overflow: hidden; }
+  #log { min-height: 24px; font-size: 14px; }
+</style>
+</head>
+<body>
+  <h1>어느 학습 사이트의 한 페이지</h1>
+  <p>이 페이지는 다른 웹사이트의 기능으로 들어갔을 때의 모습을 확인하기 위한 예시입니다.</p>
+  <p><button id="to-boil">사이트 버튼: 물 끓이기 실험 열기</button></p>
+  <div id="lab"></div>
+  <p id="log">사이트가 받은 이벤트가 여기에 표시됩니다.</p>
+  <script src="dist/sandlab.js"></script>
+  <script>
+    const el = document.getElementById('lab');
+    const lab = SandLab.create(el, { scene: 'sodium' });
+    document.getElementById('to-boil').onclick = () => lab.loadScene('boil');
+    el.addEventListener('sandlab:discover', (e) => {
+      document.getElementById('log').textContent = '사이트가 받은 발견 이벤트: ' + e.detail.name + ' / ' + e.detail.eq;
+    });
+  </script>
+</body>
+</html>
