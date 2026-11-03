@@ -85,7 +85,12 @@
   const METAL_CATS = new Set(['alkali', 'alkaline', 'tm', 'post', 'ln', 'an']);
   const METALLIC_METALLOIDS = new Set(['Ge', 'Sb']); // 준금속이지만 금속처럼 가열하면 산화물이 된다.
 
+  // 반응이 사실상 없거나(희귀 귀금속·비활성), 측정값이 거의 없는(초중원소) 원소는 물질로 만들지 않는다.
+  // 주기율표에는 회색으로 남겨 두어 위치는 볼 수 있게 한다.
+  SL.ELEMENT_SKIP = new Set(('Sc V Ge As Se Kr Y Zr Nb Mo Tc Ru Rh In Te Xe Pr Nd Pm Sm Eu Tb Dy Ho Er Tm Yb Lu Hf Ta Re Os Ir Tl At Rn Fr Ac Th Pa Np Am Cm Bk ' +
+    'Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og').split(' '));
   for (const e of SL.ELEMENTS) {
+    if (SL.ELEMENT_SKIP.has(e.sym)) continue;
     const multi = MOLECULE[e.sym] ? 2 : 1;
     family({
       key: e.sym, fx: MOLECULE[e.sym] || e.sym, name: e.name, M: e.M * multi, rho: e.rho, mp: e.mp, bp: e.bp, subl: e.mp == null, k: e.k,
@@ -158,12 +163,12 @@
     ['Be', '베릴륨', 2, 'Be', OX_ONLY], ['Mg', '마그네슘', 2, 'Mg'], ['Ca', '칼슘', 2, 'Ca'], ['Sr', '스트론튬', 2, 'Sr'], ['Ba', '바륨', 2, 'Ba'],
     ['Al', '알루미늄', 3, 'Al'], ['Cr3', '크로뮴(III)', 3, 'Cr'], ['Mn2', '망가니즈(II)', 2, 'Mn'], ['Fe2', '철(II)', 2, 'Fe'], ['Fe3', '철(III)', 3, 'Fe'], ['Co2', '코발트(II)', 2, 'Co'], ['Ni2', '니켈(II)', 2, 'Ni'],
     ['Cu2', '구리(II)', 2, 'Cu'], ['Zn', '아연', 2, 'Zn'], ['Ag', '은', 1, 'Ag'], ['Cd', '카드뮴', 2, 'Cd'], ['Sn2', '주석(II)', 2, 'Sn'], ['Pb2', '납(II)', 2, 'Pb'], ['Hg2', '수은(II)', 2, 'Hg'],
-    ['Au3', '금(III)', 3, 'Au', OXCL], ['Pd2', '팔라듐(II)', 2, 'Pd', OX_ONLY], ['Mn4', '망가니즈(IV)', 4, 'Mn', ['O']], ['Ti4', '타이타늄(IV)', 4, 'Ti', OXCL], ['V5', '바나듐(V)', 5, 'V', ['O']], ['Mo6', '몰리브데넘(VI)', 6, 'Mo', ['O']],
-    ['W6', '텅스텐(VI)', 6, 'W', ['O']], ['Zr4', '지르코늄(IV)', 4, 'Zr', OX_ONLY], ['Hf4', '하프늄(IV)', 4, 'Hf', ['O']], ['Nb5', '나이오븀(V)', 5, 'Nb', ['O']], ['Ta5', '탄탈럼(V)', 5, 'Ta', ['O']], ['Ge4', '저마늄(IV)', 4, 'Ge', ['O']],
-    ['Sb3', '안티모니(III)', 3, 'Sb', OX_ONLY], ['Bi3', '비스무트(III)', 3, 'Bi', OX_ONLY], ['In3', '인듐(III)', 3, 'In', OX_ONLY], ['Ga3', '갈륨(III)', 3, 'Ga', OX_ONLY], ['Tl', '탈륨(I)', 1, 'Tl', OX_ONLY], ['Sc3', '스칸듐', 3, 'Sc', RE], ['Y3', '이트륨', 3, 'Y', RE],
-    ['Th4', '토륨(IV)', 4, 'Th', ['O']], ['U6', '우라늄(VI)', 6, 'U', ['O']], ['Pu4', '플루토늄(IV)', 4, 'Pu', ['O']],
+    ['Au3', '금(III)', 3, 'Au', OXCL], ['Pd2', '팔라듐(II)', 2, 'Pd', OX_ONLY], ['Mn4', '망가니즈(IV)', 4, 'Mn', ['O']], ['Ti4', '타이타늄(IV)', 4, 'Ti', OXCL],
+    ['W6', '텅스텐(VI)', 6, 'W', ['O']],
+    ['Sb3', '안티모니(III)', 3, 'Sb', OX_ONLY], ['Bi3', '비스무트(III)', 3, 'Bi', OX_ONLY], ['Ga3', '갈륨(III)', 3, 'Ga', OX_ONLY],
+    ['U6', '우라늄(VI)', 6, 'U', ['O']], ['Pu4', '플루토늄(IV)', 4, 'Pu', ['O']],
   ];
-  'La 란타넘,Ce 세륨,Pr 프라세오디뮴,Nd 네오디뮴,Sm 사마륨,Eu 유로퓸,Gd 가돌리늄,Tb 터븀,Dy 디스프로슘,Ho 홀뮴,Er 어븀,Tm 툴륨,Yb 이터븀,Lu 루테튬'.split(',').forEach((s) => {
+  'La 란타넘,Ce 세륨,Gd 가돌리늄'.split(',').forEach((s) => {
     const [el, name] = s.split(' ');
     CATIONS.push([el + '3', name, 3, el, RE]);
   });
@@ -515,6 +520,34 @@
     water: 'H2O:l', ice: 'H2O:s', steam: 'H2O:g', hydrogen: 'H:g', oxygen: 'O:g', nitrogen: 'N:g', co2: 'CO2:g', sodium: 'Na:s', iron: 'Fe:s', copper: 'Cu:s', magnesium: 'Mg:s', salt: 'S:NaCl', brine: 'A:NaCl', naoh: 'A:NaOH',
     hcl: 'A:acid:HCl', limestone: 'S:CaCO3', quicklime: 'S:CaO', slaked: 'S:Ca(OH)2', rust: 'S:Fe2O3', vinegar: 'A:acid:CH3COOHaq', molteniron: 'Fe:l',
   });
+
+  // ---- 가열·냉각으로 바뀌는 것, 폭발에 부서지는 것 ----
+  const byId = (id) => list.find((d) => d.id === id);
+  add({ id: 'glassshards', name: '깨진 유리', formula: 'SiO₂ 유리 조각', fx: 'SiO2', state: 'powder', cat: 'rock', color: '#b4e0e0', density: 1500, c: 840, k: 0.5, desc: '뜨거운 유리가 갑자기 식거나 폭발에 맞아 깨진 조각. 녹이면 다시 유리가 됩니다.', up: { at: 1400, to: 'moltenglass', L: 1.4e5 } });
+  add({ id: 'gravel', name: '돌 부스러기', formula: '암석 조각', fx: 'SiO2', state: 'powder', cat: 'rock', color: '#8a8f96', density: 1600, c: 800, k: 0.4, desc: '바위가 얼었다 녹기를 되풀이하거나(풍화) 폭발에 맞아 부서진 조각.', up: { at: 1215, to: 'lava', L: 4e5 } });
+  add({ id: 'flour', name: '밀가루', formula: '(C₆H₁₀O₅)ₙ', fx: 'C6H10O5', state: 'powder', cat: 'organic', color: '#f2ece0', density: 600, c: 1700, k: 0.1, dust: true, fuel: { ign: 380, prob: 0.2, prods: ['CO2', 'H2O'], T: 1000 }, desc: '고운 가루가 공기 중에 퍼진 채 불이 붙으면 순식간에 타며 폭발합니다(분진 폭발).' });
+  add({ id: 'caramel', name: '캐러멜', formula: '설탕이 분해된 갈색 물질', fx: 'C12H18O9', state: 'powder', color: '#a05a1a', density: 1500, c: 1300, k: 0.2, desc: '설탕을 160°C 넘게 가열하면 분해되며 갈색과 향이 생깁니다. 더 가열하면 검게 탑니다.' });
+  add({ id: 'I:vapor', name: '아이오딘 증기(승화)', formula: 'I₂(g)', fx: 'I2', state: 'gas', color: '#6a3f96', density: 10.6, c: 145, k: 0.02, lifetime: 1200, decay: [['air', 1]], desc: '고체 아이오딘이 녹지 않고 바로 기체가 된 보라색 증기. 차가운 면에 닿으면 다시 결정이 됩니다.' });
+  add({ id: 'S:plastic', name: '고무상 황', formula: 'Sₙ (사슬 모양)', fx: 'S', sp: 'S', state: 'powder', color: '#6a3a18', density: 1920, c: 710, k: 0.2, lifetime: 1800, decay: [['S:s', 1]], desc: '200°C 가까이 가열해 진해진 황을 찬물에 부으면 고무처럼 늘어나는 황이 됩니다. 며칠에 걸쳐 다시 노란 황으로 돌아갑니다.' });
+  add({ id: 'Sn:gray', name: '회색 주석', formula: 'α-Sn', fx: 'Sn', state: 'powder', color: '#7c7f84', density: 5770, c: 210, k: 2, desc: '13°C 아래에서 흰 주석이 천천히 부서지는 회색 가루로 변하는 "주석 페스트". 데우면 돌아갑니다.', up: { at: 13.2, to: 'Sn:s', L: 2e3 } });
+  add(Object.assign({}, byId('steel:s'), { id: 'steel:hard', name: '담금질한 강철', formula: 'Fe+C (마르텐사이트)', color: '#5c646c', desc: '뜨겁게 달군 강철을 물에 넣어 급히 식히면 단단하고 잘 부러지는 강철이 됩니다. 600°C 정도로 다시 데우면 무르게 풀립니다(뜨임).', up: { at: 600, to: 'steel:s', L: 5e4 }, down: null, cat: null }));
+  // 가열하면 색이 바뀌고 식으면 돌아오는 물질(열변색)
+  const recolor = (id, hotId, at, name, color, desc) => {
+    const cold = byId(id);
+    if (!cold) return;
+    add(Object.assign({}, cold, { id: hotId, name, color, desc, cat: null, up: cold.up, down: { at, to: id, L: 2e3 } }));
+    cold.up = { at, to: hotId, L: 2e3 };
+    cold.desc = (cold.desc ? cold.desc + ' ' : '') + `${at}°C 넘게 가열하면 ${name.replace(/^.*\(|\)$/g, '')}이 되고 식으면 돌아옵니다.`;
+  };
+  recolor('S:ZnO', 'ZnO:hot', 250, '뜨거운 산화아연 (노란색)', '#e8d850', '산화아연은 뜨거울 때만 노랗고 식으면 다시 흰색입니다.');
+  recolor('S:HgI2', 'HgI2:yellow', 127, '아이오딘화수은 (노란 결정형)', '#f0d030', '127°C 위에서는 결정 구조가 바뀌어 노란색입니다.');
+  // 황: 160°C 넘게 가열하면 고리 모양 분자가 사슬로 이어져 진한 빨간색의 끈적한 액체가 된다.
+  const sl = byId('S:l');
+  add(Object.assign({}, sl, { id: 'S:l:dark', name: '진하게 끈적한 황', color: '#7a2414', flow: 1, T0: 200, cat: null, desc: '160°C 넘게 가열한 황. 분자가 긴 사슬로 이어져 진한 적갈색이 되고 잘 흐르지 않습니다. 찬물에 부으면 고무상 황이 됩니다.', down: { at: 160, to: 'S:l', L: 1e4 } }));
+  sl.up = { at: 160, to: 'S:l:dark', L: 1e4 };
+  // 폭발에 맞으면 부서지는 고체
+  for (const id of ['stone', 'basalt', 'marble', 'quartz', 'concrete', 'ceramic', 'gypsum']) byId(id).shatter = 'gravel';
+  byId('glass').shatter = 'glassshards';
 
   SL.MATERIALS = list;
   SL.MATERIAL_ALIAS = alias;

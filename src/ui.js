@@ -34,7 +34,7 @@
   .toast { position:absolute; left:50%; top:10px; transform:translateX(-50%); width:max-content; max-width:92%; background:var(--sl-raised); border:1px solid var(--sl-accent); padding:8px 12px; border-radius:8px; pointer-events:none; opacity:0; transition:opacity .25s; }
   .toast.show { opacity:1; }
   .toast small { display:block; color:var(--sl-muted); }
-  .status { grid-area:status; padding:6px 10px; min-height:32px; font-size:13px; color:var(--sl-muted); border-top:1px solid var(--sl-line); background:var(--sl-panel); font-variant-numeric:tabular-nums; }
+  .status { grid-area:status; padding:6px 10px; min-height:32px; font-size:13px; color:var(--sl-muted); border-top:1px solid var(--sl-line); background:var(--sl-panel); font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .status b { color:var(--sl-ink); font-weight:600; }
   .side { grid-area:side; display:flex; flex-direction:column; min-height:0; background:var(--sl-panel); border-left:1px solid var(--sl-line); }
   .tabs { display:flex; gap:2px; padding:6px 6px 0; border-bottom:1px solid var(--sl-line); }
@@ -55,8 +55,18 @@
   .partner-list summary { cursor:pointer; color:var(--sl-muted); font-size:13px; padding:4px 0; min-height:28px; }
   .partner-list .chips { margin:4px 0 8px; }
   .partners:not(:empty) { border-bottom:1px solid var(--sl-line); margin-bottom:6px; }
-  .scene { display:block; width:100%; text-align:left; padding:8px 10px; margin-bottom:5px; }
-  .scene small { display:block; color:inherit; opacity:.8; line-height:1.45; margin-top:2px; font-weight:400; white-space:normal; }
+  .scenes { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+  .scene { display:block; width:100%; text-align:left; padding:6px 9px; font-size:13px; line-height:1.3; }
+  .picked { display:flex; align-items:center; gap:8px; padding:6px 8px; margin:6px 0 8px; background:var(--sl-raised); border-radius:6px; min-height:38px; }
+  .picked i { width:14px; height:14px; border-radius:3px; flex:none; box-shadow:0 0 0 1px #fff3; }
+  .picked .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .picked small { color:var(--sl-muted); margin-left:4px; }
+  .picked button { min-height:30px; font-size:12px; }
+  .info dl { display:grid; grid-template-columns:auto 1fr; gap:3px 10px; margin:6px 0; font-size:13px; }
+  .info dt { color:var(--sl-muted); }
+  .info dd { margin:0; font-variant-numeric:tabular-nums; }
+  .info p { margin:6px 0; line-height:1.55; }
+  .compact { margin:4px 0; }
   .graph { position:relative; height:170px; margin-top:6px; background:var(--sl-bg); border:1px solid var(--sl-line); border-radius:6px; }
   .graph canvas { position:absolute; inset:0; width:100%; height:100%; touch-action:none; }
   .legend { display:flex; gap:12px; font-size:12px; color:var(--sl-muted); margin-top:5px; min-height:16px; }
@@ -65,28 +75,40 @@
   .stats { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px; }
   .stat { background:var(--sl-raised); border-radius:6px; padding:6px 8px; font-variant-numeric:tabular-nums; }
   .stat small { display:block; color:var(--sl-muted); font-size:12px; }
-  .entry { border-bottom:1px solid var(--sl-line); padding:8px 0; }
+  .entry { border-bottom:1px solid var(--sl-line); padding:6px 0; }
+  .entry summary { cursor:pointer; list-style:none; }
+  .entry summary::-webkit-details-marker { display:none; }
   .search { flex:1; min-width:0; width:100%; min-height:36px; padding:0 10px; font:inherit; color:inherit; background:var(--sl-bg); border:1px solid var(--sl-line); border-radius:6px; }
-  .cats { margin-bottom:8px; }
-  .cats .chip { min-height:30px; font-size:12px; padding:0 8px; }
+  .cats { flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; margin-bottom:2px; scrollbar-width:thin; }
+  .cats .chip { min-height:30px; font-size:12px; padding:0 8px; flex:none; white-space:nowrap; }
+  .tools .chip { min-height:32px; font-size:12px; }
+  .favs { margin:2px 0 8px; }
+  .favs .chip { min-height:30px; font-size:12px; padding:0 7px; }
+  .grp { border-bottom:1px solid var(--sl-line); }
+  .grp summary { cursor:pointer; padding:7px 2px; min-height:32px; font-size:13px; }
+  .grp summary small { color:var(--sl-muted); margin-left:4px; }
+  .grp .chips { padding:0 0 8px; }
   .chip small { opacity:.7; font-size:11px; }
-  .selected { min-height:18px; }
-  .selected b { color:var(--sl-ink); }
   .table-scroll { overflow-x:auto; padding-bottom:6px; }
   .ptable { display:grid; grid-template-columns:repeat(18,28px); grid-auto-rows:28px; gap:2px; width:max-content; }
   .el { min-height:0; padding:0; font-size:11px; font-weight:600; border-radius:4px; border:1px solid transparent; color:#e8edf2; background:#2a323c; }
   .el-alkali { background:#6a2f2f; } .el-alkaline { background:#6a4a2a; } .el-tm { background:#34506a; } .el-post { background:#2f5a5a; } .el-metalloid { background:#4a5a2f; }
   .el-nonmetal { background:#3a6a3a; } .el-halogen { background:#5a6a22; } .el-noble { background:#5a3a6a; } .el-ln { background:#2f4a7a; } .el-an { background:#6a3a5a; }
   .el.on { outline:2px solid var(--sl-accent); outline-offset:0; }
-  .entry b { display:block; }
-  .entry code { font-family:inherit; color:var(--sl-accent); display:block; margin:2px 0; }
+  .el-off { background:transparent; border-color:var(--sl-line); color:var(--sl-muted); opacity:.45; cursor:default; }
+  .entry b { display:block; font-size:13px; }
+  .entry code { font-family:inherit; color:var(--sl-accent); display:block; margin:2px 0; font-size:12px; }
   .entry span { color:var(--sl-muted); font-size:13px; line-height:1.45; }
   `;
 
-  const TABS = [['materials', '재료'], ['scenes', '실험'], ['physics', '물리·측정'], ['codex', '도감']];
+  const TABS = [['materials', '재료'], ['scenes', '실험'], ['physics', '측정'], ['codex', '도감'], ['info', '정보']];
+  const STATE_NAME = { solid: '고체', powder: '고체(가루)', liquid: '액체', gas: '기체' };
   // 예전 문서에 쓰인 실험 이름도 받아 준다.
   const SCENE_ALIAS = { sodium: 'alkali', boil: 'water' };
   const TOOLS = [['inspect', '관찰'], ['erase', '지우개'], ['heat', '가열'], ['cool', '냉각'], ['ball', '공 던지기'], ['probe', '온도계']];
+  // 자주 쓰는 재료. 재료 탭 맨 위에 늘 보인다.
+  const FAVORITES = ['water', 'ice', 'fire', 'salt', 'hcl', 'naoh', 'vinegar', 'S:NaHCO3', 'Na:s', 'Mg:s', 'iron', 'copper', 'H2O2', 'sugar', 'oil', 'wood'];
+  const TOOL_HINT = { inspect: '칸을 누르면 정보 탭에 자세히 나옵니다', erase: '공기로 지웁니다', heat: '누르고 있는 동안 데웁니다', cool: '누르고 있는 동안 식힙니다', ball: '끌었다 놓으면 던집니다', probe: '누른 곳의 온도를 측정 탭에 그립니다' };
   const GRAVITY = [['무중력', 0], ['달', 1.62], ['화성', 3.71], ['지구', 9.81], ['목성', 24.79]];
   const fmt = (v, d) => (v == null || !isFinite(v) ? '-' : v.toFixed(d));
 
@@ -109,6 +131,7 @@
       this.ballType = 'iron';
       this.ballR = 0.05;
       this.tab = 'materials';
+      this.partnersOpen = true; // 정보 탭의 "함께 떨어뜨려 볼 재료"는 처음부터 펼친다.
       this.graphMode = 'v';
       this.codex = new Map((this.storage.load('codex') || []).map((e) => [e.id, e]));
       this.pointer = null;
@@ -232,24 +255,24 @@
       if (this.tab === 'materials') this.paneMaterials(pane);
       else if (this.tab === 'scenes') this.paneScenes(pane);
       else if (this.tab === 'physics') this.panePhysics(pane);
+      else if (this.tab === 'info') this.paneInfo(pane);
       else this.paneCodex(pane);
     }
 
     paneMaterials(pane) {
       const count = this.world.data.defs.length;
-      pane.innerHTML = `${this.currentScene.id === 'free' ? '' : `<p class="hint">${this.currentScene.desc}</p>`}
-        <h3>도구</h3><div class="chips tools">${TOOLS.map(([k, n]) => `<button class="chip" data-tool="${k}">${n}</button>`).join('')}</div>
-        <div class="row"><label>붓 크기 <input type="range" class="brush" min="1" max="16" value="${this.brush}"></label><span class="val">${this.brush}칸</span></div>
-        <div class="row"><label title="끄면 가루처럼 쌓이고, 켜면 놓은 자리에 덩어리로 고정됩니다."><input type="checkbox" class="anchor" ${this.anchored ? 'checked' : ''}> 덩어리로 고정해서 놓기</label></div>
-        <div class="row"><input type="search" class="search" placeholder="물질 ${count}종 검색 (예: 황산, Cu, 소금)" aria-label="물질 검색" value="${this.query}"></div>
-        <div class="chips cats">${SL.CATEGORIES.map(([k, n]) => `<button class="chip" data-cat="${k}">${n}</button>`).join('')}</div>
-        <p class="hint selected"></p>
-        <div class="partners"></div>
-        <div class="palette"></div>
-        <p class="hint">모의 실험입니다. 유독하거나 위험한 물질이 많으니 실제로 따라 하지 마세요.</p>`;
+      pane.innerHTML = `<div class="chips tools">${TOOLS.map(([k, n]) => `<button class="chip" data-tool="${k}">${n}</button>`).join('')}</div>
+        <div class="row compact"><label>붓 <input type="range" class="brush" min="1" max="16" value="${this.brush}"></label><span class="val">${this.brush}칸</span>
+          <label title="끄면 가루처럼 쌓이고, 켜면 놓은 자리에 덩어리로 고정됩니다." style="flex:none"><input type="checkbox" class="anchor" ${this.anchored ? 'checked' : ''}> 고정</label></div>
+        <input type="search" class="search" placeholder="물질 ${count}종 검색 (예: 황산, Cu, 소금)" aria-label="물질 검색" value="${this.query}">
+        <div class="chips cats" style="margin-top:6px">${SL.CATEGORIES.map(([k, n]) => `<button class="chip" data-cat="${k}">${n}</button>`).join('')}</div>
+        <div class="picked"></div>
+        <div class="palette"></div>`;
+      pane.querySelector('.search').insertAdjacentHTML('beforebegin', `<div class="chips favs" aria-label="자주 쓰는 재료">${FAVORITES.map((id) => this.world.data.idOf[id]).filter((k) => k != null).map((k) => { const d = this.world.data.defs[k]; return `<button class="chip" data-mat="${d.id}" title="${d.formula}"><i style="background:${d.color}"></i>${(d.name.match(/\(([^)]+)\)$/) || [0, d.name])[1]}</button>`; }).join('')}</div>`);
       pane.onclick = (e) => {
         const b = e.target.closest('button');
         if (!b) return;
+        if (b.classList.contains('more')) { this.setTab('info'); return; }
         if (b.dataset.mat) this.tool = { kind: 'mat', id: b.dataset.mat };
         else if (b.dataset.tool) this.tool = { kind: b.dataset.tool };
         else if (b.dataset.cat) { this.paletteCat = b.dataset.cat; this.query = ''; pane.querySelector('.search').value = ''; this.renderPalette(); }
@@ -262,6 +285,8 @@
       pane.querySelector('.anchor').onchange = (e) => { this.anchored = e.target.checked; };
       pane.querySelector('.search').oninput = (e) => { this.query = e.target.value.trim(); this.renderPalette(); };
       this.renderPalette();
+      const on = pane.querySelector('.cats .on');
+      if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
 
     // 목록 다시 그리기는 재료 목록 부분만 한다. 물질이 많아 패널 전체를 다시 만들지 않는다.
@@ -278,10 +303,23 @@
         const idOf = this.world.data.idOf;
         const cells = SL.ELEMENTS.map((e) => {
           const [row, col] = SL.elementCell(e.z);
+          if (idOf[e.sym] == null) return `<button class="el el-off" style="grid-row:${row};grid-column:${col}" disabled title="${e.z} ${e.name}: 반응이 거의 없거나 성질이 알려지지 않아 넣지 않았습니다">${e.sym}</button>`;
           const id = defs[idOf[e.sym]].id;
           return `<button class="el el-${e.cat}" style="grid-row:${row};grid-column:${col}" data-mat="${id}" title="${e.z} ${e.name}">${e.sym}</button>`;
         }).join('');
         box.innerHTML = `<div class="table-scroll"><div class="ptable">${cells}</div></div>`;
+      } else if (this.paletteCat === 'salt' || this.paletteCat === 'solution') {
+        // 염과 용액은 수백 종이라 금속 이온별로 묶어 접어 둔다.
+        const groups = new Map();
+        for (const d of defs) {
+          if (d.cat !== this.paletteCat) continue;
+          const key = d.salt && SL.CATION[d.salt.c] ? SL.CATION[d.salt.c].name : '그 밖의 것';
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(d);
+        }
+        this.openGroups = this.openGroups || new Set();
+        box.innerHTML = [...groups].map(([k, list]) => `<details class="grp" data-grp="${k}"${this.openGroups.has(k) ? ' open' : ''}><summary>${k} <small>${list.length}</small></summary><div class="chips">${list.map(chip).join('')}</div></details>`).join('');
+        box.querySelectorAll('.grp').forEach((g) => { g.ontoggle = () => { if (g.open) this.openGroups.add(g.dataset.grp); else this.openGroups.delete(g.dataset.grp); }; });
       } else {
         box.innerHTML = `<div class="chips">${defs.filter((d) => d.cat === this.paletteCat).map(chip).join('')}</div>`;
       }
@@ -293,13 +331,44 @@
       pane.querySelectorAll('[data-mat]').forEach((b) => b.classList.toggle('on', this.tool.kind === 'mat' && b.dataset.mat === this.tool.id));
       pane.querySelectorAll('[data-tool]').forEach((b) => b.classList.toggle('on', this.tool.kind === b.dataset.tool));
       pane.querySelectorAll('[data-cat]').forEach((b) => b.classList.toggle('on', !this.query && this.paletteCat === b.dataset.cat));
-      const info = pane.querySelector('.selected');
-      if (!info) return;
+      const picked = pane.querySelector('.picked');
+      if (!picked) return;
       if (this.tool.kind === 'mat') {
         const d = this.world.data.defs[this.world.data.idOf[this.tool.id]];
-        info.innerHTML = `<b>${d.name}</b> ${d.formula} · ${fmt(d.density, d.density < 10 ? 2 : 0)} kg/m³<br>${d.desc || ''}`;
-        this.renderPartners(d);
-      } else { info.textContent = ''; this.renderPartners(null); }
+        picked.innerHTML = `<i style="background:${d.color}"></i><span class="nm"><b>${d.name}</b><small>${d.formula}</small></span><button class="more" title="설명과 함께 떨어뜨려 볼 재료">정보 ›</button>`;
+      } else {
+        const t = TOOLS.find(([k]) => k === this.tool.kind);
+        picked.innerHTML = `<span class="nm"><b>${t ? t[1] : ''}</b><small>${TOOL_HINT[this.tool.kind] || ''}</small></span>`;
+      }
+    }
+
+    // 긴 설명은 정보 탭에 모은다. 고른 재료, 관찰한 칸, 지금 실험, 최근 발견을 한곳에서 본다.
+    paneInfo(pane) {
+      const data = this.world.data;
+      const mat = this.tool.kind === 'mat' ? data.defs[data.idOf[this.tool.id]] : null;
+      const ins = this.inspected;
+      const props = (d, T) => {
+        const rows = [['화학식', d.formula], ['상태', STATE_NAME[d.state] || d.state], ['밀도', `${fmt(d.density, d.density < 10 ? 2 : 0)} kg/m³`]];
+        if (T != null) rows.push(['온도', fmt(T, 1) + '°C']);
+        if (d.pH != null) rows.push(['pH', String(d.pH)]);
+        if (d.mp != null && d.state !== 'gas') rows.push(['녹는점', d.mp + '°C']);
+        if (d.bp != null) rows.push([d.subl ? '승화점' : '끓는점', d.bp + '°C']);
+        return `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+      };
+      const last = [...this.codex.values()].pop();
+      pane.innerHTML = `<div class="info">
+        ${mat ? `<h3>고른 재료</h3><b>${mat.name}</b>${props(mat)}<p>${mat.desc || ''}</p><div class="partners"></div>` : ''}
+        ${ins ? `<h3>관찰한 칸</h3><b>${ins.def.name}</b>${props(ins.def, ins.T)}<p>${ins.def.desc || ''}</p>` : ''}
+        <h3>지금 실험: ${this.currentScene.name}</h3><p class="hint">${this.currentScene.desc}</p>
+        ${last ? `<h3>최근 발견</h3><b>${last.name}</b><div class="entry"><code>${last.eq}</code><span>${last.note || ''}</span></div>` : ''}
+        <p class="hint">모의 실험입니다. 유독하거나 위험한 물질이 많으니 실제로 따라 하지 마세요.</p></div>`;
+      if (mat) this.renderPartners(mat);
+      pane.onclick = (e) => {
+        const b = e.target.closest('[data-mat]');
+        if (!b) return;
+        this.tool = { kind: 'mat', id: b.dataset.mat };
+        this.renderPane();
+      };
     }
 
     // 고른 물질과 반응하는 재료를 보여 준다. 누르면 그 재료를 고른다.
@@ -323,7 +392,8 @@
     }
 
     paneScenes(pane) {
-      pane.innerHTML = SL.SCENES.map((s) => `<button class="scene${s.id === this.currentScene.id ? ' on' : ''}" data-scene="${s.id}"><b>${s.name}</b><small>${s.desc}</small></button>`).join('');
+      pane.innerHTML = `<div class="scenes">${SL.SCENES.map((s) => `<button class="scene${s.id === this.currentScene.id ? ' on' : ''}" data-scene="${s.id}" title="${s.desc}">${s.name}</button>`).join('')}</div>
+        <p class="hint">실험을 고르면 설명은 정보 탭에서 볼 수 있습니다.</p>`;
       pane.onclick = (e) => {
         const b = e.target.closest('[data-scene]');
         if (!b) return;
@@ -335,8 +405,7 @@
 
     panePhysics(pane) {
       const w = this.world;
-      pane.innerHTML = `<p class="hint">${this.currentScene.desc}</p>
-        <h3>측정</h3>
+      pane.innerHTML = `<h3>측정</h3>
         <div class="chips">${[['v', '수직 속도'], ['h', '높이'], ['E', '역학적 에너지'], ['T', '온도계']].map(([k, n]) => `<button class="chip${this.graphMode === k ? ' on' : ''}" data-graph="${k}">${n}</button>`).join('')}</div>
         <div class="graph"><canvas class="plot"></canvas></div><div class="legend"></div><div class="stats"></div>
         <h3>중력</h3><div class="chips">${GRAVITY.map(([n, g]) => `<button class="chip${Math.abs(w.g - g) < 0.005 ? ' on' : ''}" data-g="${g}">${n}</button>`).join('')}</div>
@@ -370,8 +439,8 @@
     paneCodex(pane) {
       const entries = [...this.codex.values()];
       const found = entries.filter((e) => e.type === 'reaction').length;
-      pane.innerHTML = `<p class="hint">${this.currentScene.desc}</p><h3>발견한 반응 ${found}개, 상태 변화 ${entries.length - found}개</h3>` +
-        (entries.length ? entries.slice().reverse().map((e) => `<div class="entry"><b>${e.name}</b><code>${e.eq}</code><span>${e.note || ''}</span></div>`).join('')
+      pane.innerHTML = `<h3>발견한 반응 ${found}개, 상태 변화 ${entries.length - found}개</h3>` +
+        (entries.length ? entries.slice().reverse().map((e) => `<details class="entry"><summary><b>${e.name}</b><code>${e.eq}</code></summary><span>${e.note || ''}</span></details>`).join('')
           : '<p class="hint">아직 발견한 반응이 없습니다. 물질들을 만나게 해 보세요.</p>');
       pane.onclick = null;
     }
@@ -396,6 +465,7 @@
         return;
       }
       this.pointer = { start: c, last: c, cur: c };
+      if (this.tool.kind === 'inspect') { this.inspected = this.world.inspect(c.x, c.y); this.pointer = null; this.setTab('info'); return; }
       if (this.tool.kind === 'probe') { this.world.setProbe(c.x, c.y); this.graphMode = 'T'; this.pointer = null; if (this.tab === 'physics') this.renderPane(); return; }
       if (this.tool.kind !== 'ball') this.applyBrush(c.x, c.y);
     }
@@ -465,7 +535,7 @@
         this.storage.save('codex', [...this.codex.values()]);
         this.toast(e);
         this.emit('discover', e);
-        if (this.tab === 'codex') this.renderPane();
+        if (this.tab === 'codex' || this.tab === 'info') this.renderPane();
       }
     }
 
@@ -482,8 +552,8 @@
       const c = this.hover;
       const info = c && this.world.inspect(c.x, c.y);
       const html = info
-        ? `<b>${info.def.name}</b> ${info.def.formula} · ${fmt(info.T, 1)}°C · ${info.rho >= 10 ? fmt(info.rho, 0) : fmt(info.rho, 2)} kg/m³${info.def.desc ? ' · ' + info.def.desc : ''}`
-        : '실험 공간 위에 커서를 올리거나 관찰 도구로 눌러 물질 정보를 확인하세요.';
+        ? `<b>${info.def.name}</b> ${info.def.formula} · ${fmt(info.T, 1)}°C · ${info.rho >= 10 ? fmt(info.rho, 0) : fmt(info.rho, 2)} kg/m³`
+        : '실험 공간 위에 커서를 올리면 그 칸의 물질과 온도가 보입니다. 관찰 도구로 누르면 정보 탭에 자세히 나옵니다.';
       if (html !== this.statusHtml) { el.innerHTML = html; this.statusHtml = html; }
     }
 
@@ -649,7 +719,7 @@
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.6.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.7.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);

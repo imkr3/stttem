@@ -53,7 +53,7 @@
 
 | 파일 | 역할 | 수정할 때 |
 |---|---|---|
-| `src/elements.js` | 원소 118종 표 | 원소 값 수정 |
+| `src/elements.js` | 원소 118종 표(주기율표 위치·성질). 물질로 만드는 원소는 `materials.js`의 `ELEMENT_SKIP`으로 고름 | 원소 값 수정 |
 | `src/materials.js` | 분자, 이온 화합물, 암석, 합금, 장치 | 새 물질 추가 |
 | `src/reactions.js` | 일반 반응 규칙과 특수 반응 표 | 새 반응 추가 |
 | `src/scenes.js` | 미리 꾸민 실험 | 새 실험 추가 |

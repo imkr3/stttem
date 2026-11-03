@@ -43,7 +43,7 @@
       up: [], down: [], decay: [], explicit: new Map(), cache: new Map(), reactive: new Uint8Array(n), base: new Uint16Array(n),
       fast: new Float32Array(n), thermal: new Float32Array(n), spont: new Float32Array(n), emitter: new Uint8Array(n),
       moder: new Uint8Array(n), absorb: new Float32Array(n), heat: new Float32Array(n), armor: new Uint8Array(n),
-      electrode: new Uint8Array(n), conductor: new Uint8Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
+      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
     };
     materials.forEach((d, i) => {
       c.state[i] = STATES[d.state];
@@ -61,6 +61,7 @@
       c.heat[i] = d.decayHeat || 0; // 방사성 붕괴열 W/kg
       c.armor[i] = d.fixed || d.armor ? 1 : 0; // 폭발에도 부서지지 않는 벽
       c.electrode[i] = d.electrode || 0;
+      if (d.shatter) c.shatter[i] = need(d.shatter); // 폭발에 부서지면 되는 물질
       if (d.electrode) c.anyElectrode = true;
       c.conductor[i] = d.electrode || (d.metal && d.state !== 'gas') ? 1 : 0; // 전기가 통하는 고체·액체 금속
     });
@@ -494,7 +495,10 @@
           if (f > (fallout ? 0.3 : 0.45) && (s === GAS || r >= 4)) {
             const to = fallout && ash != null && Math.random() < 0.2 ? ash : fire;
             this.setCell(i, to, Math.max(heat, Tm[i]));
-          } else if (Tm[i] < heat) Tm[i] = heat;
+          } else {
+            if (Tm[i] < heat) Tm[i] = heat;
+            if (d.shatter[m] >= 0 && f > 0.15 && r >= 2.5) this.setCell(i, d.shatter[m], Tm[i]); // 바위·유리는 조각난다
+          }
         }
       }
       // 바깥쪽부터 밀어내어 칸이 겹치지 않게 한다.

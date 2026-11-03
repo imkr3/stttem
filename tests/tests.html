@@ -39,19 +39,22 @@ function mix(a, b, T, ticks, want) {
 }
 
 // ---- 화학 데이터 ----
-test('원소 118종이 모두 있고 주기율표 칸이 겹치지 않음', () => {
+test('주기율표 118칸이 겹치지 않고, 반응이 있는 원소만 물질로 만듦', () => {
   assert(SandLab.ELEMENTS.length === 118, `원소 ${SandLab.ELEMENTS.length}종`);
+  const kept = SandLab.ELEMENTS.filter((e) => !SandLab.ELEMENT_SKIP.has(e.sym)).map((e) => e.sym);
+  for (const sym of ['H', 'He', 'Li', 'C', 'N', 'O', 'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'K', 'Ca', 'Fe', 'Cu', 'Zn', 'Ag', 'Au', 'Hg', 'Pb', 'U', 'Pu', 'W', 'Ga', 'Cd', 'B']) assert(kept.includes(sym), sym + ' 빠짐');
+  for (const sym of ['Og', 'Lu', 'Os', 'Tc']) assert(!SandLab.MATERIALS.some((d) => d.el === sym), sym + ' 남아 있음');
   const seen = new Set();
   for (const e of SandLab.ELEMENTS) {
     const key = SandLab.elementCell(e.z).join();
     assert(!seen.has(key), `${e.sym} 자리 겹침 ${key}`);
     seen.add(key);
   }
-  return `물질 전체 ${SandLab.MATERIALS.length}종`;
+  return `원소 ${kept.length}종, 물질 전체 ${SandLab.MATERIALS.length}종`;
 });
 
 test('화학식 생성이 원자가와 일치', () => {
-  const need = ['S:NaCl', 'S:CaCl2', 'S:Al2O3', 'S:Fe2O3', 'S:Fe(OH)3', 'S:Ca3(PO4)2', 'S:Al2(SO4)3', 'S:(NH4)2SO4', 'S:Pb(NO3)2', 'S:AgNO3', 'S:KMnO4', 'S:Ca(CH3COO)2', 'S:MnO2', 'S:V2O5', 'S:WO3'];
+  const need = ['S:NaCl', 'S:CaCl2', 'S:Al2O3', 'S:Fe2O3', 'S:Fe(OH)3', 'S:Ca3(PO4)2', 'S:Al2(SO4)3', 'S:(NH4)2SO4', 'S:Pb(NO3)2', 'S:AgNO3', 'S:KMnO4', 'S:Ca(CH3COO)2', 'S:MnO2', 'S:Cr2O3', 'S:WO3'];
   const w = fresh();
   for (const id of need) assert(w.data.idOf[id] != null, `${id} 없음`);
   return `${need.length}종 확인`;
@@ -171,7 +174,11 @@ const SHOULD = [
   ['물풀+붕사', 'glue', 'A:borax', null, 'slime'], ['우유+레몬즙', 'milk', 'A:citric', null, 'milk_curd'], ['박하 사탕+탄산수', 'mentos', 'A:acid:H2CO3', null, 'mentos'], ['비타민 C+아이오딘', 'A:vitc', 'A:KI3', null, 'vitc_iodine'], ['비타민 C+과망가니즈산칼륨', 'A:vitc', 'A:KMnO4', null, 'vitc_kmno4'],
   ['핫 아이스', 'supersat', 'S:NaCH3COO', null, 'hotice'], ['효모+설탕물(30°C)', 'yeast', 'A:sugar', 30, 'ferment'], ['효모+과산화수소', 'H2O2', 'yeast', null, 'yeast_h2o2'], ['시멘트+물', 'cement', 'water', null, 'cement_set'], ['소석고+물', 'plaster', 'water', null, 'plaster_set'],
   ['점토+물', 'clay', 'water', null, 'clay_wet'], ['표백제+암모니아수', 'A:NaClO', 'NH4OH:aq', null, 'naclo_nh3'], ['물유리+금속염(화학 정원)', 'S:CuSO4', 'A:Na2SiO3', null, 'garden'], ['물유리+염산', 'A:Na2SiO3', 'hcl', null, 'silicagel:HCl'],
-  ['다이크로뮴산암모늄+불', 'S:(NH4)2Cr2O7', 'fire', null, 'volcano'], ['설탕+베이킹소다(가열)', 'sugar', 'S:NaHCO3', 300, 'sugar_snake'], ['녹은 철+수증기 없음 확인용: 생석회+수증기', 'quicklime', 'steam', null, 'oxide-water:CaO'],
+  ['다이크로뮴산암모늄+불', 'S:(NH4)2Cr2O7', 'fire', null, 'volcano'], ['설탕+베이킹소다(가열)', 'sugar', 'S:NaHCO3', 300, 'sugar_snake'],
+  // 가열·냉각, 폭발
+  ['뜨거운 유리+물(열 충격)', 'glass', 'water', 300, 'glass_shock'], ['달군 강철+물(담금질)', 'steel', 'water', 800, 'quench'], ['설탕 가열(캐러멜)', 'sugar', 'air', 170, 'caramel'], ['캐러멜 더 가열', 'caramel', 'air', 250, 'sugar_heat'],
+  ['진한 황+찬물', 'S:l:dark', 'water', null, 'plastic_sulfur'], ['아이오딘 승화', 'I', 'air', 60, 'iodine_sublime'], ['아이오딘 증기+찬 유리', 'I:vapor', 'glass', null, 'iodine_deposit'], ['질산칼륨 용액 식히기', 'A:KNO3', 'glass', 5, 'recrystal:KNO3'],
+  ['얼음+바위(동결 풍화)', 'ice', 'stone', -5, 'frost'], ['주석+혹한', 'Sn', 'air', -30, 'tin_pest'], ['과산화수소+불', 'H2O2', 'fire', null, 'h2o2_blast'], ['밀가루+공기(가열)', 'flour', 'air', 400, 'burn:flour'], ['녹은 철+수증기 없음 확인용: 생석회+수증기', 'quicklime', 'steam', null, 'oxide-water:CaO'],
 ];
 test(`반응이 일어나야 하는 ${SHOULD.length}쌍`, () => {
   const fails = [];
@@ -220,7 +227,7 @@ const heatTo = (id, T, ticks) => {
   return w.data.defs[w.mat[i]].id;
 };
 test('녹는점과 끓는점: 위에서는 변하고 아래에서는 안 변함', () => {
-  const cases = [['Fe', 1538, 'Fe:l'], ['Cu', 1085, 'Cu:l'], ['Al', 660.3, 'Al:l'], ['Pb', 327.5, 'Pb:l'], ['Ga', 29.8, 'Ga:l'], ['W', 3422, 'W:l'], ['S', 115.2, 'S:l'], ['H2O:s', 0, 'H2O:l'], ['S:NaCl', 801, 'M:NaCl'], ['stone', 1215, 'lava'], ['sand', 1713, 'moltenglass']];
+  const cases = [['Fe', 1538, 'Fe:l'], ['Cu', 1085, 'Cu:l'], ['Al', 660.3, 'Al:l'], ['Pb', 327.5, 'Pb:l'], ['Ga', 29.8, 'Ga:l'], ['W', 3422, 'W:l'], ['S', 115.2, 'S:l:dark'], ['H2O:s', 0, 'H2O:l'], ['S:NaCl', 801, 'M:NaCl'], ['stone', 1215, 'lava'], ['sand', 1713, 'moltenglass']];
   for (const [id, at, to] of cases) {
     const start = fresh().data.defs[fresh().data.idOf[id]].id;
     assert(heatTo(id, at - 5) === start, `${id}: ${at - 5}°C에서 변함`);
@@ -303,7 +310,7 @@ test('세 물질이 있어야 하는 반응: 백금 촉매, 강철의 녹', () =
 test('반응이 거의 없던 드문 화합물을 정리함', () => {
   const ids = new Set(SandLab.MATERIALS.map((d) => d.id));
   for (const id of ['S:LaCl3', 'A:Nd(NO3)3', 'S:TlCl', 'S:BiCl3', 'S:ZrCl4', 'S:CuI2', 'S:FeI3', 'S:Fe2S3', 'S:BeSO4']) assert(!ids.has(id), id + ' 남아 있음');
-  for (const id of ['S:La2O3', 'S:La(OH)3', 'S:Sb2O3', 'S:ZrO2', 'S:TiCl4', 'S:AuCl3']) assert(ids.has(id), id + ' 없음');
+  for (const id of ['S:La2O3', 'S:La(OH)3', 'S:Sb2O3', 'S:TiCl4', 'S:AuCl3']) assert(ids.has(id), id + ' 없음');
   return `물질 전체 ${ids.size}종`;
 });
 test('핵분열: 임계 질량, 감속재, 제어봉', () => {
@@ -393,6 +400,18 @@ test('불꽃이 남기는 것: 탄소 연료만 이산화탄소, 수소·금속 
   const e = fresh(); scene(e, 'flame'); run(e, 10);
   assert(count(e, 'CO2:g') > 50, '에탄올이 타도 이산화탄소가 없음');
   return `수소 0칸, 에탄올 ${count(e, 'CO2:g')}칸`;
+});
+test('가열하면 바뀌고 식히면 돌아오는 것: 산화아연·아이오딘화수은 색, 황, 주석, 담금질 강철', () => {
+  const at = (id, T) => { const w = fresh(); w.rect(id, 100, 50, 100, 50, T); const i = w.index(100, 50); for (let n = 0; n < 4000; n++) { w.T[i] = T; w.phase(i, w.mat[i]); } return w.data.defs[w.mat[i]].id; };
+  const cases = [['S:ZnO', 300, 'ZnO:hot'], ['ZnO:hot', 100, 'S:ZnO'], ['S:HgI2', 150, 'HgI2:yellow'], ['HgI2:yellow', 100, 'S:HgI2'], ['S:l', 180, 'S:l:dark'], ['S:l:dark', 130, 'S:l'], ['Sn:gray', 20, 'Sn:s'], ['steel:hard', 650, 'steel:s'], ['clay', 1000, 'ceramic']];
+  for (const [id, T, want] of cases) { const got = at(id, T); assert(got === want, `${id} ${T}°C → ${got}, 기대 ${want}`); }
+  return `${cases.length}개 일치`;
+});
+test('폭발에 바위와 유리가 부서짐', () => {
+  const w = fresh(); w.rect('glass', 100, 90, 140, 95); w.rect('stone', 100, 96, 140, 100);
+  w.explode(w.index(120, 93), 6, 2500);
+  assert(count(w, 'glassshards') > 5 && count(w, 'gravel') > 5, `유리 조각 ${count(w, 'glassshards')}, 돌 조각 ${count(w, 'gravel')}`);
+  return `유리 조각 ${count(w, 'glassshards')}칸, 돌 부스러기 ${count(w, 'gravel')}칸`;
 });
 test('공기 중 액체 질소는 끓어 기체가 됨', () => {
   const w = fresh(); w.rect('N:l', 100, 60, 130, 70);
