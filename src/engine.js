@@ -43,7 +43,7 @@
       up: [], down: [], decay: [], explicit: new Map(), cache: new Map(), reactive: new Uint8Array(n), base: new Uint16Array(n),
       fast: new Float32Array(n), thermal: new Float32Array(n), spont: new Float32Array(n), emitter: new Uint8Array(n),
       moder: new Uint8Array(n), absorb: new Float32Array(n), heat: new Float32Array(n), armor: new Uint8Array(n),
-      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
+      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
     };
     materials.forEach((d, i) => {
       c.state[i] = STATES[d.state];
@@ -62,6 +62,8 @@
       c.armor[i] = d.fixed || d.armor ? 1 : 0; // 폭발에도 부서지지 않는 벽
       c.electrode[i] = d.electrode || 0;
       if (d.shatter) c.shatter[i] = need(d.shatter); // 폭발에 부서지면 되는 물질
+      // 칸마다 밝기를 조금씩 달리하는 정도(질감): 액체는 매끈하게, 금속은 고르게, 가루와 바위는 거칠게.
+      c.grain[i] = d.grain != null ? d.grain : d.state === 'liquid' ? 5 : d.state === 'gas' ? 7 : d.metal ? 7 : d.state === 'solid' ? 16 : 13;
       if (d.electrode) c.anyElectrode = true;
       c.conductor[i] = d.electrode || (d.metal && d.state !== 'gas') ? 1 : 0; // 전기가 통하는 고체·액체 금속
     });
@@ -168,7 +170,8 @@
       this.anchor[i] = 0;
       const lt = this.data.lifetime[m];
       this.life[i] = lt ? lt * (0.6 + 0.8 * Math.random()) : 0;
-      this.shade[i] = (Math.random() * 25 - 12) | 0;
+      const g = this.data.grain[m];
+      this.shade[i] = ((Math.random() * 2 - 1) * g) | 0;
     }
 
     swap(i, j) {
@@ -860,6 +863,21 @@
       if (!this.inside(x, y)) return null;
       const i = this.index(x, y), def = this.data.defs[this.mat[i]];
       return { def, T: this.T[i], rho: this.effRho(i) };
+    }
+
+    // ---- 되돌리기용 스냅숏 (메모리 안에서만, 빠르게) ----
+    snapshot() {
+      return {
+        mat: this.mat.slice(), T: this.T.slice(), anchor: this.anchor.slice(), store: this.store.slice(), vy: this.vy.slice(), life: this.life.slice(), shade: this.shade.slice(),
+        bodies: this.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] })), probe: this.probe && { x: this.probe.x, y: this.probe.y },
+      };
+    }
+    restoreSnapshot(s) {
+      this.mat.set(s.mat); this.T.set(s.T); this.anchor.set(s.anchor); this.store.set(s.store); this.vy.set(s.vy); this.life.set(s.life); this.shade.set(s.shade);
+      this.bodies = s.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] }));
+      this.selected = null; this.fq = [];
+      if (s.probe) this.setProbe(s.probe.x, s.probe.y); else this.probe = null;
+      this.role = null; // 전기 회로를 다시 찾는다.
     }
 
     // ---- 저장/복원 (포함될 사이트에서 서버에 저장할 수 있도록 순수 JSON) ----

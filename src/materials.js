@@ -73,12 +73,14 @@
   }
 
   // ---- 원소 ----
+  // 원소의 실제 색(금속은 은회색 계열에서 조금씩 다르게).
   const ELEMENT_COLORS = {
-    H: '#d9c9f5', He: '#f4e3b0', Li: '#c4c8cc', B: '#4b4640', C: '#26262a', N: '#9fb4d8', O: '#9fd3ff', F: '#d6e38a', Ne: '#ff8a70', Na: '#d5d9c8', Mg: '#c9cdd2', Al: '#cfd4d9', Si: '#6e7680', P: '#f0e6c0', S: '#e6d23c',
-    Cl: '#a8cc4e', Ar: '#c79be0', K: '#c9cfc2', Ca: '#d8d5cc', Ti: '#9aa0a8', V: '#a0a4aa', Cr: '#b8c2cc', Mn: '#9c9690', Fe: '#8d949c', Co: '#7f8a9c', Ni: '#b4ae9c', Cu: '#c97a4a', Zn: '#a6b0ba', Ga: '#c0c6cc', Ge: '#808890',
-    As: '#6c7074', Se: '#7a3a30', Br: '#9a3216', Kr: '#b8d8e8', Rb: '#c8c4c0', Sr: '#d4cfc2', Ag: '#e2e5e8', Cd: '#a8b0b8', In: '#b0b4bc', Sn: '#c2c6ca', Sb: '#8e9298', Te: '#858a90', I: '#3a2a55', Xe: '#a0b4ff', Cs: '#d8c98c',
-    Ba: '#bfbdae', W: '#7a7e84', Pt: '#d0d2d4', Au: '#e8bf3c', Hg: '#c4cad0', Pb: '#6f7680', Bi: '#c3a8b4', Rn: '#c08090', U: '#6a7068', Pu: '#6c665c', Ra: '#c8d0a8', Os: '#7a8ca0',
+    H: '#d9c9f5', He: '#f4e3b0', Li: '#c8ccd0', Be: '#a6abb0', B: '#3c3530', C: '#26262a', N: '#9fb4d8', O: '#9fd3ff', F: '#d6e38a', Ne: '#ff8a70', Na: '#d8dcd6', Mg: '#c4c9ce', Al: '#d2d7dc', Si: '#5a6472', P: '#f0e8c8', S: '#e8d22c',
+    Cl: '#a8cc4e', Ar: '#c79be0', K: '#cfd3c8', Ca: '#e2e0d8', Ti: '#8a9098', Cr: '#c4ced8', Mn: '#a8a49e', Fe: '#8a9098', Co: '#8c96a6', Ni: '#c2baa6', Cu: '#c9784a', Zn: '#a8b6c2', Ga: '#c8ccd2',
+    Br: '#8a2a10', Rb: '#ccc8c0', Sr: '#e0dac6', Pd: '#c6c6c2', Ag: '#e6e9ec', Cd: '#b4bcc4', Sn: '#d0d4d8', Sb: '#a2a6ae', I: '#3e2e58', Cs: '#dcc888', Ba: '#cac8ba', La: '#c8c8c0', Ce: '#c6c2b2', Gd: '#c0c0bc',
+    W: '#8a8e94', Pt: '#d8d8d4', Au: '#ebc040', Hg: '#cdd2d8', Pb: '#767c88', Bi: '#d0b4c4', Po: '#b0b4b8', Ra: '#e8ecd8', U: '#7a7c74', Pu: '#7c7468', Cf: '#a0a4a0',
   };
+
   const CAT_COLOR = { alkali: '#c8ccc4', alkaline: '#cfcdc2', tm: '#a2a8ae', post: '#a8aeb4', metalloid: '#7c8288', nonmetal: '#b0b0a0', halogen: '#a0b070', noble: '#b0c4d8', ln: '#b4b8ae', an: '#8c9088' };
   const MOLECULE = { H: 'H2', N: 'N2', O: 'O2', F: 'F2', Cl: 'Cl2', Br: 'Br2', I: 'I2' };
   const GAS_COLOR = { H: '#2a2c3a', He: '#2c2a24', N: '#1b2230', O: '#1e3040', F: '#555a2c', Ne: '#3a241f', Cl: '#6c8530', Ar: '#2a2233', Br: '#8a3a18', I: '#6a3f96', Kr: '#1f2c33', Xe: '#242a44', Rn: '#33242a', Hg: '#2c3036', Na: '#6c6a24', S: '#a07a20' };
@@ -121,7 +123,7 @@
     ['HIg', '아이오딘화수소', 'HI', 127.9, 2.85, -50.8, -35.4, 'gas', '#c8c0c8', { gasColor: '#2c262e', k: 0.1, c: 230 }],
     ['HFg', '플루오린화수소', 'HF', 20.01, 1.0, -83.6, 19.5, 'gas', '#d0d8b0', { gasColor: '#2a3026', k: 0.1, c: 1450, gasOnly: true }],
     ['H2O2', '과산화수소', 'H2O2', 34.01, 1.45, -0.4, 150.2, 'chem', '#bcdcf0', { k: 0.6, c: 2620, misc: true, flow: 4, desc: '이산화망가니즈를 만나면 빠르게 분해되어 산소를 냅니다.' }],
-    ['H2SO4', '진한 황산', 'H2SO4', 98.08, 1.84, 10.3, 337, 'acid', '#d8d4a8', { k: 0.3, c: 1400, flow: 2, misc: true, tags: { acid: { a: 'SO4', conc: true }, pH: 0 }, desc: '물과 만나면 많은 열을 내고, 설탕에서 물을 빼앗습니다.' }],
+    ['H2SO4', '진한 황산', 'H2SO4', 98.08, 1.84, 10.3, 337, 'acid', '#c4c8bc', { k: 0.3, c: 1400, flow: 2, misc: true, tags: { acid: { a: 'SO4', conc: true }, pH: 0 }, desc: '물과 만나면 많은 열을 내고, 설탕에서 물을 빼앗습니다.' }],
     ['HNO3', '진한 질산', 'HNO3', 63.01, 1.51, -42, 83, 'acid', '#e8dca0', { k: 0.3, c: 1720, flow: 4, misc: true, tags: { acid: { a: 'NO3', conc: true }, pH: 0 }, desc: '강한 산화제. 수소 대신 이산화질소가 생깁니다.' }],
     ['CH3COOH', '빙초산', 'CH3COOH', 60.05, 1.05, 16.6, 118, 'acid', '#d8dcc8', { k: 0.2, c: 2050, flow: 4, misc: true, tags: Object.assign({ acid: { a: 'CH3COO', conc: true, weak: true }, pH: 2.4 }, fuel(460, 0.1, CH, 1100)) }],
     ['CH4', '메테인', 'CH4', 16.04, 0.42, -182.5, -161.5, 'organic', '#b8c0d0', { gasColor: '#222a36', k: 0.1, c: 2220, tags: fuel(540, 0.5, CH, 1400), desc: '천연가스의 주성분.' }],
@@ -232,6 +234,30 @@
   // 수용액의 색은 양이온이 정한다. 없으면 맑은 물색.
   const AQ_COLOR = { Cu2: '#2a6fd0', Ni2: '#3fa86a', Fe2: '#7ab89a', Fe3: '#b48a2a', Cr3: '#3f7a6a', Mn2: '#c4a0b0', Co2: '#c05a80', Au3: '#c8a820' };
   const AN_AQ_COLOR = { MnO4: '#6a1a80', CrO4: '#d8c020' };
+
+  // ---- 색 ----
+  const hexRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const rgbHex = (r) => '#' + r.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+  const mixHex = (a, b, t) => { const x = hexRgb(a), y = hexRgb(b); return rgbHex(x.map((v, i) => v + (y[i] - v) * t)); };
+  const hash = (str) => { let h = 2166136261; for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619); return (h >>> 0) / 4294967296; };
+  // 같은 흰색·무색이라도 물질마다 아주 조금씩 다르게 해서 섞였을 때 구분되게 한다.
+  const jitter = (hex, key, amt) => { const h = hash(key), rgb = hexRgb(hex); return rgbHex(rgb.map((v, i) => v + (hash(key + i) - 0.5) * amt * 2 + (h - 0.5) * amt)); };
+  // 고체 염의 색: 양이온(전이 금속)과 음이온이 정한다. 측정한 색(DATA)이 있으면 그것을 쓴다.
+  const SOLID_CATION_COLOR = { Cu2: '#5a9ee0', Ni2: '#5cb070', Co2: '#d0607e', Fe2: '#b6d4a4', Fe3: '#d4923a', Mn2: '#f0c8d2', Cr3: '#4e8060', Au3: '#d0a030', Pd2: '#8a5a3a', U6: '#e8d040', Ag: '#e6e4dc' };
+  const SULFIDE_COLOR = { Zn: '#ece8d8', Cd: '#e8c020', Mn2: '#c08898', Sn2: '#4a3a22', Na: '#e8e0a8', K: '#e4dca0', Li: '#ece4b0', Ca: '#e8e4d0', Mg: '#e6e2d4', Ba: '#e4e0d0', Sr: '#e6e2d2', Rb: '#e4dca8', Cs: '#e0d8a0', NH4: '#e8e0a0' };
+  const SPECIAL = { CrO4: '#e8c818', MnO4: '#3a1050' };
+  function solidColor(c, a, fx) {
+    if (SPECIAL[a]) return SPECIAL[a];
+    if (a === 'S') return SULFIDE_COLOR[c] || '#2a2826';
+    if (a === 'O') return SOLID_CATION_COLOR[c] ? mixHex(SOLID_CATION_COLOR[c], '#202020', 0.6) : jitter('#ececea', fx, 6);
+    if (a === 'I' && !SOLID_CATION_COLOR[c]) return jitter('#f0e8cc', fx, 6); // 아이오딘화물은 공기 중에서 누렇게 변하기 쉽다.
+    if (SOLID_CATION_COLOR[c]) return jitter(SOLID_CATION_COLOR[c], fx, 10);
+    return jitter('#ececea', fx, 7);
+  }
+  // 수용액: 색 있는 이온이 없으면 물과 거의 같은 색에 아주 엷은 차이만 준다.
+  const aqColor = (c, a, fx) => AN_AQ_COLOR[a] || AQ_COLOR[c] || jitter('#3d8cd8', fx, 9);
+  // 녹은 염: 고체 색에 빛나는 주황을 섞는다(뜨거우면 렌더러가 더 밝게 그린다).
+  const meltColor = (solidHex) => mixHex(solidHex, '#ffb060', 0.45);
   const FLAME = { Li: 'Li', Na: 'Na', K: 'K', Rb: 'Rb', Cs: 'Cs', Ca: 'Ca', Sr: 'Sr', Ba: 'Ba', Cu2: 'Cu' };
   // 용해열: 양수는 데워지고 음수는 차가워진다(°C/칸).
   const DISSOLVE_HEAT = { NaOH: 40, KOH: 45, NH4NO3: -25, KNO3: -12, CaCl2: 25, NH4Cl: -12, K2CO3: 8, Na2CO3: 6, MgSO4: 8, NaCl: -1 };
@@ -279,12 +305,12 @@
       salts[c][a] = entry;
       const baseDesc = (a === 'O' ? '금속 산화물.' : '') + (mp != null ? ` 녹는점 ${mp}°C.` : '') + (est ? ' 일부 성질은 추정값입니다.' : '');
       add({
-        id: solid, name: label, formula: pretty(fx), fx, state: 'powder', cat: 'salt', color: data[2] || '#e6e6ea', density, c: 800, k: 2, salt: { c, a }, base: isBase && soluble(c, a), mp, est, cast: true,
+        id: solid, name: label, formula: pretty(fx), fx, state: 'powder', cat: 'salt', color: data[2] || solidColor(c, a, fx), density, c: 800, k: 2, salt: { c, a }, base: isBase && soluble(c, a), mp, est, cast: true,
         desc: baseDesc.trim(), up: mp != null ? { at: mp, to: 'M:' + fx, L: 3e5 } : null, dHsol: DISSOLVE_HEAT[fx] || 0,
       });
       if (mp != null) {
         add({
-          id: 'M:' + fx, name: '녹은 ' + aname + cname, formula: pretty(fx) + '(l)', fx, state: 'liquid', color: data[2] || '#f0d8b0', density: density * 0.9, c: 1000, k: 1, T0: mp + 15, flow: 2, salt: { c, a }, mp,
+          id: 'M:' + fx, name: '녹은 ' + aname + cname, formula: pretty(fx) + '(l)', fx, state: 'liquid', color: meltColor(data[2] || solidColor(c, a, fx)), density: density * 0.9, c: 1000, k: 1, T0: mp + 15, flow: 2, salt: { c, a }, mp,
           desc: `녹는점 ${mp}°C. 식으면 다시 굳습니다.`, down: { at: mp, to: solid, L: 3e5, cast: true },
         });
       }
@@ -294,7 +320,7 @@
         const pH = phOf(c, a);
         const freeze = EUTECTIC[fx] != null ? EUTECTIC[fx] : -5;
         add({
-          id: aqId, name: (fx === 'NaCl' ? '소금물' : `${aname}${cname} 용액`), formula: pretty(fx) + '(aq)', fx, state: 'liquid', cat: isBase ? 'base' : 'solution', color: AN_AQ_COLOR[a] || AQ_COLOR[c] || '#3f93c4', density: 1000 + Math.min(300, density / 25), c: 3900, k: 0.6, flow: 5, aq: true, misc: true, salt: { c, a }, base: isBase, pH,
+          id: aqId, name: (fx === 'NaCl' ? '소금물' : `${aname}${cname} 용액`), formula: pretty(fx) + '(aq)', fx, state: 'liquid', cat: isBase ? 'base' : 'solution', color: aqColor(c, a, fx), density: 1000 + Math.min(300, density / 25), c: 3900, k: 0.6, flow: 5, aq: true, misc: true, salt: { c, a }, base: isBase, pH,
           desc: `pH 약 ${pH}. 끓이면 물이 날아가고 고체가 남습니다.` + (EUTECTIC[fx] != null ? ` 진하면 ${freeze}°C까지 얼지 않습니다.` : ''),
           up: { at: 102, to: [['H2O:g', 0.6], [solid, 0.4]], L: 2.257e6 }, down: { at: freeze, to: [['H2O:s', 0.7], [solid, 0.3]], L: 3.34e5 },
         });
@@ -305,9 +331,9 @@
   // ---- 산 ----
   // [별칭, 이름, 화학식, 음이온, 색, 끓을 때 나오는 기체, 강도, pH(약 0.1 mol/L)]
   const ACIDS = [
-    ['HCl', '염산', 'HCl', 'Cl', '#b7dc5a', 'HClg', 0.9, 1], ['HBr', '브로민화수소산', 'HBr', 'Br', '#c8c080', 'HBrg', 0.9, 1], ['HI', '아이오딘화수소산', 'HI', 'I', '#c0a080', 'HIg', 0.9, 1],
-    ['HF', '플루오린화수소산', 'HF', 'F', '#c8e080', 'HFg', 0.4, 2.1], ['HNO3aq', '묽은 질산', 'HNO3', 'NO3', '#dcd890', 'NO2', 0.9, 1], ['H2SO4aq', '묽은 황산', 'H2SO4', 'SO4', '#d0d0a0', 'SO2', 0.9, 1],
-    ['H3PO4', '인산', 'H3PO4', 'PO4', '#d0d8c0', null, 0.3, 1.6], ['CH3COOHaq', '식초(아세트산)', 'CH3COOH', 'CH3COO', '#d8d8b0', 'CH3COOH', 0.15, 2.9], ['H2CO3', '탄산수', 'H2CO3', 'CO3', '#a8d0e0', 'CO2', 0.05, 4], ['H2SO3', '아황산', 'H2SO3', 'SO3x', '#c8d8c0', 'SO2', 0.2, 1.8],
+    ['HCl', '염산', 'HCl', 'Cl', '#86c4cc', 'HClg', 0.9, 1], ['HBr', '브로민화수소산', 'HBr', 'Br', '#c8bc8c', 'HBrg', 0.9, 1], ['HI', '아이오딘화수소산', 'HI', 'I', '#c89a64', 'HIg', 0.9, 1],
+    ['HF', '플루오린화수소산', 'HF', 'F', '#94ccc0', 'HFg', 0.4, 2.1], ['HNO3aq', '묽은 질산', 'HNO3', 'NO3', '#a4c6d6', 'NO2', 0.9, 1], ['H2SO4aq', '묽은 황산', 'H2SO4', 'SO4', '#8cb4d6', 'SO2', 0.9, 1],
+    ['H3PO4', '인산', 'H3PO4', 'PO4', '#9cc0d0', null, 0.3, 1.6], ['CH3COOHaq', '식초(아세트산)', 'CH3COOH', 'CH3COO', '#c8c49a', 'CH3COOH', 0.15, 2.9], ['H2CO3', '탄산수', 'H2CO3', 'CO3', '#a8d0e0', 'CO2', 0.05, 4], ['H2SO3', '아황산', 'H2SO3', 'SO3x', '#c8d8c0', 'SO2', 0.2, 1.8],
   ];
   for (const [key, name, fx, a, color, gas, strength, pH] of ACIDS) {
     const id = 'A:acid:' + key;
@@ -524,6 +550,7 @@
   // ---- 가열·냉각으로 바뀌는 것, 폭발에 부서지는 것 ----
   const byId = (id) => list.find((d) => d.id === id);
   add({ id: 'glassshards', name: '깨진 유리', formula: 'SiO₂ 유리 조각', fx: 'SiO2', state: 'powder', cat: 'rock', color: '#b4e0e0', density: 1500, c: 840, k: 0.5, desc: '뜨거운 유리가 갑자기 식거나 폭발에 맞아 깨진 조각. 녹이면 다시 유리가 됩니다.', up: { at: 1400, to: 'moltenglass', L: 1.4e5 } });
+  add({ id: 'fog', name: '안개', formula: '작은 물방울', fx: 'H2O', state: 'gas', color: '#d8e0e6', density: 1.5, c: 1000, k: 0.03, T0: -10, lifetime: 360, decay: [['air', 1]], grain: 14, desc: '차가워진 공기 속 수증기가 엉긴 작은 물방울. 공기보다 차갑고 무거워 바닥으로 깔리다가 사라집니다.' });
   add({ id: 'gravel', name: '돌 부스러기', formula: '암석 조각', fx: 'SiO2', state: 'powder', cat: 'rock', color: '#8a8f96', density: 1600, c: 800, k: 0.4, desc: '바위가 얼었다 녹기를 되풀이하거나(풍화) 폭발에 맞아 부서진 조각.', up: { at: 1215, to: 'lava', L: 4e5 } });
   add({ id: 'flour', name: '밀가루', formula: '(C₆H₁₀O₅)ₙ', fx: 'C6H10O5', state: 'powder', cat: 'organic', color: '#f2ece0', density: 600, c: 1700, k: 0.1, dust: true, fuel: { ign: 380, prob: 0.2, prods: ['CO2', 'H2O'], T: 1000 }, desc: '고운 가루가 공기 중에 퍼진 채 불이 붙으면 순식간에 타며 폭발합니다(분진 폭발).' });
   add({ id: 'caramel', name: '캐러멜', formula: '설탕이 분해된 갈색 물질', fx: 'C12H18O9', state: 'powder', color: '#a05a1a', density: 1500, c: 1300, k: 0.2, desc: '설탕을 160°C 넘게 가열하면 분해되며 갈색과 향이 생깁니다. 더 가열하면 검게 탑니다.' });

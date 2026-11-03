@@ -200,7 +200,7 @@ const SHOULD_NOT = [
   ['BTB+물 (묽히기만 함)', 'btb', 'water'], ['페놀프탈레인+소금물 (중성)', 'phth', 'brine'], ['구리+수산화나트륨 (양쪽성 아님)', 'Cu', 'naoh'], ['철+수산화나트륨', 'Fe', 'naoh'],
   ['마그네슘+이산화탄소 저온', 'Mg', 'co2'], ['숯+수증기 저온', 'C', 'steam'], ['뜨겁지 않은 기름+물', 'oil', 'water'],
   ['수소+공기 (불씨·촉매 없음)', 'hydrogen', 'air'], ['소금+소금물 (포화)', 'salt', 'brine'], ['백금+염산', 'Pt', 'hcl'], ['베네딕트+포도당 (데우지 않음)', 'benedict', 'A:glucose'], ['녹말+물', 'starch', 'water'],
-  ['물+공기 (물은 증발 없음)', 'water', 'air'], ['사염화탄소+물', 'CCl4', 'water'],
+['사염화탄소+물', 'CCl4', 'water'],
   ['브로민수+메테인 (포화 탄화수소)', 'brominewater', 'CH4'], ['과망가니즈산칼륨+에테인', 'A:KMnO4', 'C2H6'], ['익은 간+과산화수소 (효소 변성)', 'liver:cooked', 'H2O2'], ['흰자+물', 'eggwhite', 'water'], ['구리+염화철(II)', 'Cu', 'A:FeCl2'],
   ['천연 우라늄+물', 'U', 'water'], ['농축 우라늄+공기 (화학 반응 없음)', 'HEU', 'nitrogen'],
   ['루미놀+과산화수소 (촉매 없음)', 'luminol', 'H2O2'], ['박하 사탕+물', 'mentos', 'water'], ['설탕물+효모가 아닌 죽은 효모', 'yeast:dead', 'A:sugar'], ['물풀+물', 'glue', 'water'], ['우유+물', 'milk', 'water'],
@@ -412,6 +412,37 @@ test('폭발에 바위와 유리가 부서짐', () => {
   w.explode(w.index(120, 93), 6, 2500);
   assert(count(w, 'glassshards') > 5 && count(w, 'gravel') > 5, `유리 조각 ${count(w, 'glassshards')}, 돌 조각 ${count(w, 'gravel')}`);
   return `유리 조각 ${count(w, 'glassshards')}칸, 돌 부스러기 ${count(w, 'gravel')}칸`;
+});
+test('증발: 따뜻할수록 빠르고, 소금물은 소금을 남기고, 액체 질소 옆엔 안개', () => {
+  const left = (T) => { const w = fresh(); w.rect('stone', 0, 146, 239, 149); w.rect('water', 63, 120, 177, 145, T); const k = w.data.idOf.water;
+    for (let i = 0; i < 1200; i++) { w.step(); for (let j = 0; j < w.mat.length; j++) if (w.mat[j] === k && w.T[j] < T) w.T[j] = T; } return count(w, 'water'); };
+  const cold = left(20), hot = left(80);
+  assert(cold < 2990 && hot < cold - 200, `20°C ${cold}, 80°C ${hot}칸 남음`);
+  const b = fresh(); b.rect('stone', 0, 146, 239, 149); b.rect('brine', 80, 136, 160, 145, 90); const kb = b.data.idOf.brine;
+  for (let i = 0; i < 3600; i++) { b.step(); for (let j = 0; j < b.mat.length; j++) if (b.mat[j] === kb) b.T[j] = 90; }
+  assert(count(b, 'salt') > 50, `소금 ${count(b, 'salt')}칸`);
+  const n = fresh(); n.rect('stone', 0, 146, 239, 149); n.rect('N:l', 100, 130, 140, 145); run(n, 5);
+  assert(count(n, 'fog') > 20, '안개 없음');
+  return `30초 뒤 남은 물: 20°C ${cold}칸, 80°C ${hot}칸 · 소금 ${count(b, 'salt')}칸 · 안개 ${count(n, 'fog')}칸`;
+});
+test('되돌리기 스냅숏이 상태를 그대로 돌려놓음', () => {
+  const w = fresh(); scene(w, 'precip'); run(w, 1);
+  const snap = w.snapshot(), mat = w.mat.slice(), T = w.T.slice();
+  run(w, 2); w.rect('Na', 10, 10, 30, 30);
+  w.restoreSnapshot(snap);
+  for (let i = 0; i < mat.length; i++) assert(w.mat[i] === mat[i] && w.T[i] === T[i], `칸 ${i}`);
+  return '일치';
+});
+test('물질 색: 같은 색을 쓰는 물질이 적고, 색 있는 이온은 색이 있음', () => {
+  const cnt = {}; for (const d of SandLab.MATERIALS) cnt[d.color] = (cnt[d.color] || 0) + 1;
+  const most = Math.max(...Object.values(cnt));
+  assert(most <= 20, `같은 색 ${most}종`);
+  const rgb = (id) => { const h = SandLab.MATERIALS.find((d) => d.id === id).color; return [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)); };
+  const [r1, g1, b1] = rgb('S:NiSO4'), [r2, g2, b2] = rgb('S:Cu(CH3COO)2'), [r3, , b3] = rgb('S:CoSO4'), [r4, g4, b4] = rgb('S:CuS');
+  assert(g1 > r1 && g1 > b1, '니켈 염이 초록이 아님');
+  assert(r3 > b3, '코발트 염이 분홍이 아님');
+  assert(r4 + g4 + b4 < 150, '황화구리가 검지 않음');
+  return `가장 많이 겹친 색 ${most}종`;
 });
 test('공기 중 액체 질소는 끓어 기체가 됨', () => {
   const w = fresh(); w.rect('N:l', 100, 60, 130, 70);

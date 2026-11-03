@@ -40,7 +40,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 메서드 | `loadScene(id)`, `scenes()`, `pause()`, `resume()`, `setView('normal'｜'heat'｜'density')`, `save()`, `restore(data)`, `discoveries()`, `destroy()` |
+| 메서드 | `loadScene(id)`, `scenes()`, `undo()`, `pause()`, `resume()`, `setView('normal'｜'heat'｜'density')`, `save()`, `restore(data)`, `discoveries()`, `destroy()` |
 | 버전 | `SandLab.version` (저장 데이터나 공개 API가 바뀌면 올림) |
 | 이벤트 | `sandlab:ready`, `sandlab:scenechange`, `sandlab:discover` |
 | 색상 변경 | 사이트 CSS에서 `--sl-accent`, `--sl-bg`, `--sl-panel` 등을 지정 |

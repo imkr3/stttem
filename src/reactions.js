@@ -237,6 +237,22 @@
       out.push(R('evap:' + A.sp, A.name + '의 증발', [], [], { kind: 'physical', eq: `${A.formula}(l) → ${A.formula}(g)`, prob: 0.004 * Math.exp(-(A.bp - 20) / 30), toA: 'air', dT: -3, note: '끓는점보다 낮아도 표면의 분자는 공기 속으로 날아갑니다. 끓는점이 낮을수록 빨리 마르고, 증발할 때 열을 빼앗아 시원해집니다.' }));
     }
 
+    // 물과 수용액의 증발: 끓지 않아도 표면에서 물이 날아간다(수증기는 공기 속으로 흩어진다고 본다).
+    // 증기압이 온도에 따라 가파르게 커지므로 뜨거울수록 빠르다. 녹아 있던 것은 결정으로 남는다(염전, 바닷물이 마른 자국).
+    if (B.id === 'air' && A.state === 'liquid' && (A.id === 'H2O:l' || (A.aq && !A.acid && !A.indicator))) {
+      const left = A.id === 'H2O:l' ? null : A.salt ? (salt(A.salt.c, A.salt.a) || {}).solid : A.id === 'A:sugar' ? 'sugar' : A.id === 'A:glucose' ? 'glucose' : null;
+      const to = left ? [['air', 0.8], [left, 0.2]] : 'air';
+      const what = left ? `${A.formula} → H₂O(g)↑ + 결정` : 'H₂O(l) → H₂O(g)';
+      for (const [minT, prob] of [[80, 0.01], [50, 0.003], [undefined, 0.0004]]) {
+        out.push(R('evap:water', '물의 증발', [], [], { kind: 'physical', eq: what, minT, prob, toA: to, dT: -1, note: '끓는점보다 낮아도 물은 표면에서 조금씩 증발합니다. 따뜻할수록 빠르고, 녹아 있던 소금 같은 것은 결정으로 남습니다. 증발할 때 열을 가져가 시원해집니다.' }));
+      }
+    }
+
+    // 아주 차가운 물질 옆의 공기는 습기가 얼어 붙어 하얀 안개가 된다(액체 질소·드라이아이스의 안개).
+    if (B.id === 'air' && A.bp != null && A.bp < -20 && A.state !== 'gas' && A.sp) {
+      out.push(R('fog', '차가운 안개', [], [], { kind: 'physical', eq: '공기 속 수증기 → 작은 물방울·얼음 알갱이', maxT: -5, prob: 0.05, toB: 'fog', note: '하얀 연기처럼 보이는 것은 이산화탄소나 질소가 아니라, 차가워진 공기 속 수증기가 엉긴 작은 물방울입니다. 공기보다 차갑고 무거워 바닥으로 깔립니다.' }));
+    }
+
     // 산성·염기성 기체는 물이 든 용액에 녹는다. 암모니아는 산과 바로 중화되어 암모늄염이 된다.
     if (A.sp === 'NH3' && A.state === 'gas' && B.state === 'liquid' && B.aq && !isWater(B)) {
       const nh4 = B.acid ? salt('NH4', B.acid.a) : null;

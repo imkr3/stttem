@@ -9,6 +9,7 @@
     --sl-series-1:#6aa9ff; --sl-series-2:#f2a34c; }
   * { box-sizing:border-box; }
   .wrap { container-type:inline-size; width:100%; height:100%; }
+  .root:focus { outline:none; }
   .root { font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; font-size:14px; line-height:1.35; color:var(--sl-ink); overflow:hidden; display:grid; width:100%; height:100%; background:var(--sl-bg); grid-template-columns:minmax(0,1fr) 340px; grid-template-rows:auto minmax(0,1fr) auto; grid-template-areas:"bar side" "stage side" "status side"; }
   @container (max-width:759px) {
     /* 8:5 비율을 유지하되, 넣은 요소의 높이가 낮으면 패널 자리를 먼저 남긴다. */
@@ -154,11 +155,12 @@
 
     buildDom() {
       this.shadow.innerHTML = `<style>${CSS}</style>
-      <div class="wrap"><div class="root">
+      <div class="wrap"><div class="root" tabindex="-1">
         <div class="bar">
           <button class="play" title="일시정지/재생">일시정지</button>
           <button class="stepone" title="한 틱만 진행">1틱</button>
           <button class="restart" title="현재 실험을 처음부터">다시</button>
+          <button class="undo" title="마지막으로 그린 것 되돌리기 (Ctrl+Z)" disabled>되돌리기</button>
           <label>속도 <select class="speed">
             <option value="0.1">0.1배</option><option value="0.25">0.25배</option><option value="0.5">0.5배</option><option value="1" selected>1배</option><option value="2">2배</option>
           </select></label>
@@ -179,6 +181,11 @@
       this.listen(this.$('.play'), 'click', () => this.setRunning(!this.running));
       this.listen(this.$('.stepone'), 'click', () => { this.setRunning(false); this.world.step(); this.afterStep(); });
       this.listen(this.$('.restart'), 'click', () => this.loadScene(this.currentScene.id));
+      this.listen(this.$('.undo'), 'click', () => this.undo());
+      // 단축키는 실험실 안을 누른 뒤에만 받는다(사이트의 다른 단축키를 가로채지 않도록).
+      this.listen(this.$('.root'), 'keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && e.target.tagName !== 'INPUT') { e.preventDefault(); this.undo(); }
+      });
       this.listen(this.$('.speed'), 'change', (e) => { this.speed = +e.target.value; });
       this.listen(this.$('.view'), 'change', (e) => this.setView(e.target.value));
       this.listen(this.$('.tabs'), 'click', (e) => { const t = e.target.closest('[data-tab]'); if (t) this.setTab(t.dataset.tab); });
@@ -233,6 +240,8 @@
       this.currentScene = sc;
       this.world.reset();
       sc.setup(this.world);
+      this.history = [];
+      if (this.$('.undo')) this.$('.undo').disabled = true;
       this.speed = sc.speed || 1;
       this.graphMode = sc.graph || 'v';
       this.$('.speed').value = String(this.speed);
@@ -454,8 +463,22 @@
       const dx = this.world.dx;
       return this.world.bodies.find((b) => Math.hypot(b.x / dx - c.x, b.y / dx - c.y) <= b.r / dx + 2);
     }
+    // 그리기 직전 상태를 기억해 두었다가 되돌린다.
+    remember() {
+      this.history = this.history || [];
+      this.history.push(this.world.snapshot());
+      if (this.history.length > 20) this.history.shift();
+      this.$('.undo').disabled = false;
+    }
+    undo() {
+      if (!this.history || !this.history.length) return;
+      this.world.restoreSnapshot(this.history.pop());
+      this.$('.undo').disabled = !this.history.length;
+    }
     onDown(e) {
       e.currentTarget.setPointerCapture(e.pointerId);
+      this.$('.root').focus({ preventScroll: true });
+      if (['mat', 'erase', 'heat', 'cool', 'ball'].includes(this.tool.kind)) this.remember();
       const c = this.cellAt(e);
       this.hover = c;
       const hit = this.bodyAt(c);
@@ -719,7 +742,7 @@
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.7.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.8.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);
@@ -729,6 +752,7 @@
     return {
       world: app.world,
       loadScene: (id) => app.loadScene(id),
+      undo: () => app.undo(),
       pause: () => app.setRunning(false),
       resume: () => app.setRunning(true),
       setView: (v) => app.setView(v),
