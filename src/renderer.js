@@ -34,6 +34,98 @@
       this.heatLut = ramp(HEAT);
       this.densLut = ramp(DENS);
       this.mode = 'normal';
+      // 빛 번짐: 빛나는 칸만 따로 그려 흐리게 겹친다.
+      const mk = (w, h) => { const c = (typeof OffscreenCanvas !== 'undefined') ? new OffscreenCanvas(w, h) : Object.assign(document.createElement('canvas'), { width: w, height: h }); return c; };
+      this.glowCanvas = mk(world.w, world.h);
+      this.glowCtx = this.glowCanvas.getContext('2d');
+      this.glowImage = this.glowCtx.createImageData(world.w, world.h);
+      this.glowPx = new Uint32Array(this.glowImage.data.buffer);
+      this.half = mk(world.w >> 1, world.h >> 1); this.quarter = mk(world.w >> 2, world.h >> 2);
+      this.glowCount = 0;
+      this.particles = []; // 불티·파편 빛 (칸 단위 좌표)
+      this.flashes = [];
+      this.shake = 0;
+      this.effects = true;
+      this.reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+
+    // 엔진이 요청한 효과를 입자로 만든다.
+    takeFx() {
+      const W = this.world;
+      for (const e of W.drainFx()) {
+        if (!this.effects) continue;
+        if (e.type === 'boom') {
+          const big = e.nuke ? 3 : 1;
+          this.flashes.push({ x: e.x + 0.5, y: e.y + 0.5, r: e.r * (e.nuke ? 6 : 3), t: 0, max: e.nuke ? 50 : 14, nuke: e.nuke });
+          const n = Math.min(90, (10 + e.r * 7) * big);
+          for (let k = 0; k < n; k++) {
+            const a = Math.random() * Math.PI * 2, sp = (0.4 + Math.random()) * Math.min(5, 0.6 + e.r * 0.35);
+            this.spark(e.x + 0.5, e.y + 0.5, Math.cos(a) * sp, Math.sin(a) * sp - 0.4, 18 + Math.random() * 30, Math.random() < 0.5 ? [255, 230, 150] : [255, 150, 60]);
+          }
+          if (e.r >= 4 && !this.reduceMotion) this.shake = Math.min(8, this.shake + e.r * (e.nuke ? 1.2 : 0.5));
+        } else if (e.type === 'spark') {
+          const n = 2 + (Math.random() * 3 | 0);
+          for (let k = 0; k < n; k++) {
+            const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4, sp = 0.3 + Math.random() * 0.9;
+            this.spark(e.x + 0.5, e.y + 0.5, Math.cos(a) * sp, Math.sin(a) * sp, 10 + Math.random() * 18, e.hot > 1500 ? [255, 250, 220] : [255, 190, 90]);
+          }
+        }
+      }
+    }
+    spark(x, y, vx, vy, life, rgb, size) {
+      if (this.particles.length > 600) return;
+      this.particles.push({ x, y, vx, vy, life, max: life, rgb, size: size || 1 });
+    }
+
+    // 덮개 캔버스에 빛 번짐·섬광·불티를 그린다. cell = 한 칸의 픽셀 크기.
+    drawFx(ctx, cell) {
+      const W = this.world, g = W.g * W.dt * W.dt / W.dx * 0.5;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      if (this.glowCount && this.mode === 'normal' && this.effects) {
+        const cw = ctx.canvas.width, ch = ctx.canvas.height;
+        ctx.imageSmoothingEnabled = true;
+        if (this.canFilter == null) { ctx.filter = 'blur(2px)'; this.canFilter = ctx.filter === 'blur(2px)'; ctx.filter = 'none'; }
+        if (this.canFilter) {
+          ctx.globalAlpha = 0.75; ctx.filter = `blur(${Math.max(2, cell * 2.2)}px)`;
+          ctx.drawImage(this.glowCanvas, 0, 0, cw, ch);
+          ctx.filter = 'none';
+        } else {
+          // filter가 없는 브라우저: 두 번 줄였다 키워 흐리게 만든다.
+          const h = this.half.getContext('2d'), q = this.quarter.getContext('2d');
+          h.clearRect(0, 0, this.half.width, this.half.height); h.drawImage(this.glowCanvas, 0, 0, this.half.width, this.half.height);
+          q.clearRect(0, 0, this.quarter.width, this.quarter.height); q.drawImage(this.half, 0, 0, this.quarter.width, this.quarter.height);
+          ctx.globalAlpha = 0.9; ctx.drawImage(this.quarter, 0, 0, cw, ch);
+        }
+        ctx.globalAlpha = 1;
+      }
+      for (const f of this.flashes) {
+        const k = 1 - f.t / f.max, R = f.r * cell * (0.6 + 0.6 * f.t / f.max);
+        const grd = ctx.createRadialGradient(f.x * cell, f.y * cell, 0, f.x * cell, f.y * cell, R);
+        grd.addColorStop(0, `rgba(255,${f.nuke ? 250 : 235},${f.nuke ? 230 : 180},${0.9 * k})`);
+        grd.addColorStop(0.4, `rgba(255,170,70,${0.45 * k})`);
+        grd.addColorStop(1, 'rgba(255,120,40,0)');
+        ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(f.x * cell, f.y * cell, R, 0, 7); ctx.fill();
+        f.t++;
+      }
+      this.flashes = this.flashes.filter((f) => f.t < f.max);
+      const keep = [];
+      for (const p of this.particles) {
+        p.vy += g * (p.float ? -0.3 : 1); p.vx *= 0.97; p.vy *= 0.97;
+        p.x += p.vx; p.y += p.vy; p.life--;
+        if (p.life <= 0 || p.x < 0 || p.y < 0 || p.x >= W.w || p.y >= W.h) continue;
+        const i = (p.y | 0) * W.w + (p.x | 0);
+        if (!p.float && W.data.state[W.mat[i]] === 0 && !W.data.defs[W.mat[i]].flame) { if (Math.random() < 0.5) continue; p.vy *= -0.3; p.vx *= 0.5; } // 고체에 닿으면 튕기거나 꺼진다
+        const k = p.life / p.max, [r, gg, b] = p.rgb;
+        ctx.fillStyle = `rgba(${r},${gg},${b},${Math.min(1, k * 1.5)})`;
+        const sz = Math.max(1.2, cell * 0.7 * p.size);
+        ctx.fillRect(p.x * cell - sz / 2, p.y * cell - sz / 2, sz, sz);
+        keep.push(p);
+      }
+      this.particles = keep;
+      ctx.restore();
+      this.shake *= 0.85;
+      if (this.shake < 0.3) this.shake = 0;
     }
 
     draw() {
@@ -53,7 +145,9 @@
           px[i] = this.densLut[(t * 255) | 0];
         }
       } else {
-        const air = W.AIR, defs = W.data.defs, st = W.data.state, w = W.w;
+        const air = W.AIR, defs = W.data.defs, st = W.data.state, w = W.w, gp = this.glowPx;
+        let glow = 0;
+        gp.fill(0);
         for (let i = 0; i < n; i++) {
           const m = mat[i];
           if (m === air) { px[i] = rgba(16, 21, 27); continue; }
@@ -77,15 +171,32 @@
             // 불꽃색을 중심으로 밝기만 일렁인다.
             const f = 0.7 + Math.random() * 0.45;
             r = flame[0] * f; g = flame[1] * f; b = flame[2] * f;
+            gp[i] = rgba(r * 0.8, g * 0.8, b * 0.8); glow++;
+            // 불꽃 위로 가끔 불티가 날린다.
+            if (defs[m].flame && Math.random() < 0.0025 && i >= w && mat[i - w] !== m) {
+              this.particles.length < 400 && this.particles.push({ x: i % w + Math.random(), y: (i / w | 0), vx: (Math.random() - 0.5) * 0.15, vy: -0.25 - Math.random() * 0.3, life: 25 + Math.random() * 35, max: 60, rgb: [255, 170 + (Math.random() * 60 | 0), 70], size: 0.7, float: true });
+            }
           } else if (T[i] > 450) {
             // 흑체 복사처럼 뜨거운 물체가 빛난다.
             const t = Math.min(1, (T[i] - 450) / 1300);
             r = lerp(r, 255, t); g = lerp(g, 90 + 150 * t, t); b = lerp(b, 20 + 120 * t * t, t);
+            if (t > 0.15) { gp[i] = rgba(255 * t, (90 + 150 * t) * t * 0.8, (20 + 120 * t * t) * t * 0.6); glow++; }
           }
           px[i] = rgba(Math.max(0, Math.min(255, r)), Math.max(0, Math.min(255, g)), Math.max(0, Math.min(255, b)));
         }
+        this.glowCount = glow;
+        if (glow) this.glowCtx.putImageData(this.glowImage, 0, 0);
+      }
+      // 날아가는 칸(파편·물보라)
+      for (const f of W.flyers) {
+        const x = f.x | 0, y = f.y | 0;
+        if (x < 0 || y < 0 || x >= W.w || y >= W.h) continue;
+        const c = this.base[f.m], s = f.shade;
+        px[y * W.w + x] = this.mode === 'heat' ? this.heatLut[(Math.sqrt(Math.max(0, Math.min(1, (f.T + 60) / 1660))) * 255) | 0]
+          : f.T > 450 ? rgba(255, Math.min(255, 120 + f.T / 10), 80) : rgba(Math.max(0, Math.min(255, c[0] + s)), Math.max(0, Math.min(255, c[1] + s)), Math.max(0, Math.min(255, c[2] + s)));
       }
       this.ctx.putImageData(this.image, 0, 0);
+      this.takeFx();
     }
   }
 

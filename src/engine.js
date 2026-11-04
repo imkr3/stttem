@@ -153,11 +153,13 @@
       this.prompt = false; // 이번 세대가 빠른 중성자 연쇄인지
       this.boomBudget = 40;
       this.slowAvg = 0;
+      this.flyers = []; // 튀어 날아가는 칸(폭발 파편, 물보라). 떨어지면 다시 칸이 된다.
+      this.fx = []; // 화면 효과 요청(섬광, 불티). 물리에는 영향이 없다.
       this.reset();
     }
 
     reset() {
-      this.tick = 0; this.time = 0; this.fq = []; this.slowAvg = 0; this.pRegions = null;
+      this.tick = 0; this.time = 0; this.fq = []; this.slowAvg = 0; this.pRegions = null; this.flyers = []; this.fx = [];
       this.bodies = []; this.selected = null; this.probe = null; this.nextBodyId = 1;
       for (let i = 0; i < this.mat.length; i++) { this.setCell(i, this.AIR, this.ambient); this.gas[i] = 1; }
     }
@@ -253,6 +255,7 @@
       this.time += this.dt;
       this.boomBudget = 40;
       this.stepMotion();
+      this.stepFlyers();
       this.stepHeat();
       this.stepNuclear();
       this.stepElectro();
@@ -297,7 +300,12 @@
       }
       const ri = this.effRho(i), rj = this.effRho(j);
       if (ri <= rj) return 0;
-      if (sj === GAS) return si === GAS ? Math.min(1, 1.2 * (ri - rj) / (ri + rj)) * gs * d.rise[mj] : 1;
+      if (sj === GAS) {
+        if (si !== GAS) return 1;
+        // 무거운 기체 덩어리(위 칸도 같은 기체)는 한꺼번에 흘러내리지만, 이미 섞인 기체는 확산이 분리를 상쇄해 아주 천천히 갈라진다.
+        const bulk = i >= this.w && this.mat[i - this.w] === mi ? 1.2 : 0.25;
+        return Math.min(1, bulk * (ri - rj) / (ri + rj)) * gs * d.rise[mj];
+      }
       return (si === POWDER ? 0.5 : 0.3) * gs;
     }
 
@@ -322,8 +330,17 @@
         if (chance <= 0) { blocked = true; break; }
         if (chance < 1 && Math.random() > chance) break;
         this.swap(cur, below);
-        if (this.data.state[this.mat[cur]] === LIQUID) v = Math.min(v, 1.5); // 액체 속에서는 끌림
+        if (this.data.state[this.mat[cur]] === LIQUID) {
+          // 빠르게 떨어진 물체가 액체에 들어가면 물보라가 튄다.
+          if (v >= 3 && cur >= w && this.data.state[this.mat[cur - w]] === GAS && Math.random() < 0.5) this.launch(cur, (Math.random() - 0.5) * v * 0.8, -v * (0.35 + Math.random() * 0.25));
+          v = Math.min(v, 1.5); // 액체 속에서는 끌림
+        }
         cur = below; cy++;
+      }
+      // 높은 곳에서 떨어진 액체는 바닥에 부딪혀 튄다.
+      if (blocked && s === LIQUID && v >= 3.5 && Math.random() < 0.3) {
+        this.launch(cur, (Math.random() < 0.5 ? -1 : 1) * v * (0.2 + Math.random() * 0.3), -v * (0.2 + Math.random() * 0.2));
+        return;
       }
       this.vy[cur] = blocked ? 0 : v;
       if (cy !== y || !blocked || this.g <= 0) return;
@@ -383,6 +400,72 @@
         const j = r < 0.25 ? (x > 0 ? i - 1 : -1) : r < 0.5 ? (x < w - 1 ? i + 1 : -1) : r < 0.75 ? (y > 0 ? i - w : -1) : (y < h - 1 ? i + w : -1);
         if (j >= 0 && this.data.state[this.mat[j]] === GAS && this.mat[j] !== this.mat[i]) this.swap(i, j);
       }
+    }
+
+    // ---- 튀는 칸 ----
+    // 칸을 격자에서 떼어 포물선 운동을 시킨다(단위: 칸/틱). 닿을 곳이 막히면 마지막 빈 칸에 내려앉는다.
+    launch(i, vx, vy) {
+      const m = this.mat[i], s = this.data.state[m];
+      if (s === GAS || s === SOLID || this.anchor[i] || this.flyers.length >= 2500) return false;
+      const w = this.w;
+      this.flyers.push({ x: i % w + 0.5, y: ((i / w) | 0) + 0.5, vx, vy, m, T: this.T[i], store: this.store[i], shade: this.shade[i] });
+      // 빈자리는 바로 위의 기체로 채운다(이산화탄소 덮개 속에 공기가 새로 생기지 않도록).
+      const up = i >= w && this.data.state[this.mat[i - w]] === GAS ? i - w : -1;
+      this.setCell(i, up >= 0 ? this.mat[up] : this.AIR, up >= 0 ? this.T[up] : this.ambient);
+      this.gas[i] = 1;
+      return true;
+    }
+    stepFlyers() {
+      if (!this.flyers.length) return;
+      const { w, h, mat } = this, st = this.data.state, gC = this.g * this.dt * this.dt / this.dx;
+      const keep = [];
+      for (const f of this.flyers) {
+        f.vy += gC; f.vx *= 0.99; f.vy *= 0.99; // 공기 저항
+        const n = Math.max(1, Math.ceil(Math.max(Math.abs(f.vx), Math.abs(f.vy))));
+        let last = -1, landed = false;
+        for (let k = 0; k < n; k++) {
+          let nx = f.x + f.vx / n, ny = f.y + f.vy / n;
+          if (ny < 0) { ny = 0; f.vy = 0; }
+          if (nx < 0 || nx >= w) { f.vx = -f.vx * 0.3; nx = f.x; }
+          const ix = nx | 0, iy = ny | 0;
+          if (iy >= h) { landed = true; break; }
+          const j = iy * w + ix;
+          if (st[mat[j]] !== GAS || this.anchor[j]) { landed = true; break; }
+          f.x = nx; f.y = ny; last = j;
+        }
+        if (!landed) { keep.push(f); continue; }
+        const at = last >= 0 ? last : (f.y | 0) * w + (f.x | 0);
+        if (st[mat[at]] !== GAS) { f.vx = 0; f.vy = 0; f.y -= 1; if (f.y >= 0) keep.push(f); continue; } // 자리가 찼으면 한 칸 위에서 다시
+        this.setCell(at, f.m, f.T);
+        this.store[at] = f.store; this.shade[at] = f.shade; this.vy[at] = Math.max(0, Math.min(2, f.vy));
+        this.stamp[at] = this.tick;
+      }
+      this.flyers = keep;
+    }
+    // 날고 있는 칸을 모두 바로 내려놓는다(저장·되돌리기 전에).
+    settleFlyers() {
+      const { w, h, mat } = this, st = this.data.state;
+      for (const f of this.flyers) {
+        let x = Math.min(w - 1, Math.max(0, f.x | 0)), y = Math.min(h - 1, Math.max(0, f.y | 0));
+        while (y > 0 && st[mat[y * w + x]] !== GAS) y--;
+        const i = y * w + x;
+        if (st[mat[i]] === GAS) { this.setCell(i, f.m, f.T); this.shade[i] = f.shade; }
+      }
+      this.flyers = [];
+    }
+
+    // ---- 섞기 도구 ----
+    // 원 안의 움직일 수 있는 칸(가루·액체·기체)을 무작위로 바꿔 섞는다. 고정된 칸과 고체는 그대로.
+    stir(cx, cy, r, amount) {
+      const cells = [];
+      const st = this.data.state;
+      this.forDisc(cx, cy, r, (i) => { if (st[this.mat[i]] !== SOLID && !this.anchor[i] && !this.data.armor[this.mat[i]]) cells.push(i); });
+      const n = Math.round(cells.length * (amount == null ? 0.35 : amount));
+      for (let k = 0; k < n; k++) {
+        const a = cells[(Math.random() * cells.length) | 0], b = cells[(Math.random() * cells.length) | 0];
+        if (a !== b && this.mat[a] !== this.mat[b]) this.swap(a, b);
+      }
+      return cells.length;
     }
 
     stepHeat() {
@@ -461,10 +544,26 @@
     // 끓는점은 압력에 따라 바뀐다(클라우지우스-클라페이론 식과 트루턴 규칙 ΔH ≈ 88 J/mol·K × Tb):
     // 1/T = 1/Tb − R·ln(P)/ΔH  →  T = Tb / (1 − 0.0945·ln P). 2기압이면 물은 약 126°C, 0.03기압이면 약 20°C에서 끓는다.
     boilAt(at, i) {
-      const P = this.regionP(i);
+      const b0 = this.boilP(at, this.regionP(i));
+      // 깊은 곳은 물기둥 무게(수압)만큼 압력이 높아 끓는점이 조금 높다. 끓을 만큼 뜨거울 때만 계산한다.
+      if (this.T[i] < b0 || this.data.state[this.mat[i]] !== LIQUID) return b0;
+      return this.boilP(at, this.regionP(i) + this.hydroP(i));
+    }
+    boilP(at, P) {
       if (P === 1) return at;
       const f = 1 - 0.0945 * Math.log(Math.max(0.005, Math.min(100, P)));
       return (at + 273.15) / Math.max(0.2, f) - 273.15;
+    }
+    // 이 칸 위에 쌓인 액체·가루의 무게에 의한 압력(기압). P = ρgh
+    hydroP(i) {
+      const { w, mat } = this, st = this.data.state;
+      let sum = 0;
+      for (let j = i - w; j >= 0; j -= w) {
+        const s = st[mat[j]];
+        if (s === GAS || s === SOLID) break;
+        sum += this.effRho(j);
+      }
+      return sum * this.dx * this.g / 101325;
     }
     phase(i, m) {
       const d = this.data, T = this.T, c = d.cp[m], up = d.up[m], down = d.down[m];
@@ -521,6 +620,7 @@
         apply(i, e.toSelf);
         apply(j, e.toOther);
         if (r.explode && (r.explodeP == null || Math.random() < r.explodeP)) this.explode(j, r.explode, r.T != null ? Math.max(r.T, 1500) : 1500);
+        else if ((dT >= 250 || (r.T != null && r.T >= 900)) && this.fx.length < 200 && Math.random() < 0.2) this.fx.push({ type: 'spark', x: j % this.w, y: (j / this.w) | 0, hot: Math.max(r.T || 0, T[j]) });
         if (!r.silent) this.note(r.id, () => ({ type: 'reaction', id: r.id, name: r.name, eq: SL.CHEM ? SL.CHEM.equation(r) : r.eq, kind: r.kind || 'chemical', note: r.note }));
         return;
       }
@@ -569,10 +669,16 @@
               if (d.state[mat[j]] !== GAS) break;
               to = j;
             }
+            // 가까운 가루·액체 일부는 파편으로 날아간다.
+            if (dist < r * 0.9 && Math.random() < (fallout ? 0.5 : 0.3)) {
+              const sp = Math.min(6, 0.5 + r * 0.45 * (1 - dist / (r + 1))) * (0.6 + Math.random() * 0.6);
+              if (this.launch(i, ux * sp, uy * sp - sp * 0.4)) continue;
+            }
             if (to >= 0) this.swap(i, to);
           }
         }
       }
+      if (this.fx.length < 200) this.fx.push({ type: 'boom', x: cx, y: cy, r, nuke: !!fallout });
       const kick = 1.5 * r;
       for (const b of this.bodies) {
         const bx = b.x / this.dx - cx, by = b.y / this.dx - cy, dist = Math.hypot(bx, by);
@@ -629,7 +735,11 @@
       }
       if (!this.anodes.length || !this.cathodes.length) return;
       if (this.anodes.some((i) => role[i] & 2)) { // 합선
-        this.note('short', () => ({ type: 'reaction', id: 'short', name: '합선', kind: 'physical', eq: '(+)극 ─ 금속 ─ (−)극', note: '두 전극이 금속으로 바로 이어지면 전류가 용액을 지나지 않아 전기 분해가 일어나지 않습니다.' }));
+        this.note('short', () => ({ type: 'reaction', id: 'short', name: '합선', kind: 'physical', eq: '(+)극 ─ 금속 ─ (−)극', note: '두 전극이 금속으로 바로 이어지면 전류가 용액을 지나지 않아 전기 분해가 일어나지 않습니다. 큰 전류가 흘러 도선이 뜨거워지고 불꽃이 튑니다.' }));
+        // 줄열: 합선된 도선이 달아오른다. 전극 근처에서 불꽃이 튄다.
+        for (let k = 0; k < role.length; k++) if ((role[k] & 3) === 3 && !this.data.electrode[mat[k]]) this.T[k] += 4;
+        const at = this.anodes[(Math.random() * this.anodes.length) | 0];
+        if (this.fx.length < 200) this.fx.push({ type: 'spark', x: at % w, y: (at / w) | 0, hot: 2000 });
         return;
       }
       const stack = [];
@@ -942,6 +1052,7 @@
       this.events.push(build());
     }
     drainEvents() { const e = this.events; this.events = []; return e; }
+    drainFx() { const e = this.fx; this.fx = []; return e; }
 
     // ---- 강체 공 (SI 단위, y는 아래로 증가) ----
     addBody(o) {
@@ -1089,11 +1200,13 @@
     inspect(x, y) {
       if (!this.inside(x, y)) return null;
       const i = this.index(x, y), def = this.data.defs[this.mat[i]];
-      return { def, T: this.T[i], rho: this.effRho(i), P: this.pressureAt(i) };
+      const s = this.data.state[this.mat[i]];
+      return { def, T: this.T[i], rho: this.effRho(i), P: s === LIQUID || s === POWDER ? this.regionP(i) + this.hydroP(i) : this.pressureAt(i) };
     }
 
     // ---- 되돌리기용 스냅숏 (메모리 안에서만, 빠르게) ----
     snapshot() {
+      this.settleFlyers();
       return {
         mat: this.mat.slice(), T: this.T.slice(), gas: this.gas.slice(), anchor: this.anchor.slice(), store: this.store.slice(), vy: this.vy.slice(), life: this.life.slice(), shade: this.shade.slice(),
         bodies: this.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] })), probe: this.probe && { x: this.probe.x, y: this.probe.y },
@@ -1102,13 +1215,14 @@
     restoreSnapshot(s) {
       this.mat.set(s.mat); this.T.set(s.T); if (s.gas) this.gas.set(s.gas); this.anchor.set(s.anchor); this.store.set(s.store); this.vy.set(s.vy); this.life.set(s.life); this.shade.set(s.shade);
       this.bodies = s.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] }));
-      this.selected = null; this.fq = [];
+      this.selected = null; this.fq = []; this.flyers = [];
       if (s.probe) this.setProbe(s.probe.x, s.probe.y); else this.probe = null;
       this.role = null; this.lit = null; // 전기 회로를 다시 찾는다.
     }
 
     // ---- 저장/복원 (포함될 사이트에서 서버에 저장할 수 있도록 순수 JSON) ----
     toJSON() {
+      this.settleFlyers();
       const enc = (arr) => {
         const u8 = new Uint8Array(arr.buffer);
         let s = '';

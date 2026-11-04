@@ -34,6 +34,9 @@
   .scale i { display:block; width:110px; height:8px; border-radius:2px; }
   .toast { position:absolute; left:50%; top:10px; transform:translateX(-50%); width:max-content; max-width:92%; background:var(--sl-raised); border:1px solid var(--sl-accent); padding:8px 12px; border-radius:8px; pointer-events:none; opacity:0; transition:opacity .25s; }
   .toast.show { opacity:1; }
+  .hint { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; color:var(--sl-muted); font-size:14px; text-align:center; padding:16px; transition:opacity .4s; }
+  .hint[hidden] { display:none; }
+  .hint b { color:var(--sl-ink); }
   .toast small { display:block; color:var(--sl-muted); }
   .status { grid-area:status; padding:6px 10px; min-height:32px; font-size:13px; color:var(--sl-muted); border-top:1px solid var(--sl-line); background:var(--sl-panel); font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .status b { color:var(--sl-ink); font-weight:600; }
@@ -91,7 +94,8 @@
   .search { flex:1; min-width:0; width:100%; min-height:36px; padding:0 10px; font:inherit; color:inherit; background:var(--sl-bg); border:1px solid var(--sl-line); border-radius:6px; }
   .cats { flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; margin-bottom:2px; scrollbar-width:thin; }
   .cats .chip { min-height:30px; font-size:12px; padding:0 8px; flex:none; white-space:nowrap; }
-  .tools .chip { min-height:32px; font-size:12px; }
+  .tools { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; }
+  .tools .chip { min-height:32px; font-size:12px; padding:0 2px; justify-content:center; white-space:nowrap; }
   .favs { margin:2px 0 8px; }
   .favs .chip { min-height:30px; font-size:12px; padding:0 7px; }
   .grp { border-bottom:1px solid var(--sl-line); }
@@ -100,8 +104,8 @@
   .grp .chips { padding:0 0 8px; }
   .chip small { opacity:.7; font-size:11px; }
   .table-scroll { overflow-x:auto; padding-bottom:6px; }
-  .ptable { display:grid; grid-template-columns:repeat(18,28px); grid-auto-rows:28px; gap:2px; width:max-content; }
-  .el { min-height:0; padding:0; font-size:11px; font-weight:600; border-radius:4px; border:1px solid transparent; color:#e8edf2; background:#2a323c; }
+  .ptable { display:grid; grid-template-columns:repeat(18,minmax(15px,1fr)); gap:1px; width:100%; min-width:max-content; }
+  .el { min-height:0; aspect-ratio:1; padding:0; font-size:9.5px; letter-spacing:-.3px; overflow:hidden; font-weight:600; border-radius:4px; border:1px solid transparent; color:#e8edf2; background:#2a323c; }
   .el-alkali { background:#6a2f2f; } .el-alkaline { background:#6a4a2a; } .el-tm { background:#34506a; } .el-post { background:#2f5a5a; } .el-metalloid { background:#4a5a2f; }
   .el-nonmetal { background:#3a6a3a; } .el-halogen { background:#5a6a22; } .el-noble { background:#5a3a6a; } .el-ln { background:#2f4a7a; } .el-an { background:#6a3a5a; }
   .el.on { outline:2px solid var(--sl-accent); outline-offset:0; }
@@ -115,10 +119,11 @@
   const STATE_NAME = { solid: '고체', powder: '고체(가루)', liquid: '액체', gas: '기체' };
   // 예전 문서에 쓰인 실험 이름도 받아 준다.
   const SCENE_ALIAS = { sodium: 'alkali', boil: 'water' };
-  const TOOLS = [['inspect', '관찰'], ['erase', '지우개'], ['heat', '가열'], ['cool', '냉각'], ['ball', '공 던지기'], ['probe', '온도계']];
+  const TOOLS = [['inspect', '관찰'], ['stir', '섞기'], ['heat', '가열'], ['cool', '냉각'], ['erase', '지우개'], ['ball', '공'], ['probe', '온도계']];
+  const BRUSH_TOOLS = ['mat', 'erase', 'heat', 'cool', 'stir'];
   // 자주 쓰는 재료. 재료 탭 맨 위에 늘 보인다.
   const FAVORITES = ['water', 'ice', 'fire', 'salt', 'hcl', 'naoh', 'vinegar', 'S:NaHCO3', 'Na:s', 'Mg:s', 'iron', 'copper', 'H2O2', 'sugar', 'oil', 'wood'];
-  const TOOL_HINT = { inspect: '칸을 누르면 정보 탭에 자세히 나옵니다', erase: '공기로 지웁니다', heat: '누르고 있는 동안 데웁니다', cool: '누르고 있는 동안 식힙니다', ball: '끌었다 놓으면 던집니다', probe: '누른 곳의 온도를 측정 탭에 그립니다' };
+  const TOOL_HINT = { inspect: '칸을 누르면 정보 탭에 자세히 나옵니다', erase: '공기로 지웁니다', heat: '누르고 있는 동안 데웁니다', cool: '누르고 있는 동안 식힙니다', ball: '끌었다 놓으면 던집니다', probe: '누른 곳의 온도를 측정 탭에 그립니다', stir: '누르고 문지르면 가루·액체·기체가 섞입니다(고체·고정 칸은 그대로)' };
   const GRAVITY = [['무중력', 0], ['달', 1.62], ['화성', 3.71], ['지구', 9.81], ['목성', 24.79]];
   const fmt = (v, d) => (v == null || !isFinite(v) ? '-' : v.toFixed(d));
 
@@ -148,8 +153,10 @@
       this.pointer = null;
       this.hover = null;
       this.cleanups = [];
+      this.touch = typeof matchMedia === 'function' && matchMedia('(hover: none)').matches;
       this.buildDom();
       this.renderer = new SL.Renderer(this.$('.grid'), this.world);
+      this.setEffects(opts.effects !== false);
       this.bindEvents();
       this.loadScene(opts.scene || 'free');
       this.setTab(opts.scene ? 'scenes' : 'materials');
@@ -175,10 +182,12 @@
             <option value="0.1">0.1배</option><option value="0.25">0.25배</option><option value="0.5">0.5배</option><option value="1" selected>1배</option><option value="2">2배</option>
           </select></label>
           <label>보기 <select class="view"><option value="normal">일반</option><option value="heat">온도</option><option value="density">밀도</option></select></label>
+          <label title="불티·섬광·빛 번짐 같은 화면 효과 (물리 결과에는 영향 없음)"><input type="checkbox" class="fxon" checked> 효과</label>
           <span class="clock">0.00초</span>
         </div>
         <div class="stage"><div class="frame"><canvas class="grid"></canvas><canvas class="over" aria-label="실험 공간"></canvas></div>
-          <div class="scale" hidden></div><div class="toast" role="status"></div></div>
+          <div class="scale" hidden></div><div class="toast" role="status"></div>
+          <div class="hint" hidden><div><b>재료를 고른 뒤 여기에 그려 보세요.</b><br>두 물질을 맞닿게 놓거나 섞기 도구로 문지르면 반응이 일어납니다.<br>가열·냉각 도구로 온도를 바꿀 수 있습니다.</div></div></div>
         <div class="status">&nbsp;</div>
         <div class="side">
           <div class="tabs" role="tablist">${TABS.map(([id, n]) => `<button role="tab" data-tab="${id}">${n}</button>`).join('')}</div>
@@ -198,6 +207,7 @@
       });
       this.listen(this.$('.speed'), 'change', (e) => { this.speed = +e.target.value; });
       this.listen(this.$('.view'), 'change', (e) => this.setView(e.target.value));
+      this.listen(this.$('.fxon'), 'change', (e) => this.setEffects(e.target.checked));
       this.listen(this.$('.tabs'), 'click', (e) => { const t = e.target.closest('[data-tab]'); if (t) this.setTab(t.dataset.tab); });
 
       const over = this.$('.over');
@@ -228,6 +238,13 @@
       over.height = Math.floor(this.world.h * s * dpr);
     }
 
+    setEffects(v) {
+      this.renderer.effects = !!v;
+      if (!v) { this.renderer.particles = []; this.renderer.flashes = []; this.renderer.shake = 0; }
+      const cb = this.$('.fxon');
+      if (cb) cb.checked = !!v;
+    }
+
     setRunning(v) { this.running = v; this.$('.play').textContent = v ? '일시정지' : '재생'; }
 
     setView(v) {
@@ -252,6 +269,7 @@
       sc.setup(this.world);
       this.history = [];
       if (this.$('.undo')) this.$('.undo').disabled = true;
+      this.$('.hint').hidden = sc.id !== 'free';
       this.speed = sc.speed || 1;
       this.graphMode = sc.graph || 'v';
       this.$('.speed').value = String(this.speed);
@@ -280,7 +298,7 @@
 
     paneMaterials(pane) {
       const count = this.world.data.defs.length;
-      pane.innerHTML = `<div class="chips tools">${TOOLS.map(([k, n]) => `<button class="chip" data-tool="${k}">${n}</button>`).join('')}</div>
+      pane.innerHTML = `<div class="chips tools">${TOOLS.map(([k, n]) => `<button class="chip" data-tool="${k}" title="${TOOL_HINT[k]}">${n}</button>`).join('')}</div>
         <div class="row compact"><label>붓 <input type="range" class="brush" min="1" max="16" value="${this.brush}"></label><span class="val">${this.brush}칸</span>
           <label title="끄면 가루처럼 쌓이고, 켜면 놓은 자리에 덩어리로 고정됩니다." style="flex:none"><input type="checkbox" class="anchor" ${this.anchored ? 'checked' : ''}> 고정</label></div>
         <input type="search" class="search" placeholder="물질 ${count}종 검색 (예: 황산, Cu, 소금)" aria-label="물질 검색" value="${this.query}">
@@ -491,8 +509,9 @@
     }
     onDown(e) {
       e.currentTarget.setPointerCapture(e.pointerId);
+      this.$('.hint').hidden = true;
       this.$('.root').focus({ preventScroll: true });
-      if (['mat', 'erase', 'heat', 'cool', 'ball'].includes(this.tool.kind)) this.remember();
+      if (BRUSH_TOOLS.includes(this.tool.kind) || this.tool.kind === 'ball') this.remember();
       const c = this.cellAt(e);
       this.hover = c;
       const hit = this.bodyAt(c);
@@ -541,6 +560,7 @@
         if (hit) { w.bodies.splice(w.bodies.indexOf(hit), 1); if (w.selected === hit) w.select(null); }
       } else if (t.kind === 'heat') w.addHeat(x, y, r, 60);
       else if (t.kind === 'cool') w.addHeat(x, y, r, -40);
+      else if (t.kind === 'stir') w.stir(x, y, Math.max(2, r + 1));
     }
 
     // ---- 루프 ----
@@ -550,7 +570,7 @@
       this.last = now;
       if (!this.visible) return;
       // 누르고 있는 동안 가열/냉각을 계속한다.
-      if (this.pointer && (this.tool.kind === 'heat' || this.tool.kind === 'cool')) this.applyBrush(this.pointer.cur.x, this.pointer.cur.y);
+      if (this.pointer && ['heat', 'cool', 'stir'].includes(this.tool.kind)) this.applyBrush(this.pointer.cur.x, this.pointer.cur.y);
       if (this.running) {
         this.acc += real * this.speed;
         let n = 0;
@@ -611,7 +631,7 @@
       const info = c && this.world.inspect(c.x, c.y);
       const html = info
         ? `<b>${info.def.name}</b> ${info.def.formula} · ${fmt(info.T, 1)}°C · ${info.rho >= 10 ? fmt(info.rho, 0) : fmt(info.rho, 2)} kg/m³${Math.abs(info.P - 1) > 0.02 ? ` · <b>${fmt(info.P, 2)}기압</b>` : ''}`
-        : '실험 공간 위에 커서를 올리면 그 칸의 물질과 온도가 보입니다. 관찰 도구로 누르면 정보 탭에 자세히 나옵니다.';
+        : this.touch ? '손가락으로 그리면 고른 재료가 떨어집니다. 관찰 도구로 누르면 그 칸의 정보가 나옵니다.' : '실험 공간 위에 커서를 올리면 그 칸의 물질과 온도가 보입니다. 관찰 도구로 누르면 정보 탭에 자세히 나옵니다.';
       if (html !== this.statusHtml) { el.innerHTML = html; this.statusHtml = html; }
     }
 
@@ -620,6 +640,9 @@
       const s = over.width / (w.w * w.dx); // m → 픽셀
       const cell = over.width / w.w;
       ctx.clearRect(0, 0, over.width, over.height);
+      this.renderer.drawFx(ctx, cell);
+      const sh = this.renderer.shake;
+      this.$('.frame').style.transform = sh ? `translate(${((Math.random() - 0.5) * sh).toFixed(1)}px,${((Math.random() - 0.5) * sh).toFixed(1)}px)` : '';
       for (const b of w.bodies) {
         if (b === w.selected && b.trail.length > 2) {
           ctx.strokeStyle = '#ffffff66'; ctx.lineWidth = 1.5; ctx.beginPath();
@@ -641,9 +664,10 @@
         const sx = (p.start.x + 0.5) * cell, sy = (p.start.y + 0.5) * cell;
         ctx.strokeStyle = '#5cc8b8'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(sx, sy, this.ballR * s, 0, 7); ctx.moveTo(sx, sy); ctx.lineTo((p.cur.x + 0.5) * cell, (p.cur.y + 0.5) * cell); ctx.stroke();
-      } else if (this.hover && ['mat', 'erase', 'heat', 'cool'].includes(this.tool.kind)) {
-        ctx.strokeStyle = '#ffffff99'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc((this.hover.x + 0.5) * cell, (this.hover.y + 0.5) * cell, Math.max(this.brush - 0.5, 0.5) * cell, 0, 7); ctx.stroke();
+      } else if (this.hover && BRUSH_TOOLS.includes(this.tool.kind)) {
+        ctx.strokeStyle = { heat: '#ff9a5c', cool: '#7cc4ff', stir: '#c9a8ff', erase: '#ff7a7a' }[this.tool.kind] || '#ffffff99'; ctx.lineWidth = 1;
+        if (this.tool.kind === 'stir') ctx.setLineDash([4, 3]);
+        ctx.beginPath(); ctx.arc((this.hover.x + 0.5) * cell, (this.hover.y + 0.5) * cell, Math.max(this.brush - 0.5, 0.5) * cell, 0, 7); ctx.stroke(); ctx.setLineDash([]);
       }
     }
 
@@ -783,9 +807,9 @@
   /**
    * 공개 API. 어떤 요소에든 실험실을 붙인다.
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
-   * @param {{scene?:string,width?:number,height?:number,storage?:{load:Function,save:Function}}} [options]
+   * @param {{scene?:string,width?:number,height?:number,effects?:boolean,storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.11.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.12.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);
@@ -800,6 +824,7 @@
       pause: () => app.setRunning(false),
       resume: () => app.setRunning(true),
       setView: (v) => app.setView(v),
+      setEffects: (on) => app.setEffects(on),
       save: () => app.world.toJSON(),
       restore: (data) => app.world.fromJSON(data),
       discoveries: () => [...app.codex.values()],
@@ -811,7 +836,7 @@
   if (globalThis.customElements && !customElements.get('sand-lab')) {
     customElements.define('sand-lab', class extends HTMLElement {
       connectedCallback() {
-        this.lab = SL.create(this, { scene: this.getAttribute('scene') || undefined });
+        this.lab = SL.create(this, { scene: this.getAttribute('scene') || undefined, effects: this.getAttribute('effects') !== 'off' });
       }
       disconnectedCallback() { if (this.lab) this.lab.destroy(); this.lab = null; }
     });

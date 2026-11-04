@@ -1928,11 +1928,13 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.prompt = false; // 이번 세대가 빠른 중성자 연쇄인지
       this.boomBudget = 40;
       this.slowAvg = 0;
+      this.flyers = []; // 튀어 날아가는 칸(폭발 파편, 물보라). 떨어지면 다시 칸이 된다.
+      this.fx = []; // 화면 효과 요청(섬광, 불티). 물리에는 영향이 없다.
       this.reset();
     }
 
     reset() {
-      this.tick = 0; this.time = 0; this.fq = []; this.slowAvg = 0; this.pRegions = null;
+      this.tick = 0; this.time = 0; this.fq = []; this.slowAvg = 0; this.pRegions = null; this.flyers = []; this.fx = [];
       this.bodies = []; this.selected = null; this.probe = null; this.nextBodyId = 1;
       for (let i = 0; i < this.mat.length; i++) { this.setCell(i, this.AIR, this.ambient); this.gas[i] = 1; }
     }
@@ -2028,6 +2030,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.time += this.dt;
       this.boomBudget = 40;
       this.stepMotion();
+      this.stepFlyers();
       this.stepHeat();
       this.stepNuclear();
       this.stepElectro();
@@ -2072,7 +2075,12 @@ Og|오가네손|294|noble|7|50|80|1`;
       }
       const ri = this.effRho(i), rj = this.effRho(j);
       if (ri <= rj) return 0;
-      if (sj === GAS) return si === GAS ? Math.min(1, 1.2 * (ri - rj) / (ri + rj)) * gs * d.rise[mj] : 1;
+      if (sj === GAS) {
+        if (si !== GAS) return 1;
+        // 무거운 기체 덩어리(위 칸도 같은 기체)는 한꺼번에 흘러내리지만, 이미 섞인 기체는 확산이 분리를 상쇄해 아주 천천히 갈라진다.
+        const bulk = i >= this.w && this.mat[i - this.w] === mi ? 1.2 : 0.25;
+        return Math.min(1, bulk * (ri - rj) / (ri + rj)) * gs * d.rise[mj];
+      }
       return (si === POWDER ? 0.5 : 0.3) * gs;
     }
 
@@ -2097,8 +2105,17 @@ Og|오가네손|294|noble|7|50|80|1`;
         if (chance <= 0) { blocked = true; break; }
         if (chance < 1 && Math.random() > chance) break;
         this.swap(cur, below);
-        if (this.data.state[this.mat[cur]] === LIQUID) v = Math.min(v, 1.5); // 액체 속에서는 끌림
+        if (this.data.state[this.mat[cur]] === LIQUID) {
+          // 빠르게 떨어진 물체가 액체에 들어가면 물보라가 튄다.
+          if (v >= 3 && cur >= w && this.data.state[this.mat[cur - w]] === GAS && Math.random() < 0.5) this.launch(cur, (Math.random() - 0.5) * v * 0.8, -v * (0.35 + Math.random() * 0.25));
+          v = Math.min(v, 1.5); // 액체 속에서는 끌림
+        }
         cur = below; cy++;
+      }
+      // 높은 곳에서 떨어진 액체는 바닥에 부딪혀 튄다.
+      if (blocked && s === LIQUID && v >= 3.5 && Math.random() < 0.3) {
+        this.launch(cur, (Math.random() < 0.5 ? -1 : 1) * v * (0.2 + Math.random() * 0.3), -v * (0.2 + Math.random() * 0.2));
+        return;
       }
       this.vy[cur] = blocked ? 0 : v;
       if (cy !== y || !blocked || this.g <= 0) return;
@@ -2158,6 +2175,72 @@ Og|오가네손|294|noble|7|50|80|1`;
         const j = r < 0.25 ? (x > 0 ? i - 1 : -1) : r < 0.5 ? (x < w - 1 ? i + 1 : -1) : r < 0.75 ? (y > 0 ? i - w : -1) : (y < h - 1 ? i + w : -1);
         if (j >= 0 && this.data.state[this.mat[j]] === GAS && this.mat[j] !== this.mat[i]) this.swap(i, j);
       }
+    }
+
+    // ---- 튀는 칸 ----
+    // 칸을 격자에서 떼어 포물선 운동을 시킨다(단위: 칸/틱). 닿을 곳이 막히면 마지막 빈 칸에 내려앉는다.
+    launch(i, vx, vy) {
+      const m = this.mat[i], s = this.data.state[m];
+      if (s === GAS || s === SOLID || this.anchor[i] || this.flyers.length >= 2500) return false;
+      const w = this.w;
+      this.flyers.push({ x: i % w + 0.5, y: ((i / w) | 0) + 0.5, vx, vy, m, T: this.T[i], store: this.store[i], shade: this.shade[i] });
+      // 빈자리는 바로 위의 기체로 채운다(이산화탄소 덮개 속에 공기가 새로 생기지 않도록).
+      const up = i >= w && this.data.state[this.mat[i - w]] === GAS ? i - w : -1;
+      this.setCell(i, up >= 0 ? this.mat[up] : this.AIR, up >= 0 ? this.T[up] : this.ambient);
+      this.gas[i] = 1;
+      return true;
+    }
+    stepFlyers() {
+      if (!this.flyers.length) return;
+      const { w, h, mat } = this, st = this.data.state, gC = this.g * this.dt * this.dt / this.dx;
+      const keep = [];
+      for (const f of this.flyers) {
+        f.vy += gC; f.vx *= 0.99; f.vy *= 0.99; // 공기 저항
+        const n = Math.max(1, Math.ceil(Math.max(Math.abs(f.vx), Math.abs(f.vy))));
+        let last = -1, landed = false;
+        for (let k = 0; k < n; k++) {
+          let nx = f.x + f.vx / n, ny = f.y + f.vy / n;
+          if (ny < 0) { ny = 0; f.vy = 0; }
+          if (nx < 0 || nx >= w) { f.vx = -f.vx * 0.3; nx = f.x; }
+          const ix = nx | 0, iy = ny | 0;
+          if (iy >= h) { landed = true; break; }
+          const j = iy * w + ix;
+          if (st[mat[j]] !== GAS || this.anchor[j]) { landed = true; break; }
+          f.x = nx; f.y = ny; last = j;
+        }
+        if (!landed) { keep.push(f); continue; }
+        const at = last >= 0 ? last : (f.y | 0) * w + (f.x | 0);
+        if (st[mat[at]] !== GAS) { f.vx = 0; f.vy = 0; f.y -= 1; if (f.y >= 0) keep.push(f); continue; } // 자리가 찼으면 한 칸 위에서 다시
+        this.setCell(at, f.m, f.T);
+        this.store[at] = f.store; this.shade[at] = f.shade; this.vy[at] = Math.max(0, Math.min(2, f.vy));
+        this.stamp[at] = this.tick;
+      }
+      this.flyers = keep;
+    }
+    // 날고 있는 칸을 모두 바로 내려놓는다(저장·되돌리기 전에).
+    settleFlyers() {
+      const { w, h, mat } = this, st = this.data.state;
+      for (const f of this.flyers) {
+        let x = Math.min(w - 1, Math.max(0, f.x | 0)), y = Math.min(h - 1, Math.max(0, f.y | 0));
+        while (y > 0 && st[mat[y * w + x]] !== GAS) y--;
+        const i = y * w + x;
+        if (st[mat[i]] === GAS) { this.setCell(i, f.m, f.T); this.shade[i] = f.shade; }
+      }
+      this.flyers = [];
+    }
+
+    // ---- 섞기 도구 ----
+    // 원 안의 움직일 수 있는 칸(가루·액체·기체)을 무작위로 바꿔 섞는다. 고정된 칸과 고체는 그대로.
+    stir(cx, cy, r, amount) {
+      const cells = [];
+      const st = this.data.state;
+      this.forDisc(cx, cy, r, (i) => { if (st[this.mat[i]] !== SOLID && !this.anchor[i] && !this.data.armor[this.mat[i]]) cells.push(i); });
+      const n = Math.round(cells.length * (amount == null ? 0.35 : amount));
+      for (let k = 0; k < n; k++) {
+        const a = cells[(Math.random() * cells.length) | 0], b = cells[(Math.random() * cells.length) | 0];
+        if (a !== b && this.mat[a] !== this.mat[b]) this.swap(a, b);
+      }
+      return cells.length;
     }
 
     stepHeat() {
@@ -2236,10 +2319,26 @@ Og|오가네손|294|noble|7|50|80|1`;
     // 끓는점은 압력에 따라 바뀐다(클라우지우스-클라페이론 식과 트루턴 규칙 ΔH ≈ 88 J/mol·K × Tb):
     // 1/T = 1/Tb − R·ln(P)/ΔH  →  T = Tb / (1 − 0.0945·ln P). 2기압이면 물은 약 126°C, 0.03기압이면 약 20°C에서 끓는다.
     boilAt(at, i) {
-      const P = this.regionP(i);
+      const b0 = this.boilP(at, this.regionP(i));
+      // 깊은 곳은 물기둥 무게(수압)만큼 압력이 높아 끓는점이 조금 높다. 끓을 만큼 뜨거울 때만 계산한다.
+      if (this.T[i] < b0 || this.data.state[this.mat[i]] !== LIQUID) return b0;
+      return this.boilP(at, this.regionP(i) + this.hydroP(i));
+    }
+    boilP(at, P) {
       if (P === 1) return at;
       const f = 1 - 0.0945 * Math.log(Math.max(0.005, Math.min(100, P)));
       return (at + 273.15) / Math.max(0.2, f) - 273.15;
+    }
+    // 이 칸 위에 쌓인 액체·가루의 무게에 의한 압력(기압). P = ρgh
+    hydroP(i) {
+      const { w, mat } = this, st = this.data.state;
+      let sum = 0;
+      for (let j = i - w; j >= 0; j -= w) {
+        const s = st[mat[j]];
+        if (s === GAS || s === SOLID) break;
+        sum += this.effRho(j);
+      }
+      return sum * this.dx * this.g / 101325;
     }
     phase(i, m) {
       const d = this.data, T = this.T, c = d.cp[m], up = d.up[m], down = d.down[m];
@@ -2296,6 +2395,7 @@ Og|오가네손|294|noble|7|50|80|1`;
         apply(i, e.toSelf);
         apply(j, e.toOther);
         if (r.explode && (r.explodeP == null || Math.random() < r.explodeP)) this.explode(j, r.explode, r.T != null ? Math.max(r.T, 1500) : 1500);
+        else if ((dT >= 250 || (r.T != null && r.T >= 900)) && this.fx.length < 200 && Math.random() < 0.2) this.fx.push({ type: 'spark', x: j % this.w, y: (j / this.w) | 0, hot: Math.max(r.T || 0, T[j]) });
         if (!r.silent) this.note(r.id, () => ({ type: 'reaction', id: r.id, name: r.name, eq: SL.CHEM ? SL.CHEM.equation(r) : r.eq, kind: r.kind || 'chemical', note: r.note }));
         return;
       }
@@ -2344,10 +2444,16 @@ Og|오가네손|294|noble|7|50|80|1`;
               if (d.state[mat[j]] !== GAS) break;
               to = j;
             }
+            // 가까운 가루·액체 일부는 파편으로 날아간다.
+            if (dist < r * 0.9 && Math.random() < (fallout ? 0.5 : 0.3)) {
+              const sp = Math.min(6, 0.5 + r * 0.45 * (1 - dist / (r + 1))) * (0.6 + Math.random() * 0.6);
+              if (this.launch(i, ux * sp, uy * sp - sp * 0.4)) continue;
+            }
             if (to >= 0) this.swap(i, to);
           }
         }
       }
+      if (this.fx.length < 200) this.fx.push({ type: 'boom', x: cx, y: cy, r, nuke: !!fallout });
       const kick = 1.5 * r;
       for (const b of this.bodies) {
         const bx = b.x / this.dx - cx, by = b.y / this.dx - cy, dist = Math.hypot(bx, by);
@@ -2404,7 +2510,11 @@ Og|오가네손|294|noble|7|50|80|1`;
       }
       if (!this.anodes.length || !this.cathodes.length) return;
       if (this.anodes.some((i) => role[i] & 2)) { // 합선
-        this.note('short', () => ({ type: 'reaction', id: 'short', name: '합선', kind: 'physical', eq: '(+)극 ─ 금속 ─ (−)극', note: '두 전극이 금속으로 바로 이어지면 전류가 용액을 지나지 않아 전기 분해가 일어나지 않습니다.' }));
+        this.note('short', () => ({ type: 'reaction', id: 'short', name: '합선', kind: 'physical', eq: '(+)극 ─ 금속 ─ (−)극', note: '두 전극이 금속으로 바로 이어지면 전류가 용액을 지나지 않아 전기 분해가 일어나지 않습니다. 큰 전류가 흘러 도선이 뜨거워지고 불꽃이 튑니다.' }));
+        // 줄열: 합선된 도선이 달아오른다. 전극 근처에서 불꽃이 튄다.
+        for (let k = 0; k < role.length; k++) if ((role[k] & 3) === 3 && !this.data.electrode[mat[k]]) this.T[k] += 4;
+        const at = this.anodes[(Math.random() * this.anodes.length) | 0];
+        if (this.fx.length < 200) this.fx.push({ type: 'spark', x: at % w, y: (at / w) | 0, hot: 2000 });
         return;
       }
       const stack = [];
@@ -2717,6 +2827,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.events.push(build());
     }
     drainEvents() { const e = this.events; this.events = []; return e; }
+    drainFx() { const e = this.fx; this.fx = []; return e; }
 
     // ---- 강체 공 (SI 단위, y는 아래로 증가) ----
     addBody(o) {
@@ -2864,11 +2975,13 @@ Og|오가네손|294|noble|7|50|80|1`;
     inspect(x, y) {
       if (!this.inside(x, y)) return null;
       const i = this.index(x, y), def = this.data.defs[this.mat[i]];
-      return { def, T: this.T[i], rho: this.effRho(i), P: this.pressureAt(i) };
+      const s = this.data.state[this.mat[i]];
+      return { def, T: this.T[i], rho: this.effRho(i), P: s === LIQUID || s === POWDER ? this.regionP(i) + this.hydroP(i) : this.pressureAt(i) };
     }
 
     // ---- 되돌리기용 스냅숏 (메모리 안에서만, 빠르게) ----
     snapshot() {
+      this.settleFlyers();
       return {
         mat: this.mat.slice(), T: this.T.slice(), gas: this.gas.slice(), anchor: this.anchor.slice(), store: this.store.slice(), vy: this.vy.slice(), life: this.life.slice(), shade: this.shade.slice(),
         bodies: this.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] })), probe: this.probe && { x: this.probe.x, y: this.probe.y },
@@ -2877,13 +2990,14 @@ Og|오가네손|294|noble|7|50|80|1`;
     restoreSnapshot(s) {
       this.mat.set(s.mat); this.T.set(s.T); if (s.gas) this.gas.set(s.gas); this.anchor.set(s.anchor); this.store.set(s.store); this.vy.set(s.vy); this.life.set(s.life); this.shade.set(s.shade);
       this.bodies = s.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] }));
-      this.selected = null; this.fq = [];
+      this.selected = null; this.fq = []; this.flyers = [];
       if (s.probe) this.setProbe(s.probe.x, s.probe.y); else this.probe = null;
       this.role = null; this.lit = null; // 전기 회로를 다시 찾는다.
     }
 
     // ---- 저장/복원 (포함될 사이트에서 서버에 저장할 수 있도록 순수 JSON) ----
     toJSON() {
+      this.settleFlyers();
       const enc = (arr) => {
         const u8 = new Uint8Array(arr.buffer);
         let s = '';
@@ -3414,6 +3528,98 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.heatLut = ramp(HEAT);
       this.densLut = ramp(DENS);
       this.mode = 'normal';
+      // 빛 번짐: 빛나는 칸만 따로 그려 흐리게 겹친다.
+      const mk = (w, h) => { const c = (typeof OffscreenCanvas !== 'undefined') ? new OffscreenCanvas(w, h) : Object.assign(document.createElement('canvas'), { width: w, height: h }); return c; };
+      this.glowCanvas = mk(world.w, world.h);
+      this.glowCtx = this.glowCanvas.getContext('2d');
+      this.glowImage = this.glowCtx.createImageData(world.w, world.h);
+      this.glowPx = new Uint32Array(this.glowImage.data.buffer);
+      this.half = mk(world.w >> 1, world.h >> 1); this.quarter = mk(world.w >> 2, world.h >> 2);
+      this.glowCount = 0;
+      this.particles = []; // 불티·파편 빛 (칸 단위 좌표)
+      this.flashes = [];
+      this.shake = 0;
+      this.effects = true;
+      this.reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+
+    // 엔진이 요청한 효과를 입자로 만든다.
+    takeFx() {
+      const W = this.world;
+      for (const e of W.drainFx()) {
+        if (!this.effects) continue;
+        if (e.type === 'boom') {
+          const big = e.nuke ? 3 : 1;
+          this.flashes.push({ x: e.x + 0.5, y: e.y + 0.5, r: e.r * (e.nuke ? 6 : 3), t: 0, max: e.nuke ? 50 : 14, nuke: e.nuke });
+          const n = Math.min(90, (10 + e.r * 7) * big);
+          for (let k = 0; k < n; k++) {
+            const a = Math.random() * Math.PI * 2, sp = (0.4 + Math.random()) * Math.min(5, 0.6 + e.r * 0.35);
+            this.spark(e.x + 0.5, e.y + 0.5, Math.cos(a) * sp, Math.sin(a) * sp - 0.4, 18 + Math.random() * 30, Math.random() < 0.5 ? [255, 230, 150] : [255, 150, 60]);
+          }
+          if (e.r >= 4 && !this.reduceMotion) this.shake = Math.min(8, this.shake + e.r * (e.nuke ? 1.2 : 0.5));
+        } else if (e.type === 'spark') {
+          const n = 2 + (Math.random() * 3 | 0);
+          for (let k = 0; k < n; k++) {
+            const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4, sp = 0.3 + Math.random() * 0.9;
+            this.spark(e.x + 0.5, e.y + 0.5, Math.cos(a) * sp, Math.sin(a) * sp, 10 + Math.random() * 18, e.hot > 1500 ? [255, 250, 220] : [255, 190, 90]);
+          }
+        }
+      }
+    }
+    spark(x, y, vx, vy, life, rgb, size) {
+      if (this.particles.length > 600) return;
+      this.particles.push({ x, y, vx, vy, life, max: life, rgb, size: size || 1 });
+    }
+
+    // 덮개 캔버스에 빛 번짐·섬광·불티를 그린다. cell = 한 칸의 픽셀 크기.
+    drawFx(ctx, cell) {
+      const W = this.world, g = W.g * W.dt * W.dt / W.dx * 0.5;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      if (this.glowCount && this.mode === 'normal' && this.effects) {
+        const cw = ctx.canvas.width, ch = ctx.canvas.height;
+        ctx.imageSmoothingEnabled = true;
+        if (this.canFilter == null) { ctx.filter = 'blur(2px)'; this.canFilter = ctx.filter === 'blur(2px)'; ctx.filter = 'none'; }
+        if (this.canFilter) {
+          ctx.globalAlpha = 0.75; ctx.filter = `blur(${Math.max(2, cell * 2.2)}px)`;
+          ctx.drawImage(this.glowCanvas, 0, 0, cw, ch);
+          ctx.filter = 'none';
+        } else {
+          // filter가 없는 브라우저: 두 번 줄였다 키워 흐리게 만든다.
+          const h = this.half.getContext('2d'), q = this.quarter.getContext('2d');
+          h.clearRect(0, 0, this.half.width, this.half.height); h.drawImage(this.glowCanvas, 0, 0, this.half.width, this.half.height);
+          q.clearRect(0, 0, this.quarter.width, this.quarter.height); q.drawImage(this.half, 0, 0, this.quarter.width, this.quarter.height);
+          ctx.globalAlpha = 0.9; ctx.drawImage(this.quarter, 0, 0, cw, ch);
+        }
+        ctx.globalAlpha = 1;
+      }
+      for (const f of this.flashes) {
+        const k = 1 - f.t / f.max, R = f.r * cell * (0.6 + 0.6 * f.t / f.max);
+        const grd = ctx.createRadialGradient(f.x * cell, f.y * cell, 0, f.x * cell, f.y * cell, R);
+        grd.addColorStop(0, `rgba(255,${f.nuke ? 250 : 235},${f.nuke ? 230 : 180},${0.9 * k})`);
+        grd.addColorStop(0.4, `rgba(255,170,70,${0.45 * k})`);
+        grd.addColorStop(1, 'rgba(255,120,40,0)');
+        ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(f.x * cell, f.y * cell, R, 0, 7); ctx.fill();
+        f.t++;
+      }
+      this.flashes = this.flashes.filter((f) => f.t < f.max);
+      const keep = [];
+      for (const p of this.particles) {
+        p.vy += g * (p.float ? -0.3 : 1); p.vx *= 0.97; p.vy *= 0.97;
+        p.x += p.vx; p.y += p.vy; p.life--;
+        if (p.life <= 0 || p.x < 0 || p.y < 0 || p.x >= W.w || p.y >= W.h) continue;
+        const i = (p.y | 0) * W.w + (p.x | 0);
+        if (!p.float && W.data.state[W.mat[i]] === 0 && !W.data.defs[W.mat[i]].flame) { if (Math.random() < 0.5) continue; p.vy *= -0.3; p.vx *= 0.5; } // 고체에 닿으면 튕기거나 꺼진다
+        const k = p.life / p.max, [r, gg, b] = p.rgb;
+        ctx.fillStyle = `rgba(${r},${gg},${b},${Math.min(1, k * 1.5)})`;
+        const sz = Math.max(1.2, cell * 0.7 * p.size);
+        ctx.fillRect(p.x * cell - sz / 2, p.y * cell - sz / 2, sz, sz);
+        keep.push(p);
+      }
+      this.particles = keep;
+      ctx.restore();
+      this.shake *= 0.85;
+      if (this.shake < 0.3) this.shake = 0;
     }
 
     draw() {
@@ -3433,7 +3639,9 @@ Og|오가네손|294|noble|7|50|80|1`;
           px[i] = this.densLut[(t * 255) | 0];
         }
       } else {
-        const air = W.AIR, defs = W.data.defs, st = W.data.state, w = W.w;
+        const air = W.AIR, defs = W.data.defs, st = W.data.state, w = W.w, gp = this.glowPx;
+        let glow = 0;
+        gp.fill(0);
         for (let i = 0; i < n; i++) {
           const m = mat[i];
           if (m === air) { px[i] = rgba(16, 21, 27); continue; }
@@ -3457,15 +3665,32 @@ Og|오가네손|294|noble|7|50|80|1`;
             // 불꽃색을 중심으로 밝기만 일렁인다.
             const f = 0.7 + Math.random() * 0.45;
             r = flame[0] * f; g = flame[1] * f; b = flame[2] * f;
+            gp[i] = rgba(r * 0.8, g * 0.8, b * 0.8); glow++;
+            // 불꽃 위로 가끔 불티가 날린다.
+            if (defs[m].flame && Math.random() < 0.0025 && i >= w && mat[i - w] !== m) {
+              this.particles.length < 400 && this.particles.push({ x: i % w + Math.random(), y: (i / w | 0), vx: (Math.random() - 0.5) * 0.15, vy: -0.25 - Math.random() * 0.3, life: 25 + Math.random() * 35, max: 60, rgb: [255, 170 + (Math.random() * 60 | 0), 70], size: 0.7, float: true });
+            }
           } else if (T[i] > 450) {
             // 흑체 복사처럼 뜨거운 물체가 빛난다.
             const t = Math.min(1, (T[i] - 450) / 1300);
             r = lerp(r, 255, t); g = lerp(g, 90 + 150 * t, t); b = lerp(b, 20 + 120 * t * t, t);
+            if (t > 0.15) { gp[i] = rgba(255 * t, (90 + 150 * t) * t * 0.8, (20 + 120 * t * t) * t * 0.6); glow++; }
           }
           px[i] = rgba(Math.max(0, Math.min(255, r)), Math.max(0, Math.min(255, g)), Math.max(0, Math.min(255, b)));
         }
+        this.glowCount = glow;
+        if (glow) this.glowCtx.putImageData(this.glowImage, 0, 0);
+      }
+      // 날아가는 칸(파편·물보라)
+      for (const f of W.flyers) {
+        const x = f.x | 0, y = f.y | 0;
+        if (x < 0 || y < 0 || x >= W.w || y >= W.h) continue;
+        const c = this.base[f.m], s = f.shade;
+        px[y * W.w + x] = this.mode === 'heat' ? this.heatLut[(Math.sqrt(Math.max(0, Math.min(1, (f.T + 60) / 1660))) * 255) | 0]
+          : f.T > 450 ? rgba(255, Math.min(255, 120 + f.T / 10), 80) : rgba(Math.max(0, Math.min(255, c[0] + s)), Math.max(0, Math.min(255, c[1] + s)), Math.max(0, Math.min(255, c[2] + s)));
       }
       this.ctx.putImageData(this.image, 0, 0);
+      this.takeFx();
     }
   }
 
@@ -3508,6 +3733,9 @@ Og|오가네손|294|noble|7|50|80|1`;
   .scale i { display:block; width:110px; height:8px; border-radius:2px; }
   .toast { position:absolute; left:50%; top:10px; transform:translateX(-50%); width:max-content; max-width:92%; background:var(--sl-raised); border:1px solid var(--sl-accent); padding:8px 12px; border-radius:8px; pointer-events:none; opacity:0; transition:opacity .25s; }
   .toast.show { opacity:1; }
+  .hint { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; color:var(--sl-muted); font-size:14px; text-align:center; padding:16px; transition:opacity .4s; }
+  .hint[hidden] { display:none; }
+  .hint b { color:var(--sl-ink); }
   .toast small { display:block; color:var(--sl-muted); }
   .status { grid-area:status; padding:6px 10px; min-height:32px; font-size:13px; color:var(--sl-muted); border-top:1px solid var(--sl-line); background:var(--sl-panel); font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .status b { color:var(--sl-ink); font-weight:600; }
@@ -3565,7 +3793,8 @@ Og|오가네손|294|noble|7|50|80|1`;
   .search { flex:1; min-width:0; width:100%; min-height:36px; padding:0 10px; font:inherit; color:inherit; background:var(--sl-bg); border:1px solid var(--sl-line); border-radius:6px; }
   .cats { flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; margin-bottom:2px; scrollbar-width:thin; }
   .cats .chip { min-height:30px; font-size:12px; padding:0 8px; flex:none; white-space:nowrap; }
-  .tools .chip { min-height:32px; font-size:12px; }
+  .tools { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; }
+  .tools .chip { min-height:32px; font-size:12px; padding:0 2px; justify-content:center; white-space:nowrap; }
   .favs { margin:2px 0 8px; }
   .favs .chip { min-height:30px; font-size:12px; padding:0 7px; }
   .grp { border-bottom:1px solid var(--sl-line); }
@@ -3574,8 +3803,8 @@ Og|오가네손|294|noble|7|50|80|1`;
   .grp .chips { padding:0 0 8px; }
   .chip small { opacity:.7; font-size:11px; }
   .table-scroll { overflow-x:auto; padding-bottom:6px; }
-  .ptable { display:grid; grid-template-columns:repeat(18,28px); grid-auto-rows:28px; gap:2px; width:max-content; }
-  .el { min-height:0; padding:0; font-size:11px; font-weight:600; border-radius:4px; border:1px solid transparent; color:#e8edf2; background:#2a323c; }
+  .ptable { display:grid; grid-template-columns:repeat(18,minmax(15px,1fr)); gap:1px; width:100%; min-width:max-content; }
+  .el { min-height:0; aspect-ratio:1; padding:0; font-size:9.5px; letter-spacing:-.3px; overflow:hidden; font-weight:600; border-radius:4px; border:1px solid transparent; color:#e8edf2; background:#2a323c; }
   .el-alkali { background:#6a2f2f; } .el-alkaline { background:#6a4a2a; } .el-tm { background:#34506a; } .el-post { background:#2f5a5a; } .el-metalloid { background:#4a5a2f; }
   .el-nonmetal { background:#3a6a3a; } .el-halogen { background:#5a6a22; } .el-noble { background:#5a3a6a; } .el-ln { background:#2f4a7a; } .el-an { background:#6a3a5a; }
   .el.on { outline:2px solid var(--sl-accent); outline-offset:0; }
@@ -3589,10 +3818,11 @@ Og|오가네손|294|noble|7|50|80|1`;
   const STATE_NAME = { solid: '고체', powder: '고체(가루)', liquid: '액체', gas: '기체' };
   // 예전 문서에 쓰인 실험 이름도 받아 준다.
   const SCENE_ALIAS = { sodium: 'alkali', boil: 'water' };
-  const TOOLS = [['inspect', '관찰'], ['erase', '지우개'], ['heat', '가열'], ['cool', '냉각'], ['ball', '공 던지기'], ['probe', '온도계']];
+  const TOOLS = [['inspect', '관찰'], ['stir', '섞기'], ['heat', '가열'], ['cool', '냉각'], ['erase', '지우개'], ['ball', '공'], ['probe', '온도계']];
+  const BRUSH_TOOLS = ['mat', 'erase', 'heat', 'cool', 'stir'];
   // 자주 쓰는 재료. 재료 탭 맨 위에 늘 보인다.
   const FAVORITES = ['water', 'ice', 'fire', 'salt', 'hcl', 'naoh', 'vinegar', 'S:NaHCO3', 'Na:s', 'Mg:s', 'iron', 'copper', 'H2O2', 'sugar', 'oil', 'wood'];
-  const TOOL_HINT = { inspect: '칸을 누르면 정보 탭에 자세히 나옵니다', erase: '공기로 지웁니다', heat: '누르고 있는 동안 데웁니다', cool: '누르고 있는 동안 식힙니다', ball: '끌었다 놓으면 던집니다', probe: '누른 곳의 온도를 측정 탭에 그립니다' };
+  const TOOL_HINT = { inspect: '칸을 누르면 정보 탭에 자세히 나옵니다', erase: '공기로 지웁니다', heat: '누르고 있는 동안 데웁니다', cool: '누르고 있는 동안 식힙니다', ball: '끌었다 놓으면 던집니다', probe: '누른 곳의 온도를 측정 탭에 그립니다', stir: '누르고 문지르면 가루·액체·기체가 섞입니다(고체·고정 칸은 그대로)' };
   const GRAVITY = [['무중력', 0], ['달', 1.62], ['화성', 3.71], ['지구', 9.81], ['목성', 24.79]];
   const fmt = (v, d) => (v == null || !isFinite(v) ? '-' : v.toFixed(d));
 
@@ -3622,8 +3852,10 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.pointer = null;
       this.hover = null;
       this.cleanups = [];
+      this.touch = typeof matchMedia === 'function' && matchMedia('(hover: none)').matches;
       this.buildDom();
       this.renderer = new SL.Renderer(this.$('.grid'), this.world);
+      this.setEffects(opts.effects !== false);
       this.bindEvents();
       this.loadScene(opts.scene || 'free');
       this.setTab(opts.scene ? 'scenes' : 'materials');
@@ -3649,10 +3881,12 @@ Og|오가네손|294|noble|7|50|80|1`;
             <option value="0.1">0.1배</option><option value="0.25">0.25배</option><option value="0.5">0.5배</option><option value="1" selected>1배</option><option value="2">2배</option>
           </select></label>
           <label>보기 <select class="view"><option value="normal">일반</option><option value="heat">온도</option><option value="density">밀도</option></select></label>
+          <label title="불티·섬광·빛 번짐 같은 화면 효과 (물리 결과에는 영향 없음)"><input type="checkbox" class="fxon" checked> 효과</label>
           <span class="clock">0.00초</span>
         </div>
         <div class="stage"><div class="frame"><canvas class="grid"></canvas><canvas class="over" aria-label="실험 공간"></canvas></div>
-          <div class="scale" hidden></div><div class="toast" role="status"></div></div>
+          <div class="scale" hidden></div><div class="toast" role="status"></div>
+          <div class="hint" hidden><div><b>재료를 고른 뒤 여기에 그려 보세요.</b><br>두 물질을 맞닿게 놓거나 섞기 도구로 문지르면 반응이 일어납니다.<br>가열·냉각 도구로 온도를 바꿀 수 있습니다.</div></div></div>
         <div class="status">&nbsp;</div>
         <div class="side">
           <div class="tabs" role="tablist">${TABS.map(([id, n]) => `<button role="tab" data-tab="${id}">${n}</button>`).join('')}</div>
@@ -3672,6 +3906,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       });
       this.listen(this.$('.speed'), 'change', (e) => { this.speed = +e.target.value; });
       this.listen(this.$('.view'), 'change', (e) => this.setView(e.target.value));
+      this.listen(this.$('.fxon'), 'change', (e) => this.setEffects(e.target.checked));
       this.listen(this.$('.tabs'), 'click', (e) => { const t = e.target.closest('[data-tab]'); if (t) this.setTab(t.dataset.tab); });
 
       const over = this.$('.over');
@@ -3702,6 +3937,13 @@ Og|오가네손|294|noble|7|50|80|1`;
       over.height = Math.floor(this.world.h * s * dpr);
     }
 
+    setEffects(v) {
+      this.renderer.effects = !!v;
+      if (!v) { this.renderer.particles = []; this.renderer.flashes = []; this.renderer.shake = 0; }
+      const cb = this.$('.fxon');
+      if (cb) cb.checked = !!v;
+    }
+
     setRunning(v) { this.running = v; this.$('.play').textContent = v ? '일시정지' : '재생'; }
 
     setView(v) {
@@ -3726,6 +3968,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       sc.setup(this.world);
       this.history = [];
       if (this.$('.undo')) this.$('.undo').disabled = true;
+      this.$('.hint').hidden = sc.id !== 'free';
       this.speed = sc.speed || 1;
       this.graphMode = sc.graph || 'v';
       this.$('.speed').value = String(this.speed);
@@ -3754,7 +3997,7 @@ Og|오가네손|294|noble|7|50|80|1`;
 
     paneMaterials(pane) {
       const count = this.world.data.defs.length;
-      pane.innerHTML = `<div class="chips tools">${TOOLS.map(([k, n]) => `<button class="chip" data-tool="${k}">${n}</button>`).join('')}</div>
+      pane.innerHTML = `<div class="chips tools">${TOOLS.map(([k, n]) => `<button class="chip" data-tool="${k}" title="${TOOL_HINT[k]}">${n}</button>`).join('')}</div>
         <div class="row compact"><label>붓 <input type="range" class="brush" min="1" max="16" value="${this.brush}"></label><span class="val">${this.brush}칸</span>
           <label title="끄면 가루처럼 쌓이고, 켜면 놓은 자리에 덩어리로 고정됩니다." style="flex:none"><input type="checkbox" class="anchor" ${this.anchored ? 'checked' : ''}> 고정</label></div>
         <input type="search" class="search" placeholder="물질 ${count}종 검색 (예: 황산, Cu, 소금)" aria-label="물질 검색" value="${this.query}">
@@ -3965,8 +4208,9 @@ Og|오가네손|294|noble|7|50|80|1`;
     }
     onDown(e) {
       e.currentTarget.setPointerCapture(e.pointerId);
+      this.$('.hint').hidden = true;
       this.$('.root').focus({ preventScroll: true });
-      if (['mat', 'erase', 'heat', 'cool', 'ball'].includes(this.tool.kind)) this.remember();
+      if (BRUSH_TOOLS.includes(this.tool.kind) || this.tool.kind === 'ball') this.remember();
       const c = this.cellAt(e);
       this.hover = c;
       const hit = this.bodyAt(c);
@@ -4015,6 +4259,7 @@ Og|오가네손|294|noble|7|50|80|1`;
         if (hit) { w.bodies.splice(w.bodies.indexOf(hit), 1); if (w.selected === hit) w.select(null); }
       } else if (t.kind === 'heat') w.addHeat(x, y, r, 60);
       else if (t.kind === 'cool') w.addHeat(x, y, r, -40);
+      else if (t.kind === 'stir') w.stir(x, y, Math.max(2, r + 1));
     }
 
     // ---- 루프 ----
@@ -4024,7 +4269,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.last = now;
       if (!this.visible) return;
       // 누르고 있는 동안 가열/냉각을 계속한다.
-      if (this.pointer && (this.tool.kind === 'heat' || this.tool.kind === 'cool')) this.applyBrush(this.pointer.cur.x, this.pointer.cur.y);
+      if (this.pointer && ['heat', 'cool', 'stir'].includes(this.tool.kind)) this.applyBrush(this.pointer.cur.x, this.pointer.cur.y);
       if (this.running) {
         this.acc += real * this.speed;
         let n = 0;
@@ -4085,7 +4330,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       const info = c && this.world.inspect(c.x, c.y);
       const html = info
         ? `<b>${info.def.name}</b> ${info.def.formula} · ${fmt(info.T, 1)}°C · ${info.rho >= 10 ? fmt(info.rho, 0) : fmt(info.rho, 2)} kg/m³${Math.abs(info.P - 1) > 0.02 ? ` · <b>${fmt(info.P, 2)}기압</b>` : ''}`
-        : '실험 공간 위에 커서를 올리면 그 칸의 물질과 온도가 보입니다. 관찰 도구로 누르면 정보 탭에 자세히 나옵니다.';
+        : this.touch ? '손가락으로 그리면 고른 재료가 떨어집니다. 관찰 도구로 누르면 그 칸의 정보가 나옵니다.' : '실험 공간 위에 커서를 올리면 그 칸의 물질과 온도가 보입니다. 관찰 도구로 누르면 정보 탭에 자세히 나옵니다.';
       if (html !== this.statusHtml) { el.innerHTML = html; this.statusHtml = html; }
     }
 
@@ -4094,6 +4339,9 @@ Og|오가네손|294|noble|7|50|80|1`;
       const s = over.width / (w.w * w.dx); // m → 픽셀
       const cell = over.width / w.w;
       ctx.clearRect(0, 0, over.width, over.height);
+      this.renderer.drawFx(ctx, cell);
+      const sh = this.renderer.shake;
+      this.$('.frame').style.transform = sh ? `translate(${((Math.random() - 0.5) * sh).toFixed(1)}px,${((Math.random() - 0.5) * sh).toFixed(1)}px)` : '';
       for (const b of w.bodies) {
         if (b === w.selected && b.trail.length > 2) {
           ctx.strokeStyle = '#ffffff66'; ctx.lineWidth = 1.5; ctx.beginPath();
@@ -4115,9 +4363,10 @@ Og|오가네손|294|noble|7|50|80|1`;
         const sx = (p.start.x + 0.5) * cell, sy = (p.start.y + 0.5) * cell;
         ctx.strokeStyle = '#5cc8b8'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(sx, sy, this.ballR * s, 0, 7); ctx.moveTo(sx, sy); ctx.lineTo((p.cur.x + 0.5) * cell, (p.cur.y + 0.5) * cell); ctx.stroke();
-      } else if (this.hover && ['mat', 'erase', 'heat', 'cool'].includes(this.tool.kind)) {
-        ctx.strokeStyle = '#ffffff99'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc((this.hover.x + 0.5) * cell, (this.hover.y + 0.5) * cell, Math.max(this.brush - 0.5, 0.5) * cell, 0, 7); ctx.stroke();
+      } else if (this.hover && BRUSH_TOOLS.includes(this.tool.kind)) {
+        ctx.strokeStyle = { heat: '#ff9a5c', cool: '#7cc4ff', stir: '#c9a8ff', erase: '#ff7a7a' }[this.tool.kind] || '#ffffff99'; ctx.lineWidth = 1;
+        if (this.tool.kind === 'stir') ctx.setLineDash([4, 3]);
+        ctx.beginPath(); ctx.arc((this.hover.x + 0.5) * cell, (this.hover.y + 0.5) * cell, Math.max(this.brush - 0.5, 0.5) * cell, 0, 7); ctx.stroke(); ctx.setLineDash([]);
       }
     }
 
@@ -4257,9 +4506,9 @@ Og|오가네손|294|noble|7|50|80|1`;
   /**
    * 공개 API. 어떤 요소에든 실험실을 붙인다.
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
-   * @param {{scene?:string,width?:number,height?:number,storage?:{load:Function,save:Function}}} [options]
+   * @param {{scene?:string,width?:number,height?:number,effects?:boolean,storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.11.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.12.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);
@@ -4274,6 +4523,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       pause: () => app.setRunning(false),
       resume: () => app.setRunning(true),
       setView: (v) => app.setView(v),
+      setEffects: (on) => app.setEffects(on),
       save: () => app.world.toJSON(),
       restore: (data) => app.world.fromJSON(data),
       discoveries: () => [...app.codex.values()],
@@ -4285,7 +4535,7 @@ Og|오가네손|294|noble|7|50|80|1`;
   if (globalThis.customElements && !customElements.get('sand-lab')) {
     customElements.define('sand-lab', class extends HTMLElement {
       connectedCallback() {
-        this.lab = SL.create(this, { scene: this.getAttribute('scene') || undefined });
+        this.lab = SL.create(this, { scene: this.getAttribute('scene') || undefined, effects: this.getAttribute('effects') !== 'off' });
       }
       disconnectedCallback() { if (this.lab) this.lab.destroy(); this.lab = null; }
     });

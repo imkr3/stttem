@@ -752,6 +752,50 @@ test('저장/복원: 상태가 그대로 돌아옴', () => {
   for (let i = 0; i < w.mat.length; i++) assert(copy.mat[i] === w.mat[i] && copy.T[i] === w.T[i] && copy.anchor[i] === w.anchor[i], `칸 ${i}`);
   return `${JSON.stringify(snap).length} 바이트`;
 });
+test('섞기 도구: 층이 섞이고 물질 양은 그대로', () => {
+  const w = fresh();
+  w.rect('glass', 40, 140, 80, 140, null, true);
+  w.rect('sand', 50, 120, 70, 129); w.rect('salt', 50, 130, 70, 139);
+  const sand = w.data.idOf.sand, salt = w.data.idOf.salt;
+  const count = (k) => { let n = 0; for (let i = 0; i < w.mat.length; i++) if (w.mat[i] === k) n++; return n; };
+  const top = () => { let n = 0; for (let y = 120; y < 130; y++) for (let x = 50; x <= 70; x++) if (w.mat[w.index(x, y)] === salt) n++; return n; };
+  const n0 = count(sand) + count(salt), before = top();
+  for (let k = 0; k < 20; k++) w.stir(60, 130, 10);
+  assert(count(sand) + count(salt) === n0, '물질 양이 바뀜');
+  assert(top() > before + 40, `윗층의 소금 ${before} → ${top()}`);
+  return `윗층 소금 칸 ${before} → ${top()}`;
+});
+test('폭발 파편과 물보라: 날아간 칸은 다시 내려앉음', () => {
+  const w = fresh();
+  w.rect('glass', 20, 140, 220, 149, null, true);
+  w.rect('sand', 100, 125, 140, 139);
+  const sand = w.data.idOf.sand;
+  const count = () => { let n = 0; for (let i = 0; i < w.mat.length; i++) if (w.mat[i] === sand) n++; return n; };
+  const n0 = count();
+  w.explode(w.index(120, 130), 6, 1500);
+  const flying = w.flyers.length;
+  assert(flying > 10, `파편 ${flying}`);
+  run(w, 3);
+  assert(w.flyers.length === 0, '아직 날고 있음 ' + w.flyers.length);
+  const n1 = count();
+  assert(n1 >= n0 - 0.4 * n0, `모래 ${n0} → ${n1}`); // 중심부는 불꽃이 될 수 있다
+  // 높은 곳에서 떨어진 물은 바닥에서 튄다.
+  const v = fresh(); v.rect('glass', 0, 145, 239, 149, null, true); v.rect('water', 110, 5, 130, 15);
+  let maxF = 0; for (let k = 0; k < 120; k++) { v.step(); maxF = Math.max(maxF, v.flyers.length); }
+  assert(maxF > 0, '물보라 없음');
+  return `파편 ${flying}칸, 모래 ${n0} → ${n1}, 물보라 최대 ${maxF}칸`;
+});
+test('수압: 깊을수록 압력이 높고 끓는점이 오름', () => {
+  const w = fresh(); w.rect('glass', 0, 149, 239, 149, null, true); w.rect('water', 100, 49, 140, 148);
+  run(w, 0.5);
+  const p = w.inspect(120, 147).P, q = w.inspect(120, 60).P;
+  assert(p > 1.08 && p < 1.12, `바닥 ${p}`);
+  assert(q < p, '위가 더 높음');
+  const i = w.index(120, 147); w.T[i] = 101;
+  const b = w.boilAt(100, i);
+  assert(b > 102 && b < 104, `끓는점 ${b}`);
+  return `바닥 ${p.toFixed(3)}기압, 끓는점 ${b.toFixed(1)}°C`;
+});
 test('성능: 틱당 시간', () => {
   const out = [];
   for (const id of ['volcano', 'precip', 'furnace']) {
