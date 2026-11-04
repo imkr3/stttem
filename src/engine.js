@@ -39,7 +39,7 @@
       return idOf[id];
     };
     const resolve = (to) => (Array.isArray(to) ? to.map(([id, p]) => [need(id), p]) : need(to));
-    const compileEdge = (e) => e && { at: e.at, L: e.L, to: resolve(e.to), silent: !!e.silent, cast: !!e.cast };
+    const compileEdge = (e) => e && { at: e.at, L: e.L, to: resolve(e.to), silent: !!e.silent, cast: !!e.cast, boil: false };
     const c = {
       n, idOf, defs: materials, resolve,
       state: new Uint8Array(n), rho: new Float32Array(n), cp: new Float32Array(n),
@@ -48,7 +48,7 @@
       up: [], down: [], decay: [], explicit: new Map(), cache: new Map(), reactive: new Uint8Array(n), base: new Uint16Array(n),
       fast: new Float32Array(n), thermal: new Float32Array(n), spont: new Float32Array(n), emitter: new Uint8Array(n),
       moder: new Uint8Array(n), absorb: new Float32Array(n), heat: new Float32Array(n), armor: new Uint8Array(n),
-      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
+      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), pump: new Uint8Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
     };
     materials.forEach((d, i) => {
       c.state[i] = STATES[d.state];
@@ -70,11 +70,18 @@
       // 칸마다 밝기를 조금씩 달리하는 정도(질감): 액체는 매끈하게, 금속은 고르게, 가루와 바위는 거칠게.
       c.grain[i] = d.grain != null ? d.grain : d.state === 'liquid' ? 5 : d.state === 'gas' ? 7 : d.metal ? 7 : d.state === 'solid' ? 16 : 13;
       if (d.electrode) c.anyElectrode = true;
+      c.pump[i] = d.pump ? 1 : 0;
       c.conductor[i] = d.electrode || d.wire || (d.metal && d.state !== 'gas') ? 1 : 0; // 전기가 통하는 고체·액체 금속, 도선
       c.load[i] = d.load ? 1 : 0; // 전구처럼 전류가 지나가며 일을 하는 것
       // 갇힌 기체의 압력을 견디는 정도(기압). 액체는 밀려날 뿐 터지지 않으므로 경계로 치지 않는다.
       c.strength[i] = d.strength != null ? d.strength : d.fixed || d.armor ? 1e9 : d.state === 'liquid' ? 1e9 : d.state === 'powder' ? (d.metal ? 30 : 3) : d.metal ? 40 : 12;
     });
+    // 끓음·응결 경계(액체 → 기체, 기체 → 액체)는 압력에 따라 온도가 바뀐다.
+    const isGasTarget = (to) => (Array.isArray(to) ? to.some(([k]) => c.state[k] === GAS) : c.state[to] === GAS);
+    for (let i = 0; i < n; i++) {
+      if (c.up[i] && c.state[i] === LIQUID && isGasTarget(c.up[i].to)) c.up[i].boil = true;
+      if (c.down[i] && c.state[i] === GAS) c.down[i].boil = true;
+    }
     const add = (a, b, entry) => {
       const key = a * n + b;
       if (!c.explicit.has(key)) c.explicit.set(key, []);
@@ -201,7 +208,7 @@
 
     effRho(i) {
       const m = this.mat[i], s = this.data.state[m], r = this.data.rho[m];
-      if (s === GAS) return r * 293 / (Math.max(this.T[i], -200) + 273); // 이상 기체
+      if (s === GAS) return r * (this.gas[i] || 1) * 293 / (Math.max(this.T[i], -200) + 273); // 이상 기체: 압축된 기체는 더 무겁다
       if (s === LIQUID) return r * (1 - 2e-4 * (this.T[i] - 20)); // 열팽창
       return r;
     }
@@ -451,34 +458,44 @@
       }
     }
 
+    // 끓는점은 압력에 따라 바뀐다(클라우지우스-클라페이론 식과 트루턴 규칙 ΔH ≈ 88 J/mol·K × Tb):
+    // 1/T = 1/Tb − R·ln(P)/ΔH  →  T = Tb / (1 − 0.0945·ln P). 2기압이면 물은 약 126°C, 0.03기압이면 약 20°C에서 끓는다.
+    boilAt(at, i) {
+      const P = this.regionP(i);
+      if (P === 1) return at;
+      const f = 1 - 0.0945 * Math.log(Math.max(0.005, Math.min(100, P)));
+      return (at + 273.15) / Math.max(0.2, f) - 273.15;
+    }
     phase(i, m) {
       const d = this.data, T = this.T, c = d.cp[m], up = d.up[m], down = d.down[m];
-      if (up && T[i] > up.at) {
-        this.store[i] += (T[i] - up.at) * c;
-        T[i] = up.at;
-        if (this.store[i] >= up.L) this.transform(i, m, up);
-      } else if (down && T[i] < down.at) {
-        this.store[i] -= (down.at - T[i]) * c;
-        T[i] = down.at;
-        if (-this.store[i] >= down.L) this.transform(i, m, down);
-      } else if (this.store[i] > 0 && up && T[i] < up.at) {
-        const give = Math.min(this.store[i], (up.at - T[i]) * c); // 다시 식으면 잠열을 돌려준다.
+      const upAt = up && up.boil && this.pRegions ? this.boilAt(up.at, i) : up && up.at;
+      const downAt = down && down.boil && this.pRegions ? this.boilAt(down.at, i) : down && down.at;
+      if (up && T[i] > upAt) {
+        this.store[i] += (T[i] - upAt) * c;
+        T[i] = upAt;
+        if (this.store[i] >= up.L) this.transform(i, m, up, upAt);
+      } else if (down && T[i] < downAt) {
+        this.store[i] -= (downAt - T[i]) * c;
+        T[i] = downAt;
+        if (-this.store[i] >= down.L) this.transform(i, m, down, downAt);
+      } else if (this.store[i] > 0 && up && T[i] < upAt) {
+        const give = Math.min(this.store[i], (upAt - T[i]) * c); // 다시 식으면 잠열을 돌려준다.
         this.store[i] -= give; T[i] += give / c;
-      } else if (this.store[i] < 0 && down && T[i] > down.at) {
-        const give = Math.min(-this.store[i], (T[i] - down.at) * c);
+      } else if (this.store[i] < 0 && down && T[i] > downAt) {
+        const give = Math.min(-this.store[i], (T[i] - downAt) * c);
         this.store[i] += give; T[i] -= give / c;
       }
     }
 
-    transform(i, m, edge) {
-      const T = edge.at, id = pick(edge.to);
+    transform(i, m, edge, at) {
+      const T = at != null ? at : edge.at, id = pick(edge.to);
       this.setCell(i, id, T);
       if (edge.cast) this.anchor[i] = 1; // 쇳물이나 용암은 굳은 자리에 그대로 남는다.
       if (edge.silent) return;
       this.note('phase:' + m + ':' + id, () => ({
         type: 'phase', id: 'phase:' + this.data.defs[m].id + ':' + this.data.defs[id].id,
         name: this.data.defs[m].name + ' → ' + this.data.defs[id].name,
-        eq: T + '°C에서 상태 변화', kind: 'physical', note: '상변화가 끝날 때까지 온도가 일정하게 유지됩니다.',
+        eq: Math.round(T * 10) / 10 + '°C에서 상태 변화', kind: 'physical', note: '상변화가 끝날 때까지 온도가 일정하게 유지됩니다. 끓는점은 압력이 높으면 올라가고 낮으면 내려갑니다.',
       }));
     }
 
@@ -488,6 +505,7 @@
         const r = e.r;
         if (r.minT != null && hi < r.minT) continue;
         if (r.maxT != null && hi > r.maxT) continue; // 낮은 온도에서만 일어나는 반응(수화, 부동태)
+        if (r.minP != null && Math.max(this.regionP(i), this.regionP(j)) < r.minP) continue; // 높은 압력이 필요한 반응
         if (Math.random() > r.prob) continue;
         if (e.near && !this.hasNear(i, e.near) && !this.hasNear(j, e.near)) continue;
         if (e.far && (this.hasNear(i, e.far) || this.hasNear(j, e.far))) continue; // 이 물질이 옆에 있으면 일어나지 않음
@@ -772,26 +790,40 @@
       const regions = [null];
       // 기체·액체·고정되지 않은 가루는 공간에 포함하고, 나머지(고체, 고정한 가루)는 벽이다.
       const inside = (j) => { const s2 = st[mat[j]]; return s2 === GAS || s2 === LIQUID || (s2 === POWDER && !anchor[j]); };
+      const pumpArr = d.pump;
+      let pumped = false;
       for (let s0 = 0; s0 < size; s0++) {
         if (lab[s0] || st[mat[s0]] !== GAS) continue;
         const id = regions.length;
         let top = 0, V = 0, nT = 0, Tsum = 0, open = false, weak = -1, weakS = Infinity;
+        pumped = false;
         stack[top++] = s0; lab[s0] = id;
         const first = s0;
         while (top) {
           const i = stack[--top];
           if (st[mat[i]] === GAS) { V++; nT += gas[i] * (T[i] + 273.15); Tsum += T[i]; }
-          if (i < w) { if (this.openTop) open = true; } else { const j = i - w; if (!lab[j]) { if (inside(j)) { lab[j] = id; stack[top++] = j; } else if (str[mat[j]] < weakS) { weakS = str[mat[j]]; weak = j; } } }
-          if (i + w < size) { const j = i + w; if (!lab[j]) { if (inside(j)) { lab[j] = id; stack[top++] = j; } else if (str[mat[j]] < weakS) { weakS = str[mat[j]]; weak = j; } } }
+          if (i < w) { if (this.openTop) open = true; } else { const j = i - w; if (!lab[j]) { if (inside(j)) { lab[j] = id; stack[top++] = j; } else { if (pumpArr[mat[j]]) pumped = true; else if (str[mat[j]] < weakS) { weakS = str[mat[j]]; weak = j; } } } }
+          if (i + w < size) { const j = i + w; if (!lab[j]) { if (inside(j)) { lab[j] = id; stack[top++] = j; } else { if (pumpArr[mat[j]]) pumped = true; else if (str[mat[j]] < weakS) { weakS = str[mat[j]]; weak = j; } } } }
           const x = i % w;
-          if (x > 0) { const j = i - 1; if (!lab[j]) { if (inside(j)) { lab[j] = id; stack[top++] = j; } else if (str[mat[j]] < weakS) { weakS = str[mat[j]]; weak = j; } } }
-          if (x < w - 1) { const j = i + 1; if (!lab[j]) { if (inside(j)) { lab[j] = id; stack[top++] = j; } else if (str[mat[j]] < weakS) { weakS = str[mat[j]]; weak = j; } } }
+          if (x > 0) { const j = i - 1; if (!lab[j]) { if (inside(j)) { lab[j] = id; stack[top++] = j; } else { if (pumpArr[mat[j]]) pumped = true; else if (str[mat[j]] < weakS) { weakS = str[mat[j]]; weak = j; } } } }
+          if (x < w - 1) { const j = i + 1; if (!lab[j]) { if (inside(j)) { lab[j] = id; stack[top++] = j; } else { if (pumpArr[mat[j]]) pumped = true; else if (str[mat[j]] < weakS) { weakS = str[mat[j]]; weak = j; } } } }
         }
         if (!V) { regions.push({ P: 1, V: 0, open, T: 20 }); continue; }
         const big = V > 6000; // 아주 큰 공간은 방 전체의 공기로 보고 대기와 통한다고 본다.
         const P = open || big ? 1 : nT / 293.15 / V;
         regions.push({ P, V, open: open || big, T: Tsum / V, first });
         if (open || big) continue;
+        // 진공 펌프에 닿은 닫힌 공간은 기체가 조금씩 빠져나간다.
+        if (pumped) {
+          for (let k = 0; k < size; k++) if (lab[k] === id && st[mat[k]] === GAS) gas[k] = Math.max(0.01, gas[k] * 0.85);
+          this.note('vacuum', () => ({ type: 'reaction', id: 'vacuum', name: '진공 펌프', kind: 'physical', eq: `기체를 빼냄 → 압력 ${P.toFixed(2)}기압`, note: '닫힌 용기의 기체를 빼내면 압력이 내려갑니다. 압력이 낮으면 물이 낮은 온도에서도 끓습니다.' }));
+        }
+        // 바깥 공기(1기압)가 누르는 힘이 얇은 벽이 견디는 정도를 넘으면 안쪽으로 찌그러진다.
+        if (weak >= 0 && (1 - P) * 2 > weakS) {
+          this.note('implode', () => ({ type: 'reaction', id: 'implode', name: '대기압에 찌그러짐', kind: 'physical', eq: `바깥 1기압 − 안쪽 ${P.toFixed(2)}기압`, note: '안쪽 압력이 낮아지면 바깥 공기가 용기를 누르는 힘이 커져 얇은 용기가 찌그러집니다. 공기도 무게가 있어 큰 힘으로 누르고 있다는 증거입니다.' }));
+          this.setCell(weak, d.shatter[mat[weak]] >= 0 ? d.shatter[mat[weak]] : this.AIR, T[weak]);
+          continue;
+        }
         if (weak >= 0 && P > weakS) {
           const r = Math.max(2, Math.min(8, 1.5 + (P - weakS) * 0.6));
           this.note('burst', () => ({ type: 'reaction', id: 'burst', name: '밀폐 용기 파열', kind: 'physical', eq: `압력 ${P.toFixed(1)}기압 > 용기가 견디는 압력 ${weakS}기압`, note: '갇힌 기체를 데우거나 액체가 끓어 기체가 생기면 압력이 커집니다(PV = nRT). 용기가 견딜 수 있는 압력을 넘으면 가장 약한 곳이 터집니다. 압력솥에 안전밸브가 있는 이유입니다.' }));
@@ -800,12 +832,18 @@
         }
       }
       // 열린 공간으로 나온 압축 기체는 대기 속으로 퍼져 1기압이 된다.
-      for (let k = 0; k < size; k++) if (gas[k] > 1) { const r = regions[lab[k]]; if (!r || r.open) gas[k] = 1 + (gas[k] - 1) * 0.5; }
+      for (let k = 0; k < size; k++) if (gas[k] !== 1 && gas[k] > 0) { const r = regions[lab[k]]; if (!r || r.open) gas[k] = 1 + (gas[k] - 1) * 0.5; }
       this.pRegions = regions;
     }
     // 그 칸이 속한 기체 공간의 압력(기압). 기체가 아니거나 열린 공간이면 1.
     pressureAt(i) {
       if (!this.pRegions || !this.plab || this.data.state[this.mat[i]] !== GAS) return 1;
+      const r = this.pRegions[this.plab[i]];
+      return r ? r.P : 1;
+    }
+    // 기체·액체·가루 칸이 속한 공간의 압력(액체는 위의 기체와 같은 압력을 받는다).
+    regionP(i) {
+      if (!this.pRegions || !this.plab) return 1;
       const r = this.pRegions[this.plab[i]];
       return r ? r.P : 1;
     }

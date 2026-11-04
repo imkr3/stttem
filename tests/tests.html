@@ -177,6 +177,8 @@ const SHOULD = [
   ['다이크로뮴산암모늄+불', 'S:(NH4)2Cr2O7', 'fire', null, 'volcano'], ['설탕+베이킹소다(가열)', 'sugar', 'S:NaHCO3', 300, 'sugar_snake'],
   // 가열·냉각, 폭발
   ['뜨거운 유리+물(열 충격)', 'glass', 'water', 300, 'glass_shock'],
+  // 평형·고분자
+  ['차가운 이산화질소', 'NO2', 'air', -10, 'n2o4'], ['따뜻한 사산화이질소', 'N2O4', 'air', 40, 'n2o4_split'], ['에틸렌+사염화타이타늄(중합)', 'C2H4', 'S:TiCl4', 70, 'polymer'], ['아세트산 에틸+NaOH(가열)', 'C4H8O2', 'naoh', 50, 'ester_hydrolysis'], ['톱밥 연소', 'sawdust', 'air', 400, 'burn:sawdust'], ['녹은 플라스틱 연소', 'plastic:l', 'air', 400, 'burn:plastic:l'],
   // 새 음이온·빛·공업 반응
   ['수소화나트륨+물', 'S:NaH', 'water', null, 'hydride-water:NaH'], ['나트륨+수소(가열)', 'Na', 'hydrogen', 350, 'hydride:Na'], ['염산+아황산나트륨', 'hcl', 'S:Na2SO3', null, 'sulfite-acid:HCl:Na2SO3'], ['염산+아질산나트륨', 'hcl', 'A:NaNO2', null, 'nitrite-acid:HCl:NaNO2'],
   ['이산화황+NaOH(탈황)', 'SO2', 'naoh', null, 'so2-base:NaOH'], ['아황산나트륨+아이오딘', 'A:Na2SO3', 'A:KI3', null, 'sulfite-redox:A:KI3'], ['염소산칼륨 가열', 'S:KClO3', 'air', 450, 'decomp:KClO3'], ['염소산칼륨+MnO2', 'S:KClO3', 'S:MnO2', 250, 'chlorate-mno2:KClO3'],
@@ -500,6 +502,33 @@ test('열복사: 공기에 드러난 뜨거운 철이 단열벽에 싸인 철보
   const open = cool(false), wrapped = cool(true);
   assert(open < wrapped - 50, `드러난 철 ${open.toFixed(0)}°C, 싸인 철 ${wrapped.toFixed(0)}°C`);
   return `2초 뒤 모서리: 드러남 ${open.toFixed(0)}°C, 단열벽 ${wrapped.toFixed(0)}°C`;
+});
+test('끓는점과 압력: 압력솥은 100°C보다 뜨겁고, 진공에서는 상온에서 끓으며, 얇은 캔은 찌그러짐', () => {
+  const box = (w, W) => { w.rect(W, 100, 100, 140, 103, 20, true); w.rect(W, 100, 100, 103, 145, 20, true); w.rect(W, 137, 100, 140, 145, 20, true); w.rect(W, 100, 142, 140, 145, 20, true); };
+  const w = fresh(); box(w, 'stone'); w.rect('water', 104, 120, 136, 141);
+  for (let y = 104; y < 120; y++) for (let x = 104; x < 137; x++) w.T[w.index(x, y)] = 300; w.stepPressure();
+  const P = w.regionP(w.index(120, 130)), bp = w.boilAt(100, w.index(120, 130));
+  assert(P > 1.5 && bp > 110 && bp < 140, `압력 ${P.toFixed(2)}기압에서 끓는점 ${bp.toFixed(1)}°C`);
+  const v = fresh(); v.rect('stone', 0, 146, 239, 149); box(v, 'glass'); v.rect('pump', 137, 110, 140, 113, 20, true); v.rect('water', 104, 130, 136, 141, 25);
+  run(v, 12);
+  const Pv = v.regionP(v.index(120, 135));
+  assert(Pv < 0.1 && v.boilAt(100, v.index(120, 135)) < 30, `진공 ${Pv.toFixed(3)}기압`);
+  const c = fresh(); c.rect('stone', 0, 146, 239, 149); box(c, 'can'); c.rect('pump', 137, 110, 140, 113, 20, true);
+  run(c, 6); assert(c.discovered.has('implode'), '캔이 찌그러지지 않음');
+  return `${P.toFixed(2)}기압 → 물 끓는점 ${bp.toFixed(1)}°C · 진공 ${Pv.toFixed(3)}기압 → ${v.boilAt(100, v.index(120, 135)).toFixed(1)}°C · 캔 찌그러짐`;
+});
+test('압력이 필요한 반응(하버 공정)과 녹은 염의 전기 분해', () => {
+  const haber = (sealed) => { const w = fresh(); w.rect('stone', 0, 146, 239, 149); w.rect('stone', 100, 100, 103, 145, 20, true); w.rect('stone', 137, 100, 140, 145, 20, true); w.rect('stone', 100, 142, 140, 145, 20, true); if (sealed) w.rect('stone', 100, 100, 140, 103, 20, true);
+    for (let y = 104; y < 142; y++) for (let x = 104; x < 137; x++) w.rect((x + y) % 4 ? 'hydrogen' : 'nitrogen', x, y, x, y, 450);
+    for (let y = 106; y < 140; y += 6) for (let x = 106; x < 135; x += 6) w.rect('Fe', x, y, x, y, 450, true); // 촉매를 곳곳에 둔다
+    for (let t = 0; t < 600; t++) { w.step(); for (let y = 104; y < 142; y++) for (let x = 104; x < 137; x++) { const i = w.index(x, y); if (w.T[i] < 450 && w.data.state[w.mat[i]] === 3) w.T[i] = 450; } }
+    return w.discovered.has('haber'); };
+  assert(!haber(false) && haber(true), '하버 공정이 압력과 상관없음');
+  const e = fresh(); e.rect('firebrick', 60, 100, 62, 145, 20, true); e.rect('firebrick', 178, 100, 180, 145, 20, true); e.rect('firebrick', 60, 142, 180, 145, 20, true); e.rect('M:NaCl', 63, 110, 177, 141, 850);
+  e.rect('electrode+', 90, 95, 93, 135, 850, true); e.rect('electrode-', 147, 95, 150, 135, 850, true);
+  run(e, 2);
+  assert(e.discovered.has('electro:molten:Na') && e.discovered.has('electro:Cl'), [...e.discovered].join());
+  return '열린 곳에서는 암모니아가 안 생기고 밀폐 가열하면 생김 · 녹은 소금에서 나트륨과 염소';
 });
 test('공기 중 액체 질소는 끓어 기체가 됨', () => {
   const w = fresh(); w.rect('N:l', 100, 60, 130, 70);

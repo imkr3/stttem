@@ -645,7 +645,8 @@
   // ---- 전기 분해 ----
   // 전해질: 이온이 녹아 있어 전기가 통하는 수용액. 순수한 물과 설탕물은 전기가 거의 통하지 않는다.
   function electrolyteIons(E) {
-    if (!E || E.state !== 'liquid' || !E.aq || E.indicator) return null;
+    if (!E || E.state !== 'liquid' || E.indicator) return null;
+    if (!E.aq) return E.salt && E.id.startsWith('M:') ? { c: E.salt.c, a: E.salt.a, molten: true } : null; // 녹은 염도 이온이 움직여 전기가 통한다.
     if (E.salt) return { c: E.salt.c, a: E.salt.a };
     if (E.acid) return { c: 'H', a: E.acid.a };
     if (E.id === 'A:citric' || E.id === 'A:vitc') return { c: 'H', a: 'cit' }; // 레몬즙 같은 약한 유기산도 전기가 통한다.
@@ -661,6 +662,11 @@
     if (side === 'cathode') {
       const cat = SL.CATION[c];
       const el = cat && cat.el;
+      // 녹은 염에는 물이 없으므로 나트륨·알루미늄 같은 반응성이 큰 금속도 석출된다(다운스 법, 홀-에루 법).
+      if (ions.molten && el) {
+        const ion = el + (SUP[cat.charge] || '⁺');
+        return { to: el + ':l', deposit: true, e: cat.charge, key: 'electro:molten:' + el, name: '녹은 염의 전기 분해: ' + SL.ELEMENTS.find((e) => e.sym === el).name + ' 얻기', eq: `${ion} + ${cat.charge}e⁻ → ${el}`, note: '물이 없는 녹은 염을 전기 분해하면 반응성이 큰 금속도 얻을 수 있습니다. 나트륨은 녹은 소금에서, 알루미늄은 녹은 산화알루미늄에서 이렇게 만듭니다. 전기가 아주 많이 듭니다.' };
+      }
       // 알루미늄보다 반응성이 작은 금속 이온은 금속으로 석출된다(전기 도금).
       if (el && rank(el) > rank('Al')) {
         const ion = el + (SUP[cat.charge] || '⁺');
@@ -671,6 +677,7 @@
       return { to: [['H:g', 0.5], [base && base.aq ? base.aq : E.id, 0.5]], e: 2, key: 'electro:H2', name: '전기 분해: (−)극에서 수소 발생', eq: c === 'H' ? '2H⁺ + 2e⁻ → H₂↑' : '2H₂O + 2e⁻ → H₂↑ + 2OH⁻', note: c === 'H' ? '수소 이온이 전자를 받아 수소 기체가 됩니다.' : '나트륨처럼 반응성이 큰 금속 이온은 환원되지 않고, 대신 물이 환원되어 수소가 나옵니다. 전극 주변은 염기성이 됩니다.' };
     }
     const hal = HALOGEN_PRODUCT[a];
+    if (ions.molten && !hal) return { to: [['O:g', 0.5], [E.id, 0.5]], e: 4, key: 'electro:molten:O2', name: '녹은 산화물의 전기 분해: 산소', eq: '2O²⁻ → O₂↑ + 4e⁻', note: '녹은 산화물에서는 산화 이온이 산소가 됩니다. 알루미늄 제련에서는 이 산소가 탄소 전극을 태워 이산화탄소가 됩니다.' };
     if (hal) return { to: [[hal[0], 0.5], [E.id, 0.5]], e: 2, key: 'electro:' + a, name: '전기 분해: (+)극에서 ' + hal[2], eq: `2${a}⁻ → ${hal[1]} + 2e⁻`, note: c === 'Na' && a === 'Cl' ? '소금물을 전기 분해하면 (+)극에서 염소, (−)극에서 수소와 수산화나트륨이 생깁니다(염소-알칼리 공업).' : '할로젠화 이온이 전자를 잃고 할로젠이 됩니다.' };
     const acid = SL.ACIDS[a];
     return { to: [['O:g', 0.5], [acid && c !== 'H' && a !== 'OH' ? acid.id : E.id, 0.5]], e: 4, key: 'electro:O2', name: '전기 분해: (+)극에서 산소 발생', eq: a === 'OH' ? '4OH⁻ → O₂↑ + 2H₂O + 4e⁻' : '2H₂O → O₂↑ + 4H⁺ + 4e⁻', note: '황산 이온·질산 이온은 산화되지 않고 대신 물이 산화되어 산소가 나옵니다. 수소는 산소의 두 배만큼 나옵니다(물 = H₂O).' };
@@ -722,7 +729,7 @@
 
     { id: 'h2_cl2', name: '수소와 염소', reactants: ['H2', 'Cl2'], products: ['HCl'], a: 'hydrogen', b: 'Cl:g', minT: 250, prob: 0.5, toA: 'HClg', toB: 'HClg', dT: 500, explode: 2, explodeP: 0.3, note: '불을 붙이거나 강한 빛을 쬐면 폭발하며 염화수소가 됩니다.' },
     { id: 'h2_br2', name: '수소와 브로민', reactants: ['H2', 'Br2'], products: ['HBr'], a: 'hydrogen', b: 'Br:g', minT: 300, prob: 0.2, toA: 'HBrg', toB: 'HBrg', dT: 150, note: '가열하면 브로민화수소가 됩니다.' },
-    { id: 'haber', name: '하버-보슈 공정', reactants: ['N2', 'H2'], products: ['NH3'], a: 'nitrogen', b: 'hydrogen', near: ['Fe:s'], minT: 400, prob: 0.2, toA: 'NH3', toB: 'NH3', note: '철 촉매와 고온에서 암모니아를 만듭니다. 실제 공정은 높은 압력도 필요합니다.' },
+    { id: 'haber', name: '하버-보슈 공정', reactants: ['N2', 'H2'], products: ['NH3'], a: 'nitrogen', b: 'hydrogen', near: ['Fe:s'], minT: 400, minP: 2, prob: 0.2, toA: 'NH3', toB: 'NH3', note: '철 촉매와 고온에서 암모니아를 만듭니다. 높은 압력(밀폐 용기를 가열해 2기압 이상)이 있어야 일어납니다. 실제 공정은 약 200기압을 씁니다.' },
     { id: 'nh3_hcl', name: '암모니아와 염화수소', reactants: ['NH3', 'HCl'], products: ['NH4Cl'], a: 'NH3', b: 'HClg', prob: 0.6, toA: 'S:NH4Cl', toB: 'air', dT: 20, note: '두 기체가 만나면 흰 연기처럼 고체가 생깁니다.' },
     { id: 'nh4cl_heat', name: '염화암모늄의 분해', reactants: ['NH4Cl'], products: ['NH3', 'HCl'], a: 'S:NH4Cl', b: 'air', minT: 338, prob: 0.1, toA: 'NH3', toB: 'HClg', note: '가열하면 다시 두 기체로 나뉩니다.' },
     { id: 'nh3_water', name: '암모니아가 물에 녹음', eq: 'NH₃ + H₂O → NH₄OH', kind: 'physical', a: 'NH3', b: 'water', prob: 0.4, toA: 'NH4OH:aq', toB: 'NH4OH:aq', note: '암모니아는 물에 매우 잘 녹습니다.' },
@@ -959,6 +966,12 @@
     { id: 'cracking', name: '석유의 열분해(크래킹)', eq: 'C₈H₁₈ → C₂H₄ + C₆H₁₄ … (촉매, 고온)', a: 'C8H18:g', b: 'S:Al2O3', minT: 450, prob: 0.08, toA: [['C2H4', 0.6], ['C2H6', 0.4]], note: '긴 탄화수소를 뜨거운 촉매 위에서 쪼개 에틸렌 같은 작은 분자를 얻습니다. 플라스틱 원료가 이렇게 만들어집니다.' },
     ...['air', 'oxygen'].map((b) => ({ id: 'ostwald', name: '오스트발트 공정(질산 원료)', reactants: ['NH3', 'O2'], products: ['NO', 'H2O'], a: 'NH3', b, near: ['Pt:s'], minT: 300, prob: 0.2, toA: 'NO', toB: 'steam', note: '뜨거운 백금 그물 위에서 암모니아가 산화되어 일산화질소가 됩니다. 이것을 다시 산화해 물에 녹이면 질산이 됩니다.' })),
     ...['air', 'oxygen'].map((b) => ({ id: 'contact', name: '접촉법(황산 원료)', reactants: ['SO2', 'O2'], products: ['SO3'], a: 'SO2', b, near: ['Pt:s'], minT: 400, prob: 0.1, toA: 'SO3', note: '촉매 위에서 이산화황이 삼산화황이 되고, 이것으로 황산을 만듭니다. 세계에서 가장 많이 만드는 화학 물질입니다.' })),
+    // ---- 압력·온도로 바뀌는 평형, 고분자, 에스터 ----
+    ...['air', 'N:g', 'NO2', 'CO2:g'].filter((b) => b !== 'NO2').map((b) => ({ id: 'n2o4', name: '이산화질소의 이합체(차가우면)', reactants: ['NO2'], products: ['N2O4'], a: 'NO2', b, maxT: 5, prob: 0.1, toA: 'N2O4', note: '적갈색 이산화질소는 차가우면 둘씩 붙어 무색의 사산화이질소가 되고, 데우면 다시 갈라집니다. 온도에 따라 평형이 옮겨 가는 르샤틀리에 원리의 대표 예입니다.' })),
+    ...['air', 'N:g'].map((b) => ({ id: 'n2o4_split', name: '사산화이질소의 분해(뜨거우면)', reactants: ['N2O4'], products: ['NO2'], a: 'N2O4', b, minT: 30, prob: 0.1, toA: 'NO2', note: '온도를 올리면 열을 흡수하는 쪽(갈라지는 쪽)으로 평형이 옮겨 가 다시 갈색이 됩니다.' })),
+    { id: 'polymer', name: '에틸렌의 중합(폴리에틸렌)', eq: 'n CH₂=CH₂ → (–CH₂–CH₂–)ₙ', a: 'C2H4', b: 'S:TiCl4', minT: 60, prob: 0.1, toA: 'plastic', note: '촉매(지글러-나타 촉매) 위에서 에틸렌의 이중 결합이 풀리며 길게 이어져 플라스틱이 됩니다.' },
+    { id: 'polymer', name: '에틸렌의 중합(폴리에틸렌)', eq: 'n CH₂=CH₂ → (–CH₂–CH₂–)ₙ', a: 'C2H4', b: 'M:TiCl4', minT: 60, prob: 0.1, toA: 'plastic', note: '촉매(지글러-나타 촉매) 위에서 에틸렌의 이중 결합이 풀리며 길게 이어져 플라스틱이 됩니다.' },
+    { id: 'ester_hydrolysis', name: '에스터의 가수 분해(비누화)', reactants: ['C4H8O2', 'NaOH'], products: ['NaCH3COO', 'C2H5OH'], a: 'C4H8O2', b: 'naoh', minT: 40, prob: 0.05, toA: 'C2H5OH', toB: 'A:NaCH3COO', note: '에스터는 염기와 데우면 알코올과 카복실산염으로 나뉩니다. 과일 향이 사라집니다.' },
     { id: 'softening', name: '센물 연화', reactants: ['Ca(HCO3)2', 'Na2CO3'], products: ['CaCO3', 'NaHCO3'], a: 'A:Ca(HCO3)2', b: 'A:Na2CO3', prob: 0.3, toA: 'limestone', toB: 'A:NaHCO3', note: '탄산나트륨을 넣으면 칼슘 이온이 탄산칼슘으로 가라앉아 단물이 됩니다.' },
     { id: 'aqua_mix', name: '왕수 만들기', kind: 'chemical', eq: 'HNO₃ + 3HCl → 왕수', a: 'HNO3', b: 'hcl', prob: 0.3, toA: 'aquaregia', toB: 'aquaregia', note: '금도 녹이는 혼합 산입니다.' },
     { id: 'au_aqua', name: '금과 왕수', reactants: ['Au', 'HNO3', 'HCl'], products: ['AuCl3', 'NO', 'H2O'], a: 'Au:s', b: 'aquaregia', prob: 0.05, toA: 'S:AuCl3', toB: 'NO2', note: '금은 왕수에만 녹습니다.' },
