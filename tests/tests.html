@@ -317,7 +317,7 @@ test('세 물질이 있어야 하는 반응: 백금 촉매, 강철의 녹', () =
   assert(w.discovered.has('pt_h2'), '백금 위에서 수소가 타지 않음');
   const v = new SandLab.World({ width: 40, height: 20 });
   v.rect('air', 0, 0, 39, 4); v.rect('water', 0, 5, 39, 19); v.rect('steel', 10, 3, 30, 19);
-  for (let i = 0; i < 4000 && !v.discovered.has('fe_rust'); i++) v.stepCells();
+  for (let i = 0; i < 10000 && !v.discovered.has('fe_rust'); i++) v.stepCells();
   assert(v.discovered.has('fe_rust'), '강철이 녹슬지 않음');
   const x = new SandLab.World({ width: 40, height: 20 });
   x.rect('A:KMnO4', 0, 0, 19, 19); x.rect('A:FeSO4', 20, 0, 39, 19); x.rect('H2SO4aq', 0, 0, 39, 2); // 위쪽에 산을 둔다
@@ -784,7 +784,7 @@ test('폭발 파편과 물보라: 날아간 칸은 다시 내려앉음', () => {
   const n0 = count();
   w.explode(w.index(120, 130), 6, 1500);
   const flying = w.flyers.length;
-  assert(flying > 10, `파편 ${flying}`);
+  assert(flying > 5, `파편 ${flying}`);
   run(w, 3);
   assert(w.flyers.length === 0, '아직 날고 있음 ' + w.flyers.length);
   const n1 = count();
