@@ -21,6 +21,9 @@
   const DENS = [[10, 16, 26], [20, 60, 90], [30, 120, 130], [90, 180, 140], [190, 225, 170], [250, 250, 225]];
   SL.HEAT_STOPS = HEAT;
   SL.DENSITY_STOPS = DENS;
+  // 압력: 진공(파랑) → 1기압(회색) → 고압(주황·빨강). 로그 눈금 0.01, 0.1, 1, 10, 50기압
+  const PRES = [[25, 40, 130], [45, 120, 205], [118, 124, 130], [235, 150, 50], [255, 50, 40]];
+  SL.PRESSURE_STOPS = PRES;
 
   class Renderer {
     constructor(canvas, world) {
@@ -33,6 +36,7 @@
       this.base = world.data.defs.map((d) => hex(d.color));
       this.heatLut = ramp(HEAT);
       this.densLut = ramp(DENS);
+      this.presLut = ramp(PRES);
       this.mode = 'normal';
       // 빛 번짐: 빛나는 칸만 따로 그려 흐리게 겹친다.
       const mk = (w, h) => { const c = (typeof OffscreenCanvas !== 'undefined') ? new OffscreenCanvas(w, h) : Object.assign(document.createElement('canvas'), { width: w, height: h }); return c; };
@@ -131,6 +135,23 @@
           // 저온 구간이 잘 보이도록 제곱근 눈금을 쓴다. -60~1600°C
           const t = Math.sqrt(Math.max(0, Math.min(1, (T[i] + 60) / 1660)));
           px[i] = this.heatLut[(t * 255) | 0];
+        }
+      } else if (this.mode === 'pressure') {
+        // 기체·액체·가루 칸은 그 칸이 속한 공간의 압력, 벽은 어둡게 그린다.
+        const reg = W.pRegions, lab = W.plab, st = W.data.state;
+        const cache = new Map();
+        for (let i = 0; i < n; i++) {
+          const m = mat[i];
+          const r = reg && lab ? reg[lab[i]] : null;
+          if (!r || (st[m] === 0) || (st[m] === 1 && W.anchor[i])) { const c = this.base[m]; px[i] = rgba(c[0] * 0.25, c[1] * 0.25, c[2] * 0.25); continue; }
+          let col = cache.get(r);
+          if (col == null) {
+            const lp = Math.log10(Math.max(0.01, Math.min(50, r.P)));
+            const u = lp <= 1 ? (lp + 2) * 0.25 : 0.75 + (lp - 1) / 0.699 * 0.25;
+            col = this.presLut[Math.max(0, Math.min(255, (u * 255) | 0))];
+            cache.set(r, col);
+          }
+          px[i] = st[m] === 3 ? col : (col & 0xff000000) | ((((col >> 16) & 255) * 0.7) << 16) | ((((col >> 8) & 255) * 0.7) << 8) | ((col & 255) * 0.7);
         }
       } else if (this.mode === 'density') {
         for (let i = 0; i < n; i++) {

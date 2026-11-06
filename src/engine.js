@@ -265,7 +265,7 @@
       this.stepHeat();
       this.stepNuclear();
       this.stepElectro();
-      if (this.tick % 20 === 0) this.stepPressure();
+      if (this.tick % 20 === 0 || this.pressureSoon) { this.pressureSoon = false; this.stepPressure(); }
       this.stepCells();
       this.stepBodies();
       this.record();
@@ -600,18 +600,90 @@
 
     // ---- 그릇 도구 ----
     // 두 점을 모서리로 하는 U자 모양 그릇(바닥과 양쪽 벽, 두께 2칸)을 고정된 칸으로 만든다.
-    vessel(x0, y0, x1, y1, id) {
+    vessel(x0, y0, x1, y1, id, closed) {
       const m = this.data.idOf[id || 'glass'];
       const l = Math.max(0, Math.min(x0, x1)), r = Math.min(this.w - 1, Math.max(x0, x1));
       const t = Math.max(0, Math.min(y0, y1)), b = Math.min(this.h - 1, Math.max(y0, y1));
       if (r - l < 6 || b - t < 4) return false;
       const put = (x, y) => { const i = this.index(x, y); this.setCell(i, m, this.data.t0[m]); this.anchor[i] = 1; };
       for (let y = t; y <= b; y++) { put(l, y); put(l + 1, y); put(r, y); put(r - 1, y); }
-      for (let x = l; x <= r; x++) { put(x, b); put(x, b - 1); }
+      for (let x = l; x <= r; x++) { put(x, b); put(x, b - 1); if (closed) { put(x, t); put(x, t + 1); } }
+      if (closed) { // 안쪽은 1기압 공기로 새로 채운다(밀폐한 순간의 압력).
+        for (let y = t + 2; y < b - 1; y++) for (let x = l + 2; x < r - 1; x++) { const i = this.index(x, y); if (this.data.state[this.mat[i]] === GAS) this.gas[i] = 1; }
+        this.pressureSoon = true;
+      }
       return true;
     }
 
-    // ---- 섞기 도구 ----    // ---- 섞기 도구 ----
+
+    // ---- 압력 도구 ----
+    // 펌프: 누른 곳이 속한 닫힌 공간 전체의 기체량을 f배로 바꾼다(펌프를 용기에 꽂은 것처럼). 열린 공간이면 아무 일도 없다.
+    // 닫힌 공간이 아직 계산되지 않았으면 붓 안의 기체 칸만 바꾼다.
+    pumpGas(cx, cy, r, f) {
+      const st = this.data.state, defs = this.data.defs, gas = this.gas, mat = this.mat;
+      // 누른 칸이 속한 공간을 먼저 쓰고, 누른 칸이 벽이면 붓 안에서 가장 가까운 기체 칸의 공간을 쓴다.
+      let id = 0, best = Infinity;
+      this.forDisc(cx, cy, r, (i) => {
+        if (st[mat[i]] !== GAS || !this.plab || !this.plab[i]) return;
+        const dd = (i % this.w - cx) ** 2 + (((i / this.w) | 0) - cy) ** 2;
+        if (dd < best) { best = dd; id = this.plab[i]; }
+      });
+      const reg = id && this.pRegions ? this.pRegions[id] : null;
+      if (reg && reg.open) return 0;
+      let n = 0;
+      if (reg) {
+        for (let i = 0; i < mat.length; i++) if (this.plab[i] === id && st[mat[i]] === GAS && !defs[mat[i]].flame) { gas[i] = Math.max(0.0005, Math.min(80, (gas[i] || 1) * f)); n++; }
+      } else {
+        this.forDisc(cx, cy, r, (i) => { if (st[mat[i]] === GAS && !defs[mat[i]].flame) { gas[i] = Math.max(0.0005, Math.min(80, (gas[i] || 1) * f)); n++; } });
+      }
+      if (n) this.pressureSoon = true;
+      return n;
+    }
+    // 피스톤 밀기: 붓 안의 기체 칸을 피스톤 판으로 바꾸고, 그 칸들의 기체량은 둘레의 같은 공간 기체 칸에 나눠 준다.
+    // 기체량(n)은 그대로이고 부피(V)만 줄어 압력이 오른다(보일 법칙 PV = 일정).
+    pistonPush(cx, cy, r) {
+      const { w, mat, gas } = this, st = this.data.state, defs = this.data.defs, pis = this.data.idOf.piston;
+      let nSum = 0;
+      const taken = [];
+      this.forDisc(cx, cy, r, (i) => {
+        if (st[mat[i]] !== GAS || this.anchor[i]) return;
+        nSum += gas[i] || 1; taken.push(i);
+      });
+      if (!taken.length) return 0;
+      const T0 = this.T[taken[0]];
+      for (const i of taken) { this.setCell(i, pis, T0); this.anchor[i] = 1; }
+      // 둘레에서 가까운 기체 칸부터 찾아 나눠 담는다.
+      const seen = new Set(taken), q = taken.slice(), got = [];
+      for (let k = 0; k < q.length && got.length < 400; k++) {
+        const i = q[k], x = i % w;
+        for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) {
+          if (j < 0 || j >= mat.length || seen.has(j)) continue;
+          seen.add(j);
+          if (st[mat[j]] === GAS && !defs[mat[j]].flame) { got.push(j); q.push(j); }
+        }
+      }
+      if (got.length) for (const j of got) gas[j] = Math.min(80, (gas[j] || 1) + nSum / got.length);
+      this.pressureSoon = true;
+      return taken.length;
+    }
+    // 피스톤 빼기: 붓 안의 피스톤 판을 거의 빈(기체량 0에 가까운) 칸으로 바꾼다. 기체량은 그대로, 부피만 늘어 압력이 내려간다.
+    pistonPull(cx, cy, r) {
+      const { w, mat } = this, st = this.data.state, defs = this.data.defs, pis = this.data.idOf.piston;
+      let n = 0;
+      this.forDisc(cx, cy, r, (i) => {
+        if (mat[i] !== pis) return;
+        const x = i % w;
+        let g = this.AIR;
+        for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) if (j >= 0 && j < mat.length && st[mat[j]] === GAS && !defs[mat[j]].flame) { g = mat[j]; break; }
+        this.setCell(i, g, this.T[i]);
+        this.gas[i] = 0.002;
+        n++;
+      });
+      if (n) this.pressureSoon = true;
+      return n;
+    }
+
+    // ---- 섞기 도구 ----
     // 원 안의 움직일 수 있는 칸(가루·액체·기체)을 무작위로 바꿔 섞는다. 고정된 칸과 고체는 그대로.
     stir(cx, cy, r, amount) {
       const cells = [];
@@ -653,7 +725,7 @@
     // 상변화, 수명, 화학 반응을 칸 단위로 처리한다.
     stepCells() {
       const { w, h, mat, T } = this;
-      const d = this.data;
+      const d = this.data, st = d.state;
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
           const i = y * w + x;
@@ -676,6 +748,19 @@
           }
           if (d.spont[m] && Math.random() < d.spont[m]) { // 자발 핵분열·중성자원
             if (d.emitter[m]) this.emitNeutrons(i, 2, false); else this.fq.push(i * 2);
+          }
+          // 압력이 낮은 닫힌 공간: 끓는점보다 뜨거운 액체는 기체와 닿은 면에서 바로 끓어오르고, 그 열(잠열)만큼 아래 액체가 식는다.
+          // 진공 속 물은 상온에서도 끓다가 식어서 결국 얼어붙는다.
+          if (this.lowP && d.up[m] && d.up[m].boil && y > 0 && st[mat[i - w]] === GAS && Math.random() < 0.05) {
+            const bp = this.boilAt(d.up[m].at, i), over = T[i] - bp;
+            if (over > 0.5) {
+              const to = d.up[m].to;
+              const below = y + 1 < h && mat[i + w] === m ? i + w : -1;
+              this.setCell(i, to, bp);
+              if (below >= 0) T[below] -= Math.min(25, d.up[m].L / d.cp[m] * 0.04);
+              this.note('vacuum_boil', () => ({ type: 'reaction', id: 'vacuum_boil', name: '낮은 압력에서 끓음', kind: 'physical', eq: `압력 ${this.regionP(i).toFixed(3)}기압 → 끓는점 ${bp.toFixed(0)}°C`, note: '압력이 낮으면 끓는점이 내려가 상온의 물도 끓습니다. 끓을 때 열(기화열)을 빼앗아 물이 식고, 계속 기체를 빼면 끓으면서 얼어붙기도 합니다. 높은 산에서 밥이 설익는 것도 같은 원리입니다.' }));
+              continue;
+            }
           }
           if (d.up[m] || d.down[m]) this.phase(i, m);
           if (d.lifetime[mat[i]] && mat[i] === m) {
@@ -1054,6 +1139,7 @@
       const lab = this.plab && this.plab.length === size ? this.plab.fill(0) : (this.plab = new Int32Array(size));
       const stack = this.pstack && this.pstack.length === size ? this.pstack : (this.pstack = new Int32Array(size));
       const regions = [null];
+      let lowP = false;
       // 기체·액체·고정되지 않은 가루는 공간에 포함하고, 나머지(고체, 고정한 가루)는 벽이다.
       const inside = (j) => { const s2 = st[mat[j]]; return s2 === GAS || s2 === LIQUID || (s2 === POWDER && !anchor[j]); };
       const pumpArr = d.pump;
@@ -1078,10 +1164,12 @@
         const big = V > 6000; // 아주 큰 공간은 방 전체의 공기로 보고 대기와 통한다고 본다.
         const P = open || big ? 1 : nT / 293.15 / V;
         regions.push({ P, V, open: open || big, T: Tsum / V, first });
+        if (!(open || big) && P < 0.8) lowP = true;
         if (open || big) continue;
         // 진공 펌프에 닿은 닫힌 공간은 기체가 조금씩 빠져나간다.
         if (pumped) {
           for (let k = 0; k < size; k++) if (lab[k] === id && st[mat[k]] === GAS) gas[k] = Math.max(0.01, gas[k] * 0.85);
+          regions[id].P = P * 0.85;
           this.note('vacuum', () => ({ type: 'reaction', id: 'vacuum', name: '진공 펌프', kind: 'physical', eq: `기체를 빼냄 → 압력 ${P.toFixed(2)}기압`, note: '닫힌 용기의 기체를 빼내면 압력이 내려갑니다. 압력이 낮으면 물이 낮은 온도에서도 끓습니다.' }));
         }
         // 바깥 공기(1기압)가 누르는 힘이 얇은 벽이 견디는 정도를 넘으면 안쪽으로 찌그러진다.
@@ -1090,16 +1178,25 @@
           this.setCell(weak, d.shatter[mat[weak]] >= 0 ? d.shatter[mat[weak]] : this.AIR, T[weak]);
           continue;
         }
-        if (weak >= 0 && P > weakS) {
+        // 벽이 견디는 것은 안팎의 압력 차(바깥은 1기압)다.
+        if (weak >= 0 && P - 1 > weakS) {
           const r = Math.max(2, Math.min(8, 1.5 + (P - weakS) * 0.6));
-          this.note('burst', () => ({ type: 'reaction', id: 'burst', name: '밀폐 용기 파열', kind: 'physical', eq: `압력 ${P.toFixed(1)}기압 > 용기가 견디는 압력 ${weakS}기압`, note: '갇힌 기체를 데우거나 액체가 끓어 기체가 생기면 압력이 커집니다(PV = nRT). 용기가 견딜 수 있는 압력을 넘으면 가장 약한 곳이 터집니다. 압력솥에 안전밸브가 있는 이유입니다.' }));
+          this.note('burst', () => ({ type: 'reaction', id: 'burst', name: '밀폐 용기 파열', kind: 'physical', eq: `안팎 압력 차 ${(P - 1).toFixed(1)}기압 > 용기가 견디는 압력 차 ${weakS}기압`, note: '갇힌 기체를 데우거나 액체가 끓어 기체가 생기면 압력이 커집니다(PV = nRT). 용기가 견딜 수 있는 압력을 넘으면 가장 약한 곳이 터집니다. 압력솥에 안전밸브가 있는 이유입니다.' }));
           this.explode(weak, r, Math.max(200, Tsum / V));
+          if (st[mat[weak]] === SOLID || anchor[weak]) this.setCell(weak, d.shatter[mat[weak]] >= 0 ? d.shatter[mat[weak]] : this.AIR, T[weak]); // 터진 자리는 반드시 뚫린다
           for (let k = 0; k < size; k++) if (lab[k] === id && gas[k] > 1) gas[k] = 1;
         }
       }
       // 열린 공간으로 나온 압축 기체는 대기 속으로 퍼져 1기압이 된다.
-      for (let k = 0; k < size; k++) if (gas[k] !== 1 && gas[k] > 0) { const r = regions[lab[k]]; if (!r || r.open) gas[k] = 1 + (gas[k] - 1) * 0.5; }
+      // 닫힌 공간 안에서는 기체가 순식간에 퍼져 어디서나 같은 압력이 된다(파스칼). 전체 기체량(Σn·T)은 그대로 두고 칸마다 고르게 나눈다.
+      for (let k = 0; k < size; k++) {
+        if (st[mat[k]] !== GAS) continue;
+        const r = regions[lab[k]];
+        if (!r || r.open) { if (gas[k] !== 1 && gas[k] > 0) gas[k] = 1 + (gas[k] - 1) * 0.5; }
+        else if (r.V) gas[k] = r.P * 293.15 / (T[k] + 273.15);
+      }
       this.pRegions = regions;
+      this.lowP = lowP;
     }
     // 그 칸이 속한 기체 공간의 압력(기압). 기체가 아니거나 열린 공간이면 1.
     pressureAt(i) {

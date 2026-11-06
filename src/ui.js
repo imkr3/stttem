@@ -34,9 +34,9 @@
   .scale i { display:block; width:110px; height:8px; border-radius:2px; }
   .toast { position:absolute; left:50%; top:10px; transform:translateX(-50%); width:max-content; max-width:92%; background:var(--sl-raised); border:1px solid var(--sl-accent); padding:8px 12px; border-radius:8px; pointer-events:none; opacity:0; transition:opacity .25s; }
   .toast.show { opacity:1; }
-  .hint { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; color:var(--sl-muted); font-size:14px; text-align:center; padding:16px; transition:opacity .4s; }
-  .hint[hidden] { display:none; }
-  .hint b { color:var(--sl-ink); }
+  .starthint { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; color:var(--sl-muted); font-size:14px; text-align:center; padding:16px; transition:opacity .4s; }
+  .starthint[hidden] { display:none; }
+  .starthint b { color:var(--sl-ink); }
   .toast small { display:block; color:var(--sl-muted); }
   .status { grid-area:status; padding:6px 10px; min-height:32px; font-size:13px; color:var(--sl-muted); border-top:1px solid var(--sl-line); background:var(--sl-panel); font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .status b { color:var(--sl-ink); font-weight:600; }
@@ -120,11 +120,18 @@
   // 예전 문서에 쓰인 실험 이름도 받아 준다.
   const SCENE_ALIAS = { sodium: 'alkali', boil: 'water' };
   const TOOLS = [['inspect', '관찰'], ['pick', '스포이트'], ['fill', '채우기'], ['vessel', '그릇'], ['stir', '섞기'], ['heat', '가열'], ['cool', '냉각'], ['erase', '지우개'], ['ball', '공'], ['probe', '온도계']];
-  const BRUSH_TOOLS = ['mat', 'erase', 'heat', 'cool', 'stir'];
+  const BRUSH_TOOLS = ['mat', 'erase', 'heat', 'cool', 'stir', 'gasin', 'gasout', 'push', 'pull'];
+  // 누르고 있는 동안 계속 작동하는 도구
+  const HOLD_TOOLS = ['heat', 'cool', 'stir', 'gasin', 'gasout'];
+  // 측정 탭의 압력·진공 도구
+  const PRESSURE_TOOLS = [['box', '밀폐 용기'], ['gasin', '기체 넣기'], ['gasout', '기체 빼기'], ['push', '피스톤 밀기'], ['pull', '피스톤 빼기']];
+  const BOX_MATS = [['glass', '유리 (6기압에서 깨짐)'], ['can', '얇은 캔 (안이 0.5기압 아래면 찌그러짐)'], ['wall', '튼튼한 벽 (깨지지 않음)']];
   // 자주 쓰는 재료. 재료 탭 맨 위에 늘 보인다.
   const FAVORITES = ['water', 'ice', 'fire', 'salt', 'hcl', 'naoh', 'vinegar', 'S:NaHCO3', 'Na:s', 'Mg:s', 'iron', 'copper', 'H2O2', 'sugar', 'oil', 'wood'];
   const TOOL_HINT = { inspect: '칸을 누르면 정보 탭에 자세히 나옵니다', erase: '공기로 지웁니다', heat: '누르고 있는 동안 데웁니다', cool: '누르고 있는 동안 식힙니다', ball: '끌었다 놓으면 던집니다', probe: '누른 곳의 온도를 측정 탭에 그립니다', stir: '누르고 문지르면 가루·액체·기체가 섞입니다(고체·고정 칸은 그대로)',
-    pick: '실험 공간의 칸을 누르면 그 물질을 재료로 고릅니다', fill: '그릇 안을 누르면 마지막으로 고른 재료를 누른 높이까지 채웁니다', vessel: '끌어서 유리 그릇(바닥과 양쪽 벽)을 만듭니다' };
+    pick: '실험 공간의 칸을 누르면 그 물질을 재료로 고릅니다',
+    box: '끌어서 사방이 막힌 용기를 만듭니다', gasin: '닫힌 용기 안을 누르고 있으면 기체를 밀어 넣습니다(자전거 펌프). 열린 곳에서는 바로 빠져나갑니다', gasout: '닫힌 용기 안을 누르고 있으면 기체를 빼냅니다(진공 펌프)',
+    push: '밀폐 용기 안에 피스톤 판을 밀어 넣습니다. 기체 양은 그대로, 부피만 줄어듭니다', pull: '피스톤 판을 빼냅니다. 기체 양은 그대로, 부피만 늘어납니다', fill: '그릇 안을 누르면 마지막으로 고른 재료를 누른 높이까지 채웁니다', vessel: '끌어서 유리 그릇(바닥과 양쪽 벽)을 만듭니다' };
   const GRAVITY = [['무중력', 0], ['달', 1.62], ['화성', 3.71], ['지구', 9.81], ['목성', 24.79]];
   const fmt = (v, d) => (v == null || !isFinite(v) ? '-' : v.toFixed(d));
 
@@ -141,6 +148,7 @@
       this.acc = 0;
       this.tool = { kind: 'mat', id: 'Na:s' };
       this.matId = 'Na:s'; // 채우기 도구가 쓸 마지막 재료
+      this.boxMat = 'glass';
       this.paletteCat = 'element';
       this.query = '';
       this.anchored = false;
@@ -184,13 +192,13 @@
           <label>속도 <select class="speed">
             <option value="0.1">0.1배</option><option value="0.25">0.25배</option><option value="0.5">0.5배</option><option value="1" selected>1배</option><option value="2">2배</option>
           </select></label>
-          <label>보기 <select class="view"><option value="normal">일반</option><option value="heat">온도</option><option value="density">밀도</option></select></label>
+          <label>보기 <select class="view"><option value="normal">일반</option><option value="heat">온도</option><option value="density">밀도</option><option value="pressure">압력</option></select></label>
           <label title="불티·섬광·빛 번짐 같은 화면 효과 (물리 결과에는 영향 없음)"><input type="checkbox" class="fxon" checked> 효과</label>
           <span class="clock">0.00초</span>
         </div>
         <div class="stage"><div class="frame"><canvas class="grid"></canvas><canvas class="over" aria-label="실험 공간"></canvas></div>
           <div class="scale" hidden></div><div class="toast" role="status"></div>
-          <div class="hint" hidden><div><b>재료를 고른 뒤 여기에 그려 보세요.</b><br>두 물질을 맞닿게 놓거나 섞기 도구로 문지르면 반응이 일어납니다.<br>가열·냉각 도구로 온도를 바꿀 수 있습니다.<br>공중에 그린 고체는 떨어집니다. 그 자리에 두려면 '고정'을 켜세요.</div></div></div>
+          <div class="starthint" hidden><div><b>재료를 고른 뒤 여기에 그려 보세요.</b><br>두 물질을 맞닿게 놓거나 섞기 도구로 문지르면 반응이 일어납니다.<br>가열·냉각 도구로 온도를 바꿀 수 있습니다.<br>공중에 그린 고체는 떨어집니다. 그 자리에 두려면 '고정'을 켜세요.</div></div></div>
         <div class="status">&nbsp;</div>
         <div class="side">
           <div class="tabs" role="tablist">${TABS.map(([id, n]) => `<button role="tab" data-tab="${id}">${n}</button>`).join('')}</div>
@@ -258,9 +266,9 @@
       const sc = this.$('.scale');
       sc.hidden = v === 'normal';
       if (v !== 'normal') {
-        const stops = v === 'heat' ? SL.HEAT_STOPS : SL.DENSITY_STOPS;
+        const stops = v === 'heat' ? SL.HEAT_STOPS : v === 'pressure' ? SL.PRESSURE_STOPS : SL.DENSITY_STOPS;
         const grad = stops.map((c) => `rgb(${c.join(',')})`).join(',');
-        const [lo, hi] = v === 'heat' ? ['-60°C', '1600°C'] : ['0.05', '10000 kg/m³'];
+        const [lo, hi] = v === 'heat' ? ['-60°C', '1600°C'] : v === 'pressure' ? ['진공 0.01', '1기압(회색) · 50기압'] : ['0.05', '10000 kg/m³'];
         sc.innerHTML = `<span>${lo}</span><i style="background:linear-gradient(90deg,${grad})"></i><span>${hi}</span>`;
       }
     }
@@ -274,7 +282,7 @@
       sc.setup(this.world);
       this.history = [];
       if (this.$('.undo')) this.$('.undo').disabled = true;
-      this.$('.hint').hidden = sc.id !== 'free';
+      this.$('.starthint').hidden = sc.id !== 'free';
       this.speed = sc.speed || 1;
       this.graphMode = sc.graph || 'v';
       this.$('.speed').value = String(this.speed);
@@ -455,6 +463,11 @@
         <div class="row"><label>g <input type="range" class="grav" min="0" max="25" step="0.01" value="${w.g}"></label><span class="val gval">${fmt(w.g, 2)} m/s²</span></div>
         <div class="row"><label><input type="checkbox" class="vac" ${w.vacuum ? 'checked' : ''}> 공기 저항 없음(진공)</label></div>
         <div class="row"><label>열전달 가속 <input type="range" class="boost" min="1" max="1000" value="${w.heatBoost}"></label><span class="val bval">×${w.heatBoost}</span></div>
+        <h3>압력·진공</h3>
+        <div class="chips">${PRESSURE_TOOLS.map(([k, n]) => `<button class="chip${this.tool.kind === k ? ' on' : ''}" data-ptool="${k}" title="${TOOL_HINT[k]}">${n}</button>`).join('')}</div>
+        <div class="row"><label>용기 <select class="boxmat">${BOX_MATS.map(([k, n]) => `<option value="${k}" ${k === this.boxMat ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>
+        <div class="row"><label><input type="checkbox" class="pview" ${this.renderer.mode === 'pressure' ? 'checked' : ''}> 압력 보기</label><button class="chip pgraph">압력계로 재기</button></div>
+        <p class="hint">${this.tool.kind && TOOL_HINT[this.tool.kind] && PRESSURE_TOOLS.some(([k]) => k === this.tool.kind) ? '<b>' + TOOL_HINT[this.tool.kind] + '</b><br>' : ''}밀폐 용기를 만든 뒤 안에서 기체를 넣거나 빼고, 피스톤으로 부피를 바꿔 보세요. 압력은 PV = nRT를 따릅니다. 진공에 가까우면 물이 상온에서 끓고, 너무 높으면 용기가 터집니다. 온도계 도구로 용기 안을 누른 뒤 '압력계로 재기'를 누르면 그래프가 나옵니다.</p>
         <h3>공 던지기</h3>
         <div class="row"><select class="balltype">${Object.entries(SL.BALLS).map(([k, b]) => `<option value="${k}" ${k === this.ballType ? 'selected' : ''}>${b.name} (${b.density} kg/m³)</option>`).join('')}</select>
         <button class="useball chip${this.tool.kind === 'ball' ? ' on' : ''}">공 도구 선택</button><button class="clearballs chip">공 모두 지우기</button></div>
@@ -467,11 +480,15 @@
         if (b.dataset.g != null) { w.g = +b.dataset.g; this.renderPane(); }
         else if (b.dataset.graph) { this.graphMode = b.dataset.graph; this.renderPane(); }
         else if (b.classList.contains('useball')) { this.tool = { kind: 'ball' }; this.renderPane(); }
+        else if (b.dataset.ptool) { this.tool = { kind: b.dataset.ptool }; this.renderPane(); }
+        else if (b.classList.contains('pgraph')) { this.graphMode = 'P'; if (!w.probe) this.tool = { kind: 'probe' }; this.renderPane(); }
         else if (b.classList.contains('clearballs')) { w.bodies = []; w.select(null); }
       };
       pane.querySelector('.grav').oninput = (e) => { w.g = +e.target.value; pane.querySelector('.gval').textContent = fmt(w.g, 2) + ' m/s²'; };
       pane.querySelector('.vac').onchange = (e) => { w.vacuum = e.target.checked; };
       pane.querySelector('.boost').oninput = (e) => { w.setHeatBoost(+e.target.value); pane.querySelector('.bval').textContent = '×' + e.target.value; };
+      pane.querySelector('.boxmat').onchange = (e) => { this.boxMat = e.target.value; };
+      pane.querySelector('.pview').onchange = (e) => this.setView(e.target.checked ? 'pressure' : 'normal');
       pane.querySelector('.balltype').onchange = (e) => { this.ballType = e.target.value; };
       pane.querySelector('.ballr').oninput = (e) => { this.ballR = e.target.value / 100; pane.querySelector('.rval').textContent = e.target.value + ' cm'; };
       const plot = pane.querySelector('.plot');
@@ -516,9 +533,9 @@
     }
     onDown(e) {
       e.currentTarget.setPointerCapture(e.pointerId);
-      this.$('.hint').hidden = true;
+      this.$('.starthint').hidden = true;
       this.$('.root').focus({ preventScroll: true });
-      if (BRUSH_TOOLS.includes(this.tool.kind) || this.tool.kind === 'ball' || this.tool.kind === 'vessel') this.remember();
+      if (BRUSH_TOOLS.includes(this.tool.kind) || ['ball', 'vessel', 'box'].includes(this.tool.kind)) this.remember();
       const c = this.cellAt(e);
       this.hover = c;
       const hit = this.bodyAt(c);
@@ -544,7 +561,7 @@
       }
       if (this.tool.kind === 'inspect') { this.inspected = this.world.inspect(c.x, c.y); this.pointer = null; this.setTab('info'); return; }
       if (this.tool.kind === 'probe') { this.world.setProbe(c.x, c.y); this.graphMode = 'T'; this.pointer = null; if (this.tab === 'physics') this.renderPane(); return; }
-      if (this.tool.kind !== 'ball' && this.tool.kind !== 'vessel') this.applyBrush(c.x, c.y);
+      if (!['ball', 'vessel', 'box'].includes(this.tool.kind)) this.applyBrush(c.x, c.y);
     }
     onMove(e) {
       const c = this.cellAt(e);
@@ -553,7 +570,7 @@
       const p = this.pointer;
       if (!p) return;
       p.cur = c;
-      if (this.tool.kind === 'ball' || this.tool.kind === 'vessel') return;
+      if (['ball', 'vessel', 'box'].includes(this.tool.kind)) return;
       // 빠르게 그어도 끊기지 않도록 사이 칸을 채운다.
       const steps = Math.max(1, Math.max(Math.abs(c.x - p.last.x), Math.abs(c.y - p.last.y)));
       for (let n = 1; n <= steps; n++) {
@@ -565,9 +582,9 @@
       const p = this.pointer;
       this.pointer = null;
       if (e.pointerType !== 'mouse') this.hover = null;
-      if (p && this.tool.kind === 'vessel') {
-        const c = this.cellAt(e);
-        if (!this.world.vessel(p.start.x, p.start.y, c.x, c.y, 'glass')) this.history.pop();
+      if (p && (this.tool.kind === 'vessel' || this.tool.kind === 'box')) {
+        const c = this.cellAt(e), box = this.tool.kind === 'box';
+        if (!this.world.vessel(p.start.x, p.start.y, c.x, c.y, box ? this.boxMat : 'glass', box)) this.history.pop();
         this.dirty = true;
         return;
       }
@@ -590,6 +607,10 @@
       } else if (t.kind === 'heat') w.addHeat(x, y, r, 60);
       else if (t.kind === 'cool') w.addHeat(x, y, r, -40);
       else if (t.kind === 'stir') w.stir(x, y, Math.max(2, r + 1));
+      else if (t.kind === 'gasin') w.pumpGas(x, y, r, 1.01);
+      else if (t.kind === 'gasout') w.pumpGas(x, y, r, 0.985);
+      else if (t.kind === 'push') w.pistonPush(x, y, r);
+      else if (t.kind === 'pull') w.pistonPull(x, y, r);
     }
 
     // ---- 루프 ----
@@ -599,7 +620,7 @@
       this.last = now;
       if (!this.visible) return;
       // 누르고 있는 동안 가열/냉각을 계속한다.
-      if (this.pointer && ['heat', 'cool', 'stir'].includes(this.tool.kind)) this.applyBrush(this.pointer.cur.x, this.pointer.cur.y);
+      if (this.pointer && HOLD_TOOLS.includes(this.tool.kind)) this.applyBrush(this.pointer.cur.x, this.pointer.cur.y);
       let n = 0;
       if (this.running) {
         this.acc += real * this.speed;
@@ -713,12 +734,14 @@
         const sx = (p.start.x + 0.5) * cell, sy = (p.start.y + 0.5) * cell;
         ctx.strokeStyle = '#5cc8b8'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(sx, sy, this.ballR * s, 0, 7); ctx.moveTo(sx, sy); ctx.lineTo((p.cur.x + 0.5) * cell, (p.cur.y + 0.5) * cell); ctx.stroke();
-      } else if (p && this.tool.kind === 'vessel') {
+      } else if (p && (this.tool.kind === 'vessel' || this.tool.kind === 'box')) {
         const x0 = Math.min(p.start.x, p.cur.x), x1 = Math.max(p.start.x, p.cur.x) + 1, y0 = Math.min(p.start.y, p.cur.y), y1 = Math.max(p.start.y, p.cur.y) + 1;
         ctx.strokeStyle = '#9fd6d8'; ctx.lineWidth = Math.max(2, cell * 2); ctx.beginPath();
-        ctx.moveTo(x0 * cell, y0 * cell); ctx.lineTo(x0 * cell, y1 * cell); ctx.lineTo(x1 * cell, y1 * cell); ctx.lineTo(x1 * cell, y0 * cell); ctx.stroke();
+        ctx.moveTo(x0 * cell, y0 * cell); ctx.lineTo(x0 * cell, y1 * cell); ctx.lineTo(x1 * cell, y1 * cell); ctx.lineTo(x1 * cell, y0 * cell);
+        if (this.tool.kind === 'box') ctx.closePath();
+        ctx.stroke();
       } else if (this.hover && BRUSH_TOOLS.includes(this.tool.kind)) {
-        ctx.strokeStyle = { heat: '#ff9a5c', cool: '#7cc4ff', stir: '#c9a8ff', erase: '#ff7a7a' }[this.tool.kind] || '#ffffff99'; ctx.lineWidth = 1;
+        ctx.strokeStyle = { heat: '#ff9a5c', cool: '#7cc4ff', stir: '#c9a8ff', erase: '#ff7a7a', gasin: '#ffb347', gasout: '#6ad1ff', push: '#a8b8c8', pull: '#a8b8c8' }[this.tool.kind] || '#ffffff99'; ctx.lineWidth = 1;
         if (this.tool.kind === 'stir') ctx.setLineDash([4, 3]);
         ctx.beginPath(); ctx.arc((this.hover.x + 0.5) * cell, (this.hover.y + 0.5) * cell, Math.max(this.brush - 0.5, 0.5) * cell, 0, 7); ctx.stroke(); ctx.setLineDash([]);
       }
@@ -862,7 +885,7 @@
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,effects?:boolean,storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.14.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.15.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);

@@ -832,6 +832,33 @@ test('도구: 그릇 만들기와 높이까지 채우기', () => {
   assert(w.fillLevel(120, 20, water) === 0, '열린 공간도 채움');
   return `그릇 안 ${n}칸, 수면 y=${top}`;
 });
+test('압력 도구: 보일 법칙, 진공에서 끓음, 캔 찌그러짐', () => {
+  const w = fresh(); scene(w, 'pressure');
+  run(w, 0.5);
+  const P = (x, y) => w.inspect(x, y).P;
+  const p0 = P(196, 120);
+  // 피스톤을 아래로 밀어 부피를 절반 가까이 줄인다.
+  for (let y = 62; y <= 100; y++) for (let x = 162; x <= 230; x++) w.pistonPush(x, y, 0);
+  run(w, 0.5);
+  const p1 = P(196, 120);
+  const V0 = (230 - 162 + 1) * (143 - 62 + 1), V1 = (230 - 162 + 1) * (143 - 101 + 1);
+  assert(Math.abs(p1 / p0 - V0 / V1) < 0.08 * V0 / V1, `보일: ${p0.toFixed(3)} → ${p1.toFixed(3)}, 기대 ×${(V0 / V1).toFixed(2)}`);
+  // 빼면 다시 내려간다.
+  for (let y = 62; y <= 100; y++) for (let x = 162; x <= 230; x++) w.pistonPull(x, y, 0);
+  run(w, 0.5);
+  const p2 = P(196, 120);
+  assert(Math.abs(p2 - p0) < 0.05, `되돌림 ${p2}`);
+  // 유리 용기의 기체를 빼면 물이 끓는다(수증기 생김).
+  for (let k = 0; k < 120; k++) { w.pumpGas(40, 80, 25, 0.9); w.step(); }
+  run(w, 3);
+  const boiled = w.discovered.has('vacuum_boil') && P(40, 80) < 0.1;
+  assert(boiled, `진공 끓음 P=${P(40, 80).toFixed(3)} ${[...w.discovered].join()}`);
+  // 캔의 기체를 빼면 찌그러진다.
+  for (let k = 0; k < 60; k++) { w.pumpGas(118, 100, 25, 0.85); w.step(); }
+  run(w, 1);
+  assert(w.discovered.has('implode'), '캔이 안 찌그러짐');
+  return `보일 ${p0.toFixed(2)} → ${p1.toFixed(2)}기압(부피 ×${(V1 / V0).toFixed(2)}), 진공 ${P(40, 80).toFixed(3)}기압에서 끓음, 캔 찌그러짐`;
+});
 test('성능: 틱당 시간', () => {
   const out = [];
   for (const id of ['volcano', 'precip', 'furnace']) {
