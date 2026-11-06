@@ -137,6 +137,7 @@
       this.anchor = new Uint8Array(size); // 고정된 덩어리 칸. 가루처럼 흘러내리지 않는다.
       this.loose = new Uint8Array(size); // 고정하지 않고 놓은 고체 칸. 이어진 칸끼리 한 덩어리로 떨어지고 뜬다.
       this.rlab = new Uint32Array(size); this.rgen = 0; this.looseN = 0;
+      this.bmask = new Uint8Array(size); this.bcells = []; // 공이 차지한 칸(액체가 들어오지 못함)
       this.T = new Float32Array(size);
       this.store = new Float32Array(size); // 상변화 중 축적된 잠열 J/kg (+가열, -냉각)
       this.gas = new Float32Array(size); // 기체 칸의 기체량(보통 1)
@@ -162,7 +163,7 @@
 
     reset() {
       this.tick = 0; this.time = 0; this.fq = []; this.slowAvg = 0; this.pRegions = null; this.flyers = []; this.fx = [];
-      this.bodies = []; this.selected = null; this.probe = null; this.nextBodyId = 1;
+      this.bodies = []; this.selected = null; this.probe = null; this.nextBodyId = 1; this.valves = [];
       for (let i = 0; i < this.mat.length; i++) { this.setCell(i, this.AIR, this.ambient); this.gas[i] = 1; }
     }
 
@@ -301,7 +302,7 @@
       const d = this.data, mi = this.mat[i], mj = this.mat[j];
       const si = d.state[mi], sj = d.state[mj];
       const gs = Math.min(2, this.g / EARTH_G);
-      if (sj === SOLID || this.anchor[j]) return 0;
+      if (sj === SOLID || this.anchor[j] || this.bmask[j]) return 0;
       if (sj === POWDER) return si === LIQUID && d.rho[mi] > d.rho[mj] ? 0.3 * gs : 0;
       if (mi === mj) {
         const hotter = this.T[j] - this.T[i]; // 아래쪽이 뜨거우면 위로 뜨는 대류
@@ -382,7 +383,7 @@
           if (nx < 0 || nx >= w) break;
           const ni = y * w + nx;
           const ms = d.state[this.mat[ni]];
-          if (this.mat[ni] === this.mat[i] || ms === SOLID || ms === POWDER || this.effRho(i) <= this.effRho(ni)) break;
+          if (this.mat[ni] === this.mat[i] || ms === SOLID || ms === POWDER || this.bmask[ni] || this.effRho(i) <= this.effRho(ni)) break;
           path.push(ni); px = nx; pi = ni;
           if (y + 1 < h && this.sinkChance(i, ni + w) > 0) { drop = n; break; }
         }
@@ -437,6 +438,32 @@
       }
       this.looseN = found;
     }
+    // 피스톤이 한 칸 움직인 뒤: 판을 통과한 기체를 바로잡아 위·아래 공간의 기체가 섞이지 않게 한다.
+    // 올라가면 아래 공간에 빈 칸(기체량 0에 가까움)이 생기고, 내려가면 아래 기체가 남은 공간에 눌려 담긴다.
+    pistonSeal(cells, dir) {
+      const { w, mat, gas } = this, st = this.data.state, cols = new Map();
+      for (const i of cells) {
+        const x = i % w, y = (i / w) | 0, c = cols.get(x);
+        if (!c) cols.set(x, { top: y, bot: y }); else { if (y < c.top) c.top = y; if (y > c.bot) c.bot = y; }
+      }
+      for (const [x, c] of cols) {
+        const below = (c.bot + 1) * w + x, below2 = below + w, above = (c.top - 1) * w + x, above2 = above - w;
+        if (dir < 0) { // 올라감: 위에서 내려온 기체 칸 → 아래 공간의 빈 칸
+          if (below < mat.length && st[mat[below]] === GAS) {
+            if (below2 < mat.length && st[mat[below2]] === GAS) mat[below] = mat[below2];
+            gas[below] = 0.0005;
+          }
+        } else { // 내려감: 아래에서 올라온 기체 칸의 기체량을 아래 공간에 돌려준다
+          if (above >= 0 && st[mat[above]] === GAS) {
+            const n = gas[above] || 1;
+            if (below < mat.length && st[mat[below]] === GAS) gas[below] = Math.min(80, (gas[below] || 1) + n);
+            if (above2 >= 0 && st[mat[above2]] === GAS) mat[above] = mat[above2];
+            gas[above] = 1;
+          }
+        }
+      }
+    }
+
     // 빠르게 떨어지던 덩어리가 단단한 바닥에 부딪힘. 약 30 cm 넘게 떨어진 유리·돌은 깨진다.
     impact(cells, vy) {
       if (vy < 4.5) return;
@@ -482,7 +509,29 @@
       vy /= cells.length;
       const gC = this.g * this.dt * this.dt / this.dx;
       let dir = 0, steps = 0;
-      if (W > B && canDown) {
+      // 피스톤: 아래·위 기체의 압력 차가 피스톤의 무게(단위 넓이당)를 이기면 천천히 움직인다.
+      // 데우면 위로 밀려 올라가고(샤를 법칙), 위에 무게를 더하면 내려간다(보일 법칙).
+      const pis = d.idOf.piston;
+      const isPiston = pis != null && mat[cells[0]] === pis;
+      if (isPiston && !this.pRegions) { this.pressureSoon = true; vy = 0; } // 압력을 먼저 구한 뒤 움직인다
+      else if (isPiston) {
+        let Pb = 0, nb = 0, Pa = 0, na = 0;
+        const cols = new Set();
+        for (const i of cells) {
+          cols.add(i % w);
+          const dn = i + w, up = i - w;
+          if (dn < mat.length && !inBody(dn) && st[mat[dn]] === GAS) { Pb += this.regionP(dn); nb++; }
+          if (up >= 0 && !inBody(up) && st[mat[up]] === GAS) { Pa += this.regionP(up); na++; }
+        }
+        const pb = nb ? Pb / nb : null, pa = na ? Pa / na : 1;
+        const weightP = W * this.dx * this.g / cols.size / 101325; // 기압 단위
+        const net = pb == null ? -1 : pb - pa - weightP;
+        if (net > 0.01 && canUp) { dir = -1; steps = Math.random() < Math.min(1, net * 4) ? 1 : 0; }
+        else if (net < -0.01 && canDown && pb != null) { dir = 1; steps = Math.random() < Math.min(1, -net * 4) ? 1 : 0; }
+        else if (pb == null && canDown) { dir = 1; steps = 1; } // 아래가 액체·빈칸이 아니면 그냥 떨어짐
+        if (steps) this.pressureSoon = true;
+        this.note('free_piston', () => ({ type: 'reaction', id: 'free_piston', name: '움직이는 피스톤', kind: 'physical', eq: 'P(아래) = P(위) + 피스톤 무게 ÷ 넓이', note: '피스톤은 아래 기체가 미는 힘과 위에서 누르는 힘(대기압 + 무게)이 같아지는 곳에서 멈춥니다. 아래 기체를 데우면 부피가 늘어 피스톤이 올라갑니다(샤를 법칙).' }));
+      } else if (W > B && canDown) {
         if (!wet) { vy = Math.min(MAX_FALL, Math.max(0, vy) + gC); steps = Math.floor(vy); if (Math.random() < vy - steps) steps++; }
         else { vy = 0; steps = Math.random() < 0.6 * (W - B) / W ? 1 : 0; } // 액체 속에서는 끌림 때문에 천천히
         dir = 1;
@@ -515,6 +564,7 @@
             this.swap(i, j); lab[j] = gen; cells[k] = j;
           }
           for (const i of cells) lab[i] = gen;
+          if (isPiston) this.pistonSeal(cells, dir);
         }
         if (dir > 0 && steps) this.note('rigid_fall', () => ({ type: 'reaction', id: 'rigid_fall', name: '덩어리의 낙하와 부력', kind: 'physical', eq: '무게 > 부력 → 가라앉음, 무게 < 부력 → 뜸', note: '받침이 없는 고체는 한 덩어리로 떨어집니다. 액체에 잠기면 밀어낸 액체의 무게만큼 떠받쳐져(아르키메데스), 물보다 가벼운 나무는 뜨고 돌·유리는 가라앉습니다.' }));
       }
@@ -551,7 +601,7 @@
           const ix = nx | 0, iy = ny | 0;
           if (iy >= h) { landed = true; break; }
           const j = iy * w + ix;
-          if (st[mat[j]] !== GAS || this.anchor[j]) { landed = true; break; }
+          if (st[mat[j]] !== GAS || this.anchor[j] || this.bmask[j]) { landed = true; break; }
           f.x = nx; f.y = ny; last = j;
         }
         if (!landed) { keep.push(f); continue; }
@@ -683,6 +733,45 @@
       return n;
     }
 
+    // ---- 켜기·끄기 도구 (스위치, 밸브) ----
+    // 누른 칸과 이어진 스위치는 켜짐↔꺼짐을 바꾸고, 밸브는 열어(빈칸) 자리를 기억해 두었다가 다시 누르면 닫는다.
+    toggleDevice(cx, cy) {
+      if (!this.inside(cx, cy)) return null;
+      const { w, mat } = this, d = this.data, start = this.index(cx, cy);
+      const on = d.idOf['switch:on'], off = d.idOf['switch:off'], valve = d.idOf.valve;
+      const group = (i0, test) => {
+        const out = [i0], seen = new Set(out);
+        for (let k = 0; k < out.length; k++) {
+          const i = out[k], x = i % w;
+          for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) if (j >= 0 && j < mat.length && !seen.has(j) && test(j)) { seen.add(j); out.push(j); }
+        }
+        return out;
+      };
+      const m = mat[start];
+      if (m === on || m === off) {
+        const cells = group(start, (j) => mat[j] === on || mat[j] === off), to = m === on ? off : on;
+        for (const i of cells) { const T = this.T[i]; this.setCell(i, to, T); this.anchor[i] = 1; }
+        this.role = null; this.lit = null; // 회로를 다시 찾는다
+        return to === on ? 'switch-on' : 'switch-off';
+      }
+      if (m === valve) {
+        const cells = group(start, (j) => mat[j] === valve);
+        for (const i of cells) { this.setCell(i, this.AIR, this.T[i]); this.gas[i] = 1; }
+        this.valves.push({ cells, x: cx, y: cy });
+        this.pressureSoon = true;
+        return 'valve-open';
+      }
+      // 열린 밸브 자리를 누르면 닫는다(누른 곳에서 2칸 안).
+      const k = this.valves.findIndex((v) => v.cells.some((i) => Math.abs(i % w - cx) <= 2 && Math.abs(((i / w) | 0) - cy) <= 2));
+      if (k >= 0) {
+        for (const i of this.valves[k].cells) { this.setCell(i, valve, this.T[i]); this.anchor[i] = 1; }
+        this.valves.splice(k, 1);
+        this.pressureSoon = true;
+        return 'valve-close';
+      }
+      return null;
+    }
+
     // ---- 섞기 도구 ----
     // 원 안의 움직일 수 있는 칸(가루·액체·기체)을 무작위로 바꿔 섞는다. 고정된 칸과 고체는 그대로.
     stir(cx, cy, r, amount) {
@@ -732,6 +821,7 @@
           const m = mat[i];
           if (d.fixed[m]) { T[i] = d.t0[m]; continue; }
           if (m === this.AIR) { T[i] += (this.ambient - T[i]) * 0.002; continue; } // 외부로의 열 손실
+          if (T[i] < -273.15) T[i] = -273.15; else if (T[i] > 9000) T[i] = 9000; // 절대영도 아래로는 내려가지 않는다
           // 방사성 붕괴열. 열이 주로 공기로 빠져나가므로, 공기 쪽 열전도 가속 배율(최대 50)과 같은 배율을 써야 실제와 비슷한 평형 온도가 된다.
           if (d.heat[m]) T[i] += d.heat[m] * this.dt * Math.min(this.heatBoost, 50) / d.cp[m];
           // 열복사(슈테판-볼츠만): 아주 뜨거운 물체는 공기와 닿은 면으로 T⁴에 비례하는 열을 빛으로 내보낸다. 1cm 칸 한 면은 1cm².
@@ -1328,11 +1418,17 @@
     }
 
     // 공이 잠긴 유체의 평균 밀도(진공 모드에서는 기체를 0으로 본다).
+    // 공 둘레 바로 바깥을 재어 공이 잠긴 정도와 주변 유체의 밀도를 구한다(공 안의 유체는 밀려나 있다).
     sampleFluid(b) {
       let sum = 0;
       for (let n = 0; n < 9; n++) {
         const a = n / 8 * Math.PI * 2;
-        const rr = n === 8 ? 0 : b.r * 0.7;
+        const rr = n === 8 ? b.r + this.dx * 0.8 : b.r + this.dx * 0.8;
+        if (n === 8) { // 맨 아래 한 점을 더 본다(바닥에 잠긴 부분)
+          const cx = Math.floor(b.x / this.dx), cy = Math.floor((b.y + rr) / this.dx);
+          if (this.inside(cx, cy)) { const i = this.index(cx, cy), s = this.data.state[this.mat[i]]; if (s === LIQUID || (s === GAS && !this.vacuum)) sum += this.effRho(i); }
+          continue;
+        }
         const cx = Math.floor((b.x + Math.cos(a) * rr) / this.dx);
         const cy = Math.floor((b.y + Math.sin(a) * rr) / this.dx);
         if (!this.inside(cx, cy)) continue;
@@ -1358,12 +1454,41 @@
         }
         this.collideBodies();
       }
+      this.displaceByBodies();
       for (const b of this.bodies) {
         if (this.tick % 2 === 0) {
           b.trail.push(b.x, b.y);
           if (b.trail.length > 400) b.trail.splice(0, 2);
         }
       }
+    }
+
+    // 공이 들어간 자리의 액체를 밀어낸다. 빠르면 물보라로 튀고, 느리면 위쪽 빈자리로 올라가 수면이 높아진다(아르키메데스).
+    displaceByBodies() {
+      const { w, h, mat, bmask } = this, st = this.data.state;
+      for (const i of this.bcells) bmask[i] = 0;
+      const cells = [];
+      for (const b of this.bodies) {
+        const rc = b.r / this.dx, cx = b.x / this.dx, cy = b.y / this.dx, sp = Math.hypot(b.vx, b.vy) * this.dt / this.dx; // 칸/틱
+        const x0 = Math.max(0, Math.floor(cx - rc)), x1 = Math.min(w - 1, Math.ceil(cx + rc)), y0 = Math.max(0, Math.floor(cy - rc)), y1 = Math.min(h - 1, Math.ceil(cy + rc));
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+          const ox = x + 0.5 - cx, oy = y + 0.5 - cy, d = Math.hypot(ox, oy);
+          if (d > rc - 0.3) continue;
+          const i = y * w + x;
+          cells.push(i); bmask[i] = 1;
+          if (st[mat[i]] !== LIQUID) continue;
+          const ux = d > 1e-6 ? ox / d : 0, uy = d > 1e-6 ? oy / d : -1;
+          if (sp > 0.4 && this.launch(i, ux * sp * 0.8 + b.vx * this.dt / this.dx * 0.3, Math.min(uy, -0.3) * sp * 0.9)) continue;
+          // 느리면 같은 열 위쪽의 가장 가까운 빈 기체 칸(공 밖)과 자리를 바꾼다.
+          for (let k = i - w; k >= 0; k -= w) {
+            if (bmask[k] && k !== i) continue;
+            const sk = st[mat[k]];
+            if (sk === SOLID || (sk === POWDER && this.anchor[k])) break;
+            if (sk === GAS && !bmask[k]) { this.swap(i, k); break; }
+          }
+        }
+      }
+      this.bcells = cells;
     }
 
     bounce(b, nx, ny) {
@@ -1423,7 +1548,15 @@
     }
 
     // ---- 계측 ----
-    setProbe(x, y) { this.probe = { x, y, log: [] }; }
+    // 온도계는 여러 개(최대 3개) 둘 수 있다. setProbe는 하나로 바꾸고 addProbe는 더한다.
+    get probe() { return this.probes && this.probes.length ? this.probes[this.probes.length - 1] : null; }
+    set probe(v) { this.probes = v ? [v] : []; }
+    setProbe(x, y) { this.probes = [{ x, y, log: [] }]; }
+    addProbe(x, y) {
+      this.probes = (this.probes || []).filter((p) => p.x !== x || p.y !== y);
+      this.probes.push({ x, y, log: [] });
+      if (this.probes.length > 3) this.probes.shift();
+    }
     record() {
       const b = this.selected;
       if (b) {
@@ -1431,11 +1564,12 @@
         b.log.push({ t: this.time - b.born, h: this.heightOf(b), v: b.vy, E: ke + pe });
         if (b.log.length > 1800) b.log.shift();
       }
-      const p = this.probe;
-      if (p && this.tick % 6 === 0) {
-        const pi = this.index(p.x, p.y);
-        p.log.push({ t: this.time, T: this.T[pi], m: this.mat[pi], P: this.pressureAt(pi) });
-        if (p.log.length > 1200) p.log.shift();
+      if (this.probes && this.probes.length && this.tick % 6 === 0) {
+        for (const p of this.probes) {
+          const pi = this.index(p.x, p.y);
+          p.log.push({ t: this.time, T: this.T[pi], m: this.mat[pi], P: this.pressureAt(pi) });
+          if (p.log.length > 1200) p.log.shift();
+        }
       }
     }
 
@@ -1462,14 +1596,14 @@
       this.settleFlyers();
       return {
         mat: this.mat.slice(), T: this.T.slice(), gas: this.gas.slice(), anchor: this.anchor.slice(), loose: this.loose.slice(), store: this.store.slice(), vy: this.vy.slice(), life: this.life.slice(), shade: this.shade.slice(),
-        bodies: this.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] })), probe: this.probe && { x: this.probe.x, y: this.probe.y },
+        bodies: this.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] })), probe: this.probe && { x: this.probe.x, y: this.probe.y }, probes: (this.probes || []).map((p) => ({ x: p.x, y: p.y })), valves: this.valves.map((v) => ({ cells: v.cells.slice(), x: v.x, y: v.y })),
       };
     }
     restoreSnapshot(s) {
       this.mat.set(s.mat); this.T.set(s.T); if (s.loose) { this.loose.set(s.loose); this.looseN = 1; } if (s.gas) this.gas.set(s.gas); this.anchor.set(s.anchor); this.store.set(s.store); this.vy.set(s.vy); this.life.set(s.life); this.shade.set(s.shade);
       this.bodies = s.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] }));
-      this.selected = null; this.fq = []; this.flyers = [];
-      if (s.probe) this.setProbe(s.probe.x, s.probe.y); else this.probe = null;
+      this.selected = null; this.fq = []; this.flyers = []; this.valves = (s.valves || []).map((v) => ({ cells: v.cells.slice(), x: v.x, y: v.y }));
+      if (s.probes) this.probes = s.probes.map((p) => ({ x: p.x, y: p.y, log: [] })); else if (s.probe) this.setProbe(s.probe.x, s.probe.y); else this.probe = null;
       this.role = null; this.lit = null; // 전기 회로를 다시 찾는다.
     }
 
@@ -1486,6 +1620,7 @@
         version: 2, w: this.w, h: this.h, g: this.g, vacuum: this.vacuum, heatBoost: this.heatBoost,
         materials: this.data.defs.map((d) => d.id), mat: enc(this.mat), T: enc(this.T), anchor: enc(this.anchor), loose: enc(this.loose),
         bodies: this.bodies.map((b) => ({ type: b.type, r: b.r, x: b.x, y: b.y, vx: b.vx, vy: b.vy })),
+        valves: this.valves.map((v) => ({ cells: v.cells, x: v.x, y: v.y })),
       };
     }
     fromJSON(o) {
@@ -1501,6 +1636,7 @@
       const remap = o.materials.map((id) => (id in this.data.idOf ? this.data.idOf[id] : this.AIR));
       for (let i = 0; i < mats.length; i++) { this.setCell(i, remap[mats[i]], temps[i]); this.anchor[i] = anchors[i]; if (this.data.state[this.mat[i]] === GAS) this.gas[i] = 1; }
       if (o.loose) { this.loose.set(dec(o.loose, Uint8Array)); this.looseN = 1; } // 예전 저장 데이터에는 없음
+      if (o.valves) this.valves = o.valves.map((v) => ({ cells: v.cells.slice(), x: v.x, y: v.y }));
       this.g = o.g; this.vacuum = o.vacuum; this.setHeatBoost(o.heatBoost);
       o.bodies.forEach((b) => this.addBody(b));
     }

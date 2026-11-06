@@ -57,6 +57,7 @@
     takeFx() {
       const W = this.world;
       for (const e of W.drainFx()) {
+        if (this.onFx) this.onFx(e); // 소리 등 화면 밖의 효과
         if (!this.effects) continue;
         if (e.type === 'boom') {
           const big = e.nuke ? 3 : 1;

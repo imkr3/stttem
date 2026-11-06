@@ -994,6 +994,9 @@
     { id: 'glass_sand', name: '소다 석회 유리', kind: 'chemical', reactants: ['Na2CO3', 'SiO2'], products: ['Na2SiO3', 'CO2'], a: 'S:Na2CO3', b: 'sand', minT: 1000, prob: 0.05, toA: 'moltenglass', toB: 'moltenglass', note: '탄산소다를 넣으면 모래가 더 낮은 온도에서 유리가 됩니다.' },
     { id: 'cement', name: '시멘트 굳기', kind: 'chemical', reactants: ['Ca(OH)2', 'CO2'], products: ['CaCO3', 'H2O'], a: 'S:Ca(OH)2', b: 'CO2', prob: 0.05, toA: 'limestone', note: '소석회가 공기 속 이산화탄소를 만나 다시 석회암이 됩니다.' },
 
+    // 철 + 뜨거운 수증기 → 사산화삼철(검은 녹) + 수소. 철은 산화수 +2와 +3이 섞인 산화물이 된다.
+    { id: 'fe_steam', name: '철과 뜨거운 수증기', reactants: ['Fe', 'H2O'], products: ['Fe3O4', 'H2'], a: 'Fe:s', b: 'steam', minT: 500, prob: 0.05, toA: 'S:Fe3O4', toB: 'hydrogen', dT: 30, note: '빨갛게 달군 철은 수증기에서 산소를 빼앗아 검은 사산화삼철(Fe₃O₄, 자철석 성분)이 되고 수소가 나옵니다. 라부아지에가 물이 원소가 아님을 보인 실험입니다.' },
+    { id: 'fe_steam', name: '철과 뜨거운 수증기', reactants: ['Fe', 'H2O'], products: ['Fe3O4', 'H2'], a: 'steel:s', b: 'steam', minT: 500, prob: 0.04, toA: 'S:Fe3O4', toB: 'hydrogen', dT: 30, note: '빨갛게 달군 철은 수증기에서 산소를 빼앗아 검은 사산화삼철이 되고 수소가 나옵니다.' },
     // ---- 산화제 + 환원제 ----
     { id: 'h2o2_h2s', name: '과산화수소와 황화수소', eq: 'H₂O₂ + H₂S → S↓ + 2H₂O', a: 'H2O2', b: 'H2S:g', prob: 0.2, toA: 'water', toB: 'S:s', dT: 20, note: '과산화수소가 황화 이온을 산화시켜 노란 황이 생깁니다. 하수 냄새를 없애는 원리입니다.' },
     { id: 'h2o2_so2', name: '과산화수소와 이산화황', eq: 'H₂O₂ + SO₂ → H₂SO₄', a: 'H2O2', b: 'SO2:g', prob: 0.25, toA: 'A:acid:H2SO4aq', toB: 'A:acid:H2SO4aq', dT: 15, note: '이산화황이 황산이 됩니다. 공기 중 이산화황 농도를 재는 방법이자, 산성비가 생기는 한 경로입니다.' },
