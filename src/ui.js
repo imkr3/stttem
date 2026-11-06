@@ -94,7 +94,7 @@
   .search { flex:1; min-width:0; width:100%; min-height:36px; padding:0 10px; font:inherit; color:inherit; background:var(--sl-bg); border:1px solid var(--sl-line); border-radius:6px; }
   .cats { flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; margin-bottom:2px; scrollbar-width:thin; }
   .cats .chip { min-height:30px; font-size:12px; padding:0 8px; flex:none; white-space:nowrap; }
-  .tools { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; }
+  .tools { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:4px; }
   .tools .chip { min-height:32px; font-size:12px; padding:0 2px; justify-content:center; white-space:nowrap; }
   .favs { margin:2px 0 8px; }
   .favs .chip { min-height:30px; font-size:12px; padding:0 7px; }
@@ -119,11 +119,12 @@
   const STATE_NAME = { solid: '고체', powder: '고체(가루)', liquid: '액체', gas: '기체' };
   // 예전 문서에 쓰인 실험 이름도 받아 준다.
   const SCENE_ALIAS = { sodium: 'alkali', boil: 'water' };
-  const TOOLS = [['inspect', '관찰'], ['stir', '섞기'], ['heat', '가열'], ['cool', '냉각'], ['erase', '지우개'], ['ball', '공'], ['probe', '온도계']];
+  const TOOLS = [['inspect', '관찰'], ['pick', '스포이트'], ['fill', '채우기'], ['vessel', '그릇'], ['stir', '섞기'], ['heat', '가열'], ['cool', '냉각'], ['erase', '지우개'], ['ball', '공'], ['probe', '온도계']];
   const BRUSH_TOOLS = ['mat', 'erase', 'heat', 'cool', 'stir'];
   // 자주 쓰는 재료. 재료 탭 맨 위에 늘 보인다.
   const FAVORITES = ['water', 'ice', 'fire', 'salt', 'hcl', 'naoh', 'vinegar', 'S:NaHCO3', 'Na:s', 'Mg:s', 'iron', 'copper', 'H2O2', 'sugar', 'oil', 'wood'];
-  const TOOL_HINT = { inspect: '칸을 누르면 정보 탭에 자세히 나옵니다', erase: '공기로 지웁니다', heat: '누르고 있는 동안 데웁니다', cool: '누르고 있는 동안 식힙니다', ball: '끌었다 놓으면 던집니다', probe: '누른 곳의 온도를 측정 탭에 그립니다', stir: '누르고 문지르면 가루·액체·기체가 섞입니다(고체·고정 칸은 그대로)' };
+  const TOOL_HINT = { inspect: '칸을 누르면 정보 탭에 자세히 나옵니다', erase: '공기로 지웁니다', heat: '누르고 있는 동안 데웁니다', cool: '누르고 있는 동안 식힙니다', ball: '끌었다 놓으면 던집니다', probe: '누른 곳의 온도를 측정 탭에 그립니다', stir: '누르고 문지르면 가루·액체·기체가 섞입니다(고체·고정 칸은 그대로)',
+    pick: '실험 공간의 칸을 누르면 그 물질을 재료로 고릅니다', fill: '그릇 안을 누르면 마지막으로 고른 재료를 누른 높이까지 채웁니다', vessel: '끌어서 유리 그릇(바닥과 양쪽 벽)을 만듭니다' };
   const GRAVITY = [['무중력', 0], ['달', 1.62], ['화성', 3.71], ['지구', 9.81], ['목성', 24.79]];
   const fmt = (v, d) => (v == null || !isFinite(v) ? '-' : v.toFixed(d));
 
@@ -139,6 +140,7 @@
       this.speed = 1;
       this.acc = 0;
       this.tool = { kind: 'mat', id: 'Na:s' };
+      this.matId = 'Na:s'; // 채우기 도구가 쓸 마지막 재료
       this.paletteCat = 'element';
       this.query = '';
       this.anchored = false;
@@ -313,7 +315,7 @@
         const b = e.target.closest('button');
         if (!b) return;
         if (b.classList.contains('more')) { this.setTab('info'); return; }
-        if (b.dataset.mat) this.tool = { kind: 'mat', id: b.dataset.mat };
+        if (b.dataset.mat) { this.tool = { kind: 'mat', id: b.dataset.mat }; this.matId = b.dataset.mat; }
         else if (b.dataset.tool) this.tool = { kind: b.dataset.tool };
         else if (b.dataset.cat) { this.paletteCat = b.dataset.cat; this.query = ''; pane.querySelector('.search').value = ''; this.renderPalette(); }
         this.markSelection();
@@ -378,7 +380,8 @@
         picked.innerHTML = `<i style="background:${d.color}"></i><span class="nm"><b>${d.name}</b><small>${d.formula}</small></span><button class="more" title="설명과 함께 떨어뜨려 볼 재료">정보 ›</button>`;
       } else {
         const t = TOOLS.find(([k]) => k === this.tool.kind);
-        picked.innerHTML = `<span class="nm"><b>${t ? t[1] : ''}</b><small>${TOOL_HINT[this.tool.kind] || ''}</small></span>`;
+        const fillMat = this.tool.kind === 'fill' ? this.world.data.defs[this.world.data.idOf[this.matId]] : null;
+        picked.innerHTML = `${fillMat ? `<i style="background:${fillMat.color}"></i>` : ''}<span class="nm"><b>${t ? t[1] : ''}${fillMat ? ' · ' + fillMat.name : ''}</b><small>${TOOL_HINT[this.tool.kind] || ''}</small></span>`;
       }
     }
 
@@ -406,7 +409,7 @@
       pane.onclick = (e) => {
         const b = e.target.closest('[data-mat]');
         if (!b) return;
-        this.tool = { kind: 'mat', id: b.dataset.mat };
+        this.tool = { kind: 'mat', id: b.dataset.mat }; this.matId = b.dataset.mat;
         this.renderPane();
       };
     }
@@ -515,7 +518,7 @@
       e.currentTarget.setPointerCapture(e.pointerId);
       this.$('.hint').hidden = true;
       this.$('.root').focus({ preventScroll: true });
-      if (BRUSH_TOOLS.includes(this.tool.kind) || this.tool.kind === 'ball') this.remember();
+      if (BRUSH_TOOLS.includes(this.tool.kind) || this.tool.kind === 'ball' || this.tool.kind === 'vessel') this.remember();
       const c = this.cellAt(e);
       this.hover = c;
       const hit = this.bodyAt(c);
@@ -525,9 +528,23 @@
         return;
       }
       this.pointer = { start: c, last: c, cur: c };
+      if (this.tool.kind === 'pick') {
+        const info = this.world.inspect(c.x, c.y);
+        this.pointer = null;
+        if (info && info.def.id !== 'air') { this.tool = { kind: 'mat', id: info.def.id }; this.matId = info.def.id; this.setTab('materials'); }
+        return;
+      }
+      if (this.tool.kind === 'fill') {
+        this.pointer = null;
+        this.remember();
+        const n = this.world.fillLevel(c.x, c.y, this.world.data.idOf[this.matId]);
+        this.dirty = true;
+        if (!n) { this.history.pop(); this.toast({ name: '채울 수 없음', eq: '벽으로 둘러싸인 그릇 안을 눌러 주세요(너무 넓으면 채우지 않습니다).' }); }
+        return;
+      }
       if (this.tool.kind === 'inspect') { this.inspected = this.world.inspect(c.x, c.y); this.pointer = null; this.setTab('info'); return; }
       if (this.tool.kind === 'probe') { this.world.setProbe(c.x, c.y); this.graphMode = 'T'; this.pointer = null; if (this.tab === 'physics') this.renderPane(); return; }
-      if (this.tool.kind !== 'ball') this.applyBrush(c.x, c.y);
+      if (this.tool.kind !== 'ball' && this.tool.kind !== 'vessel') this.applyBrush(c.x, c.y);
     }
     onMove(e) {
       const c = this.cellAt(e);
@@ -536,7 +553,7 @@
       const p = this.pointer;
       if (!p) return;
       p.cur = c;
-      if (this.tool.kind === 'ball') return;
+      if (this.tool.kind === 'ball' || this.tool.kind === 'vessel') return;
       // 빠르게 그어도 끊기지 않도록 사이 칸을 채운다.
       const steps = Math.max(1, Math.max(Math.abs(c.x - p.last.x), Math.abs(c.y - p.last.y)));
       for (let n = 1; n <= steps; n++) {
@@ -548,6 +565,12 @@
       const p = this.pointer;
       this.pointer = null;
       if (e.pointerType !== 'mouse') this.hover = null;
+      if (p && this.tool.kind === 'vessel') {
+        const c = this.cellAt(e);
+        if (!this.world.vessel(p.start.x, p.start.y, c.x, c.y, 'glass')) this.history.pop();
+        this.dirty = true;
+        return;
+      }
       if (!p || this.tool.kind !== 'ball') return;
       const w = this.world, dx = w.dx, c = this.cellAt(e);
       const b = w.addBody({
@@ -690,6 +713,10 @@
         const sx = (p.start.x + 0.5) * cell, sy = (p.start.y + 0.5) * cell;
         ctx.strokeStyle = '#5cc8b8'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(sx, sy, this.ballR * s, 0, 7); ctx.moveTo(sx, sy); ctx.lineTo((p.cur.x + 0.5) * cell, (p.cur.y + 0.5) * cell); ctx.stroke();
+      } else if (p && this.tool.kind === 'vessel') {
+        const x0 = Math.min(p.start.x, p.cur.x), x1 = Math.max(p.start.x, p.cur.x) + 1, y0 = Math.min(p.start.y, p.cur.y), y1 = Math.max(p.start.y, p.cur.y) + 1;
+        ctx.strokeStyle = '#9fd6d8'; ctx.lineWidth = Math.max(2, cell * 2); ctx.beginPath();
+        ctx.moveTo(x0 * cell, y0 * cell); ctx.lineTo(x0 * cell, y1 * cell); ctx.lineTo(x1 * cell, y1 * cell); ctx.lineTo(x1 * cell, y0 * cell); ctx.stroke();
       } else if (this.hover && BRUSH_TOOLS.includes(this.tool.kind)) {
         ctx.strokeStyle = { heat: '#ff9a5c', cool: '#7cc4ff', stir: '#c9a8ff', erase: '#ff7a7a' }[this.tool.kind] || '#ffffff99'; ctx.lineWidth = 1;
         if (this.tool.kind === 'stir') ctx.setLineDash([4, 3]);
@@ -835,7 +862,7 @@
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,effects?:boolean,storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.13.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.14.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);

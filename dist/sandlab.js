@@ -314,15 +314,16 @@ Og|오가네손|294|noble|7|50|80|1`;
   // 잘 쓰이지 않고 반응도 거의 없는 화합물은 만들지 않는다. 금속을 가열하거나 물에 넣었을 때 생기는 산화물·수산화물만 남긴다.
   const OXCL = 'O Cl'.split(' ');
   const OX_ONLY = ['O'];
-  const RE = ['O', 'OH'];
+  const RE = ['O', 'OH', 'Cl', 'NO3', 'SO4', 'CO3', 'F', 'C2O4']; // 란타넘족: 산에 잘 녹는다. 탄산염·플루오린화물·옥살산염은 앙금
+  const BE_GA = ['O', 'OH', 'Cl', 'NO3', 'SO4', 'CH3COO'];
   const CATIONS = [
     ['Li', '리튬', 1, 'Li'], ['Na', '나트륨', 1, 'Na'], ['K', '칼륨', 1, 'K'], ['Rb', '루비듐', 1, 'Rb'], ['Cs', '세슘', 1, 'Cs'], ['NH4', '암모늄', 1, null],
-    ['Be', '베릴륨', 2, 'Be', OX_ONLY], ['Mg', '마그네슘', 2, 'Mg'], ['Ca', '칼슘', 2, 'Ca'], ['Sr', '스트론튬', 2, 'Sr'], ['Ba', '바륨', 2, 'Ba'],
+    ['Be', '베릴륨', 2, 'Be', BE_GA], ['Mg', '마그네슘', 2, 'Mg'], ['Ca', '칼슘', 2, 'Ca'], ['Sr', '스트론튬', 2, 'Sr'], ['Ba', '바륨', 2, 'Ba'],
     ['Al', '알루미늄', 3, 'Al'], ['Cr3', '크로뮴(III)', 3, 'Cr'], ['Mn2', '망가니즈(II)', 2, 'Mn'], ['Fe2', '철(II)', 2, 'Fe'], ['Fe3', '철(III)', 3, 'Fe'], ['Co2', '코발트(II)', 2, 'Co'], ['Ni2', '니켈(II)', 2, 'Ni'],
     ['Cu2', '구리(II)', 2, 'Cu'], ['Zn', '아연', 2, 'Zn'], ['Ag', '은', 1, 'Ag'], ['Cd', '카드뮴', 2, 'Cd'], ['Sn2', '주석(II)', 2, 'Sn'], ['Pb2', '납(II)', 2, 'Pb'], ['Hg2', '수은(II)', 2, 'Hg'],
-    ['Au3', '금(III)', 3, 'Au', OXCL], ['Pd2', '팔라듐(II)', 2, 'Pd', OX_ONLY], ['Mn4', '망가니즈(IV)', 4, 'Mn', ['O']], ['Ti4', '타이타늄(IV)', 4, 'Ti', OXCL],
+    ['Au3', '금(III)', 3, 'Au', OXCL], ['Pd2', '팔라듐(II)', 2, 'Pd', ['O', 'Cl', 'NO3']], ['Mn4', '망가니즈(IV)', 4, 'Mn', ['O']], ['Ti4', '타이타늄(IV)', 4, 'Ti', ['O', 'Cl', 'F']],
     ['W6', '텅스텐(VI)', 6, 'W', ['O']],
-    ['Sb3', '안티모니(III)', 3, 'Sb', OX_ONLY], ['Bi3', '비스무트(III)', 3, 'Bi', OX_ONLY], ['Ga3', '갈륨(III)', 3, 'Ga', OX_ONLY],
+    ['Sb3', '안티모니(III)', 3, 'Sb', ['O', 'Cl']], ['Bi3', '비스무트(III)', 3, 'Bi', ['O', 'NO3']], ['Ga3', '갈륨(III)', 3, 'Ga', BE_GA],
     ['U6', '우라늄(VI)', 6, 'U', ['O']], ['Pu4', '플루토늄(IV)', 4, 'Pu', ['O']],
   ];
   'La 란타넘,Ce 세륨,Gd 가돌리늄'.split(',').forEach((s) => {
@@ -927,7 +928,9 @@ Og|오가네손|294|noble|7|50|80|1`;
       if (passive) {
         out.push(R('passive:' + elA + ':' + a, A.name + '의 부동태', [], [], { kind: 'physical', eq: `${A.formula} + 진한 ${a === 'NO3' ? 'HNO₃' : 'H₂SO₄'} → 얇은 산화막(반응 멈춤)`, prob: 0.02, maxT: 80, note: '진한 산이 표면을 산화시켜 치밀한 막을 만들면 더 이상 녹지 않습니다. 그래서 진한 질산·황산을 철이나 알루미늄 용기에 운반합니다. 가열하거나 묽히면 반응합니다.' }));
       }
-      if (sal && r >= 0) {
+      // 타이타늄은 치밀한 산화막 때문에 대부분의 산에 녹지 않는다(인공 관절·잠수함에 쓰는 이유). 플루오린화수소산과 뜨거운 염산만 예외.
+      const tiBlock = elA === 'Ti' && a !== 'F' && a !== 'Cl';
+      if (sal && r >= 0 && !tiBlock) {
         if (oxidizing && (B.acid.conc || B.acid.strength) && elA !== 'Au' && elA !== 'Pd') {
           const nox = B.acid.conc ? 'NO2' : 'NO';
           out.push(R('hno3:' + elA + ':' + nox, A.name + '과 질산', [elA, 'HNO3'], [oxSal.fx, nox, 'H2O'], { prob: B.acid.conc ? 0.2 : 0.06, minT: passive ? 80 : undefined, toA: formOf(oxSal), toB: nox, dT: 40, note: '질산은 수소 대신 질소 산화물을 냅니다. 구리도 녹입니다.' + (nox === 'NO' ? ' 무색의 일산화질소는 공기를 만나면 적갈색 이산화질소가 됩니다.' : '') }));
@@ -941,7 +944,7 @@ Og|오가네손|294|noble|7|50|80|1`;
           const insoluble = !sal.aq;
           // 몰 수: 금속 1cm³에는 묽은 산 1cm³보다 수십 배 많은 원자가 있다. 그래서 반응할 때마다 산 칸은 다 쓰이지만(염 용액이나 수소 거품),
           // 금속 칸은 가끔만 녹아 없어진다. 녹지 않는 염이 생기면 금속 표면을 덮어 반응이 느려진다.
-          out.push(R('acid:' + elA + ':' + a, A.name + '과 ' + B.name, [elA, B.fx], [sal.fx, 'H2'], { prob: insoluble ? pace * 0.1 : pace, toA: insoluble ? formOf(sal) : [[A.id, 0.85], ['H:g', 0.15]], toB: insoluble ? 'H:g' : [[formOf(sal), 0.6], ['H:g', 0.4]], dT: 25 + 60 * (1 - r / H_RANK), note: '수소보다 활발한 금속이 산에 녹으며 수소를 냅니다.' + (insoluble ? ' 생성물이 물에 녹지 않아 표면을 덮어 느려집니다.' : '') }));
+          out.push(R('acid:' + elA + ':' + a, A.name + '과 ' + B.name, [elA, B.fx], [sal.fx, 'H2'], { minT: elA === 'Ti' && a === 'Cl' ? 70 : undefined, prob: insoluble ? pace * 0.1 : pace, toA: insoluble ? formOf(sal) : [[A.id, 0.85], ['H:g', 0.15]], toB: insoluble ? 'H:g' : [[formOf(sal), 0.6], ['H:g', 0.4]], dT: 25 + 60 * (1 - r / H_RANK), note: '수소보다 활발한 금속이 산에 녹으며 수소를 냅니다.' + (insoluble ? ' 생성물이 물에 녹지 않아 표면을 덮어 느려집니다.' : '') }));
         }
       }
     }
@@ -1349,6 +1352,11 @@ Og|오가네손|294|noble|7|50|80|1`;
       if (!solid && B.salt && B.salt.c === 'Ca' && B.salt.a === 'CO3') out.push(R('citric-scale', '구연산으로 물때 녹이기', [], [], { kind: 'chemical', eq: '2C₆H₈O₇ + 3CaCO₃ → Ca₃(C₆H₅O₇)₂ + 3CO₂↑ + 3H₂O', prob: 0.05, toA: 'A:citrate', toB: 'CO2', note: '주전자 물때(탄산칼슘)를 구연산으로 녹여 없앱니다.' }));
       if (!solid && B.salt && B.salt.a === 'O' && (B.salt.c === 'Fe3' || B.salt.c === 'Fe2')) out.push(R('citric-rust', '구연산으로 녹 없애기', [], [], { kind: 'chemical', eq: 'Fe₂O₃ + 2C₆H₈O₇ → 2FeC₆H₅O₇ + 3H₂O', prob: 0.03, toA: 'A:citrate', toB: 'A:citrate', note: '구연산은 철 이온과 잘 결합해 녹을 녹여 냅니다.' }));
       if (!solid && B.salt && B.salt.a === 'OH' && B.aq) out.push(R('citric-base:' + B.fx, '구연산과 ' + B.name, [], [], { kind: 'chemical', eq: 'C₆H₈O₇ + 3OH⁻ → C₆H₅O₇³⁻ + 3H₂O', prob: 0.3, toA: 'A:citrate', toB: 'A:citrate', dT: 20, note: '약한 산도 염기와 중화됩니다.' }));
+      // 수소보다 반응성이 큰 금속은 구연산에도 천천히 녹는다(약한 산이라 마그네슘 말고는 아주 느림).
+      const CITRIC_METALS = { Ca: 0.03, Zn: 0.006, Fe: 0.003, Al: 0.001, Ni: 0.0008, Sn: 0.0008, Pb: 0.0005, Mn: 0.004, Co: 0.001, Cr: 0.001, Cd: 0.002, Be: 0.002, Ga: 0.001, La: 0.01, Ce: 0.01, Gd: 0.01, Sr: 0.03, Ba: 0.03 };
+      if (!solid && B.metal && CITRIC_METALS[B.metal] && B.state === 'powder') out.push(R('citric-metal:' + B.metal, '구연산과 ' + B.name, [], [], { kind: 'chemical', eq: `${B.formula} + 구연산 → 시트르산 ${B.formula} + H₂↑`, prob: CITRIC_METALS[B.metal], toA: 'A:citrate', toB: [[B.id, 0.8], ['H:g', 0.2]], note: '레몬즙 같은 약한 산도 반응성이 큰 금속은 천천히 녹이며 수소 거품을 냅니다.' }));
+      // 녹지 않는 탄산염도 구연산에 녹으며 거품이 난다(세제·물때 제거).
+      if (!solid && B.salt && B.salt.a === 'CO3' && !['Na', 'K', 'Ca'].includes(B.salt.c)) out.push(R('citric-co3:' + B.fx, '구연산과 ' + B.name, [], [], { kind: 'chemical', eq: '2C₆H₈O₇ + 3MCO₃ → M₃(C₆H₅O₇)₂ + 3CO₂↑ + 3H₂O', prob: 0.05, toA: 'A:citrate', toB: [['A:citrate', 0.5], ['CO2', 0.5]], note: '탄산염은 약한 산에도 이산화탄소 거품을 내며 녹습니다.' }));
       if (!solid && m == null && B.metal === 'Mg' && B.state !== 'gas') out.push(R('citric-mg', '구연산과 마그네슘', [], [], { kind: 'chemical', eq: '3Mg + 2C₆H₈O₇ → Mg₃(C₆H₅O₇)₂ + 3H₂↑', prob: 0.02, toA: 'A:citrate', toB: 'H:g', note: '약한 산이라 거품이 천천히 납니다.' }));
     }
 
@@ -1772,6 +1780,95 @@ Og|오가네손|294|noble|7|50|80|1`;
     { id: 'solder', name: '땜납 만들기', kind: 'physical', eq: 'Sn(l) + Pb(l) → 땜납', a: 'Sn:l', b: 'Pb:l', prob: 0.2, toA: 'solder:l', toB: 'solder:l', note: '녹는점이 두 금속보다 낮아집니다.' },
     { id: 'glass_sand', name: '소다 석회 유리', kind: 'chemical', reactants: ['Na2CO3', 'SiO2'], products: ['Na2SiO3', 'CO2'], a: 'S:Na2CO3', b: 'sand', minT: 1000, prob: 0.05, toA: 'moltenglass', toB: 'moltenglass', note: '탄산소다를 넣으면 모래가 더 낮은 온도에서 유리가 됩니다.' },
     { id: 'cement', name: '시멘트 굳기', kind: 'chemical', reactants: ['Ca(OH)2', 'CO2'], products: ['CaCO3', 'H2O'], a: 'S:Ca(OH)2', b: 'CO2', prob: 0.05, toA: 'limestone', note: '소석회가 공기 속 이산화탄소를 만나 다시 석회암이 됩니다.' },
+
+    // ---- 산화제 + 환원제 ----
+    { id: 'h2o2_h2s', name: '과산화수소와 황화수소', eq: 'H₂O₂ + H₂S → S↓ + 2H₂O', a: 'H2O2', b: 'H2S:g', prob: 0.2, toA: 'water', toB: 'S:s', dT: 20, note: '과산화수소가 황화 이온을 산화시켜 노란 황이 생깁니다. 하수 냄새를 없애는 원리입니다.' },
+    { id: 'h2o2_so2', name: '과산화수소와 이산화황', eq: 'H₂O₂ + SO₂ → H₂SO₄', a: 'H2O2', b: 'SO2:g', prob: 0.25, toA: 'A:acid:H2SO4aq', toB: 'A:acid:H2SO4aq', dT: 15, note: '이산화황이 황산이 됩니다. 공기 중 이산화황 농도를 재는 방법이자, 산성비가 생기는 한 경로입니다.' },
+    { id: 'h2o2_sulfite', name: '과산화수소와 아황산 이온', eq: 'H₂O₂ + SO₃²⁻ → SO₄²⁻ + H₂O', a: 'H2O2', b: 'A:Na2SO3', prob: 0.25, toA: 'A:Na2SO4', toB: 'A:Na2SO4', dT: 10, note: '아황산 이온은 쉽게 산화되어 황산 이온이 됩니다.' },
+    { id: 'h2o2_sulfide', name: '과산화수소와 황화 이온', eq: 'Na₂S + 4H₂O₂ → Na₂SO₄ + 4H₂O', a: 'H2O2', b: 'A:Na2S', prob: 0.2, toA: 'A:Na2SO4', toB: 'A:Na2SO4', dT: 25, note: '충분한 과산화수소는 황화 이온을 황산 이온까지 산화시킵니다.' },
+    { id: 'ag_h2o2', name: '은 촉매와 과산화수소', reactants: ['H2O2'], products: ['H2O', 'O2'], a: 'H2O2', b: 'Ag:s', prob: 0.15, toA: [['water', 0.6], ['oxygen', 0.4]], dT: 8, note: '은 표면에서도 과산화수소가 분해되어 산소 거품이 납니다. 은은 줄어들지 않습니다.' },
+    { id: 'kmno4_h2s', name: '과망가니즈산 이온과 황화수소', eq: '2KMnO₄ + 3H₂S → 2MnO₂↓ + 3S↓ + 2KOH + 2H₂O', a: 'A:KMnO4', b: 'H2S:g', prob: 0.25, toA: 'S:MnO2', toB: 'S:s', note: '보라색이 사라지고 갈색 이산화망가니즈와 노란 황이 생깁니다.' },
+    { id: 'kmno4_so2', name: '과망가니즈산 이온과 이산화황', eq: '2KMnO₄ + 5SO₂ + 2H₂O → K₂SO₄ + 2MnSO₄ + 2H₂SO₄', a: 'A:KMnO4', b: 'SO2:g', prob: 0.3, toA: 'A:MnSO4', toB: 'A:MnSO4', note: '보라색이 거의 무색이 됩니다. 이산화황을 확인하는 방법입니다.' },
+    { id: 'kmno4_ki', name: '과망가니즈산 이온과 아이오딘화 이온', eq: '2KMnO₄ + 6KI + 4H₂O → 2MnO₂ + 3I₂ + 8KOH', a: 'A:KMnO4', b: 'A:KI', prob: 0.25, toA: 'S:MnO2', toB: 'A:KI3', note: '아이오딘화 이온이 산화되어 갈색 아이오딘이 생깁니다.' },
+    { id: 'kmno4_sulfide', name: '과망가니즈산 이온과 황화 이온', eq: '2KMnO₄ + 3Na₂S + 4H₂O → 2MnO₂ + 3S + 2KOH + 6NaOH', a: 'A:KMnO4', b: 'A:Na2S', prob: 0.25, toA: 'S:MnO2', toB: 'S:s', note: '황화 이온이 황으로 산화됩니다.' },
+    { id: 'kmno4_alcohol', name: '과망가니즈산 이온과 메탄올', eq: 'CH₃OH → HCHO → HCOOH (산화)', a: 'A:KMnO4', b: 'CH3OH', prob: 0.03, toA: 'S:MnO2', toB: null, note: '알코올이 산화되면서 보라색이 갈색 앙금으로 바뀝니다. 느립니다.' },
+    { id: 'kmno4_glycerol_aq', name: '과망가니즈산 이온과 글리세롤', eq: '글리세롤 → 산화 생성물 (MnO₄⁻ → MnO₂)', a: 'A:KMnO4', b: 'C3H8O3', prob: 0.04, toA: 'S:MnO2', toB: null, dT: 10, note: '용액에서는 천천히 보라색이 갈색으로 바뀝니다. 고체 과망가니즈산칼륨에 떨어뜨리면 열이 쌓여 불이 붙습니다.' },
+    ...['glucose', 'A:sugar'].map((b) => ({ id: 'kmno4_sugar', name: '과망가니즈산 이온과 당', eq: 'MnO₄⁻(보라) → MnO₄²⁻(초록) → MnO₂(갈색)', a: 'A:KMnO4', b, prob: 0.02, toA: 'S:MnO2', toB: null, note: '당이 과망가니즈산 이온을 천천히 환원시킵니다. 염기성에서는 보라→초록→주황으로 바뀌는 "카멜레온 반응"이 됩니다.' })),
+    ...[['Cl:g', 'Cl₂', 'A:acid:HCl', 'HCl', 'A:FeCl3', 'FeCl₃', 'A:NaCl', 'NaCl', 0.3], ['Br:l', 'Br₂', 'A:acid:HBr', 'HBr', 'A:FeBr3', 'FeBr₃', 'A:NaBr', 'NaBr', 0.2]].flatMap(([X, x2, acid, hx, fe, fex, na, nax, p]) => [
+      { id: 'hal_so2:' + X, name: x2 + '와 이산화황', eq: `SO₂ + ${x2} + 2H₂O → H₂SO₄ + 2${hx}`, a: X, b: 'SO2:g', near: ['water'], prob: p, toA: acid, toB: 'A:acid:H2SO4aq', note: '물이 있으면 이산화황이 할로젠을 환원시키고 자신은 황산이 됩니다. 할로젠의 색이 사라집니다.' },
+      { id: 'hal_fe2:' + X, name: x2 + '와 철(II) 이온', eq: `6FeSO₄ + 3${x2} → 2Fe₂(SO₄)₃ + 2${fex}`, a: X, b: 'A:FeSO4', prob: p, toA: fe, toB: 'A:Fe2(SO4)3', note: '연두색 철(II) 이온이 노란 갈색 철(III) 이온으로 산화됩니다.' },
+      { id: 'hal_sulfite:' + X, name: x2 + '와 아황산 이온', eq: `Na₂SO₃ + ${x2} + H₂O → Na₂SO₄ + 2${hx}`, a: X, b: 'A:Na2SO3', prob: p, toA: acid, toB: 'A:Na2SO4', note: '아황산나트륨은 수돗물이나 실험실의 할로젠을 없애는 데 씁니다.' },
+      { id: 'hal_sulfide:' + X, name: x2 + '와 황화 이온', eq: `Na₂S + ${x2} → 2${nax} + S↓`, a: X, b: 'A:Na2S', prob: p, toA: na, toB: 'S:s', note: '황화 이온이 산화되어 노란 황이 앙금으로 생깁니다.' },
+    ]),
+    { id: 'br_h2s', name: '브로민과 황화수소', eq: 'Br₂ + H₂S → 2HBr + S↓', a: 'Br:l', b: 'H2S:g', prob: 0.25, toA: 'A:acid:HBr', toB: 'S:s', note: '적갈색 브로민의 색이 사라지고 황이 생깁니다.' },
+    { id: 'i_h2s', name: '아이오딘과 황화수소', eq: 'I₂ + H₂S → 2HI + S↓', a: 'I:s', b: 'H2S:g', prob: 0.1, toA: 'A:acid:HI', toB: 'S:s', note: '아이오딘도 황화수소를 산화시킬 수 있습니다.' },
+    { id: 'i_sulfide', name: '아이오딘과 황화 이온', eq: 'Na₂S + I₂ → 2NaI + S↓', a: 'I:s', b: 'A:Na2S', prob: 0.1, toA: 'A:NaI', toB: 'S:s', note: '아이오딘의 갈색이 사라지고 황이 생깁니다.' },
+    { id: 'i_so2', name: '아이오딘과 이산화황', eq: 'I₂ + SO₂ + 2H₂O → 2HI + H₂SO₄', a: 'I:s', b: 'SO2:g', near: ['water'], prob: 0.1, toA: 'A:acid:HI', toB: 'A:acid:H2SO4aq', note: '물속에서 아이오딘이 이산화황에 환원됩니다(수분 측정에 쓰는 칼 피셔 반응의 바탕).' },
+    { id: 'i_so2', name: '아이오딘과 이산화황', eq: 'I₂ + SO₂ + 2H₂O → 2HI + H₂SO₄', a: 'A:KI3', b: 'SO2:g', prob: 0.25, toA: 'A:KI', toB: 'A:acid:H2SO4aq', note: '갈색 아이오딘 용액의 색이 사라집니다. 이산화황이 환원제로 작용합니다.' },
+    { id: 'i_h2s', name: '아이오딘과 황화수소', eq: 'I₂ + H₂S → 2HI + S↓', a: 'A:KI3', b: 'H2S:g', prob: 0.2, toA: 'A:KI', toB: 'S:s', note: '갈색이 사라지고 뿌연 황이 생깁니다.' },
+    { id: 'i_sulfite', name: '아이오딘과 아황산 이온', eq: 'Na₂SO₃ + I₂ + H₂O → Na₂SO₄ + 2HI', a: 'I:s', b: 'A:Na2SO3', prob: 0.1, toA: 'A:acid:HI', toB: 'A:Na2SO4', note: '아이오딘의 색이 사라집니다.' },
+    { id: 'i_fe', name: '아이오딘과 철', reactants: ['Fe', 'I2'], products: ['FeI2'], a: 'Fe:s', b: 'I:s', minT: 100, prob: 0.03, toA: 'S:FeI2', toB: 'air', dT: 40, note: '아이오딘은 약한 할로젠이라 철(II)까지만 산화시킵니다.' },
+    { id: 'h2_br2', name: '수소와 브로민', reactants: ['H2', 'Br2'], products: ['HBr'], a: 'H:g', b: 'Br:l', minT: 200, prob: 0.1, toA: 'HBrg:g', toB: 'HBrg:g', dT: 60, note: '염소보다 느리지만 가열하면 브로민화수소가 됩니다.' },
+    { id: 'h2_br2', name: '수소와 브로민', reactants: ['H2', 'Br2'], products: ['HBr'], a: 'H:g', b: 'Br:g', minT: 200, prob: 0.1, toA: 'HBrg:g', toB: 'HBrg:g', dT: 60, note: '염소보다 느리지만 가열하면 브로민화수소가 됩니다.' },
+    { id: 'h2_i2', name: '수소와 아이오딘(가역)', reactants: ['H2', 'I2'], products: ['HI'], a: 'H:g', b: 'I:g', minT: 300, prob: 0.04, toA: 'HIg:g', toB: 'HIg:g', note: '가열해도 일부만 반응하고 평형에 이릅니다. 화학 평형을 처음 연구한 반응입니다.' },
+    { id: 'hi_decomp', name: '아이오딘화수소의 분해(가역)', reactants: ['HI'], products: ['H2', 'I2'], a: 'HIg:g', b: 'HIg:g', minT: 300, prob: 0.01, toA: 'H:g', toB: 'I:g', note: '반대 방향 반응도 함께 일어나 H₂ + I₂ ⇄ 2HI 평형이 됩니다.' },
+    { id: 'o3_ki', name: '오존과 아이오딘화 이온', eq: 'O₃ + 2KI + H₂O → I₂ + 2KOH + O₂', a: 'O3:g', b: 'A:KI', prob: 0.3, toA: 'oxygen', toB: 'A:KI3', note: '오존을 확인하는 방법입니다. 아이오딘화칼륨 녹말 종이가 파랗게 변합니다.' },
+    { id: 'o3_h2s', name: '오존과 황화수소', eq: 'H₂S + O₃ → S + O₂ + H₂O', a: 'O3:g', b: 'H2S:g', prob: 0.2, toA: 'oxygen', toB: 'S:s', note: '오존은 냄새를 없애는 데 쓰입니다.' },
+    { id: 'o3_no', name: '오존과 일산화질소', eq: 'NO + O₃ → NO₂ + O₂', a: 'O3:g', b: 'NO:g', prob: 0.4, toA: 'oxygen', toB: 'NO2:g', note: '도시 대기에서 오존과 질소 산화물이 서로 바뀌는 반응입니다(광화학 스모그).' },
+    { id: 'o3_ag', name: '오존과 은', eq: '2Ag + O₃ → Ag₂O + O₂', a: 'O3:g', b: 'Ag:s', prob: 0.03, toA: 'oxygen', toB: 'S:Ag2O', note: '산소와는 반응하지 않는 은도 오존에는 검게 변합니다.' },
+    { id: 'naclo_ki', name: '차아염소산 이온과 아이오딘화 이온', eq: 'NaClO + 2KI + H₂O → NaCl + I₂ + 2KOH', a: 'A:NaClO', b: 'A:KI', prob: 0.3, toA: 'A:NaCl', toB: 'A:KI3', note: '표백제가 아이오딘화 이온을 갈색 아이오딘으로 산화시킵니다.' },
+    { id: 'naclo_h2s', name: '표백제와 황화수소', eq: 'NaClO + H₂S → NaCl + S↓ + H₂O', a: 'A:NaClO', b: 'H2S:g', prob: 0.3, toA: 'A:NaCl', toB: 'S:s', note: '하수구 냄새를 표백제로 없애는 원리입니다.' },
+    { id: 'naclo_so2', name: '표백제와 이산화황', eq: 'NaClO + SO₂ + H₂O → NaCl + H₂SO₄', a: 'A:NaClO', b: 'SO2:g', prob: 0.3, toA: 'A:NaCl', toB: 'A:acid:H2SO4aq', note: '이산화황이 산화되어 황산이 됩니다.' },
+    { id: 'naclo_sulfite', name: '표백제와 아황산 이온(탈염소)', eq: 'NaClO + Na₂SO₃ → NaCl + Na₂SO₄', a: 'A:NaClO', b: 'A:Na2SO3', prob: 0.3, toA: 'A:NaCl', toB: 'A:Na2SO4', note: '정수장과 수족관에서 남은 염소를 없애는 방법입니다.' },
+    { id: 'naclo_fe2', name: '표백제와 철(II) 이온', eq: '2FeSO₄ + NaClO + 5H₂O → 2Fe(OH)₃↓ + NaCl + 2H₂SO₄', a: 'A:NaClO', b: 'A:FeSO4', prob: 0.25, toA: 'A:NaCl', toB: 'S:Fe(OH)3', note: '연두색 용액에 적갈색 수산화철(III) 앙금이 생깁니다. 지하수의 철분을 없애는 원리입니다.' },
+    { id: 'naclo_sulfide', name: '표백제와 황화 이온', eq: 'NaClO + Na₂S + H₂O → NaCl + S↓ + 2NaOH', a: 'A:NaClO', b: 'A:Na2S', prob: 0.25, toA: 'A:NaCl', toB: 'S:s', note: '황화 이온이 황으로 산화됩니다.' },
+    ...['sugar', 'A:sugar'].map((b) => ({ id: 'hno3_sugar', name: '설탕의 질산 산화(옥살산 만들기)', eq: 'C₁₂H₂₂O₁₁ + 36HNO₃ → 6H₂C₂O₄ + 36NO₂ + 23H₂O', a: 'HNO3', b, minT: 60, prob: 0.05, toA: 'NO2:g', toB: 'A:acid:H2C2O4', dT: 20, note: '1776년 셸레가 옥살산을 처음 얻은 방법입니다. 갈색 이산화질소가 많이 나옵니다.' })),
+    { id: 'hno3_glucose', name: '포도당의 질산 산화', eq: 'C₆H₁₂O₆ + 18HNO₃ → 3H₂C₂O₄ + 18NO₂ + 12H₂O', a: 'HNO3', b: 'glucose', minT: 60, prob: 0.05, toA: 'NO2:g', toB: 'A:acid:H2C2O4', dT: 20, note: '진한 질산이 당을 옥살산까지 산화시킵니다.' },
+    ...[['HNO3', 'NO2', 'NO₂'], ['A:acid:HNO3aq', 'NO', 'NO']].flatMap(([acid, gas, gf]) => [
+      { id: 'hno3_h2s', name: '질산과 황화수소', eq: gas === 'NO2' ? 'H₂S + 2HNO₃ → S + 2NO₂ + 2H₂O' : '3H₂S + 2HNO₃ → 3S + 2NO + 4H₂O', a: acid, b: 'H2S:g', prob: 0.2, toA: gas, toB: 'S:s', note: '질산은 산화제라 황화수소를 황으로 바꿉니다.' },
+      { id: 'hno3_ki', name: '질산과 아이오딘화 이온', eq: gas === 'NO2' ? '2KI + 4HNO₃ → I₂ + 2KNO₃ + 2NO₂ + 2H₂O' : '6KI + 8HNO₃ → 3I₂ + 6KNO₃ + 2NO + 4H₂O', a: acid, b: 'A:KI', prob: 0.2, toA: gas, toB: 'A:KI3', note: '아이오딘화 이온이 갈색 아이오딘으로 산화됩니다.' },
+      { id: 'hno3_fe2', name: '질산과 철(II) 이온', eq: '3FeSO₄ + 4HNO₃ → Fe₂(SO₄)₃ + Fe(NO₃)₃ + NO↑ + 2H₂O', a: acid, b: 'A:FeSO4', prob: 0.2, toA: 'NO', toB: 'A:Fe2(SO4)3', note: '철(II) 이온이 산화되며 일산화질소가 나옵니다. 질산 이온 검출(갈색 고리 반응)의 바탕입니다.' },
+    ]),
+    { id: 'hno3_so2', name: '질산과 이산화황', eq: 'SO₂ + 2HNO₃ → H₂SO₄ + 2NO₂', a: 'HNO3', b: 'SO2:g', prob: 0.2, toA: 'NO2:g', toB: 'A:acid:H2SO4aq', note: '옛날 황산 제조법(연실법)에서는 질소 산화물이 이산화황을 산화시켰습니다.' },
+    { id: 'h2so4_h2s', name: '진한 황산과 황화수소', eq: 'H₂SO₄ + H₂S → S + SO₂ + 2H₂O', a: 'H2SO4', b: 'H2S:g', prob: 0.15, toA: 'SO2:g', toB: 'S:s', note: '진한 황산은 산화제라 황화수소를 말리는 데 쓸 수 없습니다.' },
+    { id: 'h2so4_ki', name: '진한 황산과 아이오딘화 이온', eq: '8KI + 5H₂SO₄ → 4I₂ + H₂S + 4K₂SO₄ + 4H₂O', a: 'H2SO4', b: 'A:KI', prob: 0.15, toA: 'H2S:g', toB: 'A:KI3', dT: 30, note: '아이오딘화 이온은 환원력이 커서 진한 황산을 황화수소까지 환원시킵니다. 그래서 진한 황산으로 HI를 만들 수 없습니다.' },
+    { id: 'sugar_h2so4', name: '포도당의 탈수', eq: 'C₆H₁₂O₆ → 6C + 6H₂O', a: 'glucose', b: 'H2SO4', prob: 0.08, toA: 'C:s', toB: 'steam', dT: 100, note: '진한 황산이 포도당에서도 물을 빼앗아 탄소가 남습니다.' },
+    { id: 'dichromate_so2', name: '다이크로뮴산 이온과 이산화황', eq: 'K₂Cr₂O₇ + 3SO₂ + H₂SO₄ → K₂SO₄ + Cr₂(SO₄)₃ + H₂O', a: 'A:K2Cr2O7', b: 'SO2:g', prob: 0.25, toA: 'A:Cr2(SO4)3', toB: 'A:Cr2(SO4)3', note: '주황색이 초록색으로 바뀝니다. 이산화황을 확인하는 고전적인 방법입니다.' },
+    { id: 'dichromate_h2s', name: '다이크로뮴산 이온과 황화수소', eq: 'K₂Cr₂O₇ + 3H₂S + 4H₂SO₄ → K₂SO₄ + Cr₂(SO₄)₃ + 3S + 7H₂O', a: 'A:K2Cr2O7', b: 'H2S:g', prob: 0.2, toA: 'A:Cr2(SO4)3', toB: 'S:s', note: '주황색이 초록색이 되고 황이 생깁니다.' },
+    { id: 'dichromate_ki', name: '다이크로뮴산 이온과 아이오딘화 이온', eq: 'K₂Cr₂O₇ + 6KI + 7H₂SO₄ → 4K₂SO₄ + Cr₂(SO₄)₃ + 3I₂ + 7H₂O', a: 'A:K2Cr2O7', b: 'A:KI', near: ['A:acid:H2SO4aq', 'H2SO4'], prob: 0.25, toA: 'A:Cr2(SO4)3', toB: 'A:KI3', note: '산성에서 아이오딘이 생깁니다. 적정에 쓰입니다.' },
+    { id: 'dichromate_sulfite', name: '다이크로뮴산 이온과 아황산 이온', eq: 'Cr₂O₇²⁻ + 3SO₃²⁻ + 8H⁺ → 2Cr³⁺ + 3SO₄²⁻ + 4H₂O', a: 'A:K2Cr2O7', b: 'A:Na2SO3', near: ['A:acid:H2SO4aq', 'H2SO4', 'hcl'], prob: 0.25, toA: 'A:Cr2(SO4)3', toB: 'A:Na2SO4', note: '독성이 큰 6가 크로뮴을 3가로 바꾸는 폐수 처리 방법입니다.' },
+    { id: 'breathalyzer_meoh', name: '다이크로뮴산 이온과 메탄올', eq: '2Cr₂O₇²⁻ + 3CH₃OH + 16H⁺ → 4Cr³⁺ + 3HCOOH + 11H₂O', a: 'A:K2Cr2O7', b: 'CH3OH', near: ['A:acid:H2SO4aq', 'H2SO4'], prob: 0.15, toA: 'A:Cr2(SO4)3', toB: null, note: '에탄올처럼 메탄올도 주황색을 초록색으로 바꿉니다.' },
+    // ---- 플루오린: 거의 모든 것을 태운다 ----
+    ...['wood', 'C:s', 'sugar', 'oil', 'sawdust', 'plastic', 'C2H5OH', 'CH3OH', 'C3H8O3', 'glucose', 'S:s', 'H2S:g', 'leaf', 'flour'].map((b) => ({ id: 'f2_burn', name: '플루오린 속에서 타기', eq: '연료 + F₂ → CF₄ + HF (+ SF₆)', a: 'F:g', b, prob: 0.4, toA: 'HFg:g', toB: 'fire:clean', T: 1500, note: '플루오린은 산소보다 강한 산화제라 나무·탄소·물까지 불꽃을 내며 태웁니다. 가장 반응성이 큰 원소입니다.' })),
+    ...[['Cl:g', '2P + 3Cl₂ → 2PCl₃', 0.4], ['Br:l', '2P + 3Br₂ → 2PBr₃', 0.2], ['F:g', '2P + 5F₂ → 2PF₅', 0.6]].map(([X, eq, p]) => ({ id: 'p_halogen', name: '인과 할로젠', eq, a: 'P:s', b: X, prob: p, toA: 'fire:clean', toB: 'smoke:white', T: 900, note: '인은 염소·브로민 속에서 저절로 불이 붙어 흰 연기(할로젠화 인)를 냅니다.' })),
+    // ---- 기체 ----
+    ...[['HBrg:g', 'S:NH4Br', 'HBr'], ['HIg:g', 'S:NH4I', 'HI'], ['HFg:g', 'S:NH4F', 'HF']].map(([b, prod, hx]) => ({ id: 'nh3_' + hx.toLowerCase(), name: '암모니아와 ' + hx, reactants: ['NH3', hx], products: [prod.slice(2)], a: 'NH3', b, prob: 0.6, toA: prod, toB: 'air', dT: 20, note: '염화수소처럼 흰 연기 같은 고체 암모늄염이 생깁니다.' })),
+    { id: 'nh3_h2so4', name: '암모니아와 황산(황산암모늄 비료)', reactants: ['NH3', 'H2SO4'], products: ['(NH4)2SO4'], a: 'NH3', b: 'H2SO4', prob: 0.4, toA: 'S:(NH4)2SO4', toB: 'S:(NH4)2SO4', dT: 60, note: '가장 흔한 질소 비료인 황산암모늄을 만드는 반응입니다.' },
+    { id: 'nh3_hno3', name: '암모니아와 질산(질산암모늄 비료)', reactants: ['NH3', 'HNO3'], products: ['NH4NO3'], a: 'NH3', b: 'HNO3', prob: 0.4, toA: 'S:NH4NO3', toB: 'S:NH4NO3', dT: 60, note: '질산암모늄 비료를 만드는 반응입니다. 질산암모늄은 뜨겁게 하면 위험하므로 보관을 조심합니다.' },
+    ...['NO2:g', 'NO2:l'].map((a) => ({ id: 'no2_water', name: '이산화질소와 물(산성비)', reactants: ['NO2', 'H2O'], products: ['HNO3', 'NO'], a, b: 'water', prob: 0.2, toA: 'NO', toB: 'A:acid:HNO3aq', note: '이산화질소가 물에 녹아 질산이 됩니다. 산성비와 질산 공업(오스트발트 공정의 마지막 단계)의 반응입니다.' })),
+    // ---- 첨가 반응(촉매) ----
+    { id: 'hydrogenation', name: '에틸렌의 수소 첨가', reactants: ['C2H4', 'H2'], products: ['C2H6'], a: 'C2H4:g', b: 'hydrogen', near: ['Ni:s', 'Pt:s', 'Pd:s'], minT: 100, prob: 0.2, toA: 'C2H6:g', toB: 'air', dT: 40, note: '니켈·백금 촉매 위에서 이중 결합에 수소가 붙습니다. 식물성 기름을 굳혀 마가린을 만드는 원리입니다.' },
+    { id: 'hydrogenation2', name: '아세틸렌의 수소 첨가', reactants: ['C2H2', 'H2'], products: ['C2H4'], a: 'C2H2:g', b: 'hydrogen', near: ['Ni:s', 'Pt:s', 'Pd:s'], minT: 100, prob: 0.2, toA: 'C2H4:g', toB: 'air', dT: 50, note: '삼중 결합에 수소가 붙어 에틸렌이 됩니다.' },
+    { id: 'margarine', name: '기름의 수소 첨가(경화유)', eq: '불포화 지방 + H₂ → 포화 지방', a: 'oil', b: 'hydrogen', near: ['Ni:s'], minT: 120, prob: 0.05, toA: 'fat', toB: 'air', note: '니켈 촉매로 액체 기름에 수소를 붙이면 굳은 기름(마가린·쇼트닝)이 됩니다.' },
+    // ---- 유기물 ----
+    { id: 'k_ethanol', name: '칼륨과 에탄올', reactants: ['K', 'C2H5OH'], products: ['C2H5OK', 'H2'], a: 'K:s', b: 'C2H5OH', prob: 0.08, toA: 'ethoxide', toB: 'hydrogen', dT: 50, note: '나트륨보다 빠르게 수소 거품을 냅니다. 물보다는 순합니다.' },
+    { id: 'li_ethanol', name: '리튬과 에탄올', reactants: ['Li', 'C2H5OH'], products: ['C2H5OLi', 'H2'], a: 'Li:s', b: 'C2H5OH', prob: 0.01, toA: 'ethoxide', toB: 'hydrogen', dT: 15, note: '아주 천천히 수소가 나옵니다.' },
+    ...['naoh', 'A:KOH'].map((b) => ({ id: 'oleic_base', name: '지방산과 염기(비누)', eq: 'C₁₇H₃₃COOH + NaOH → C₁₇H₃₃COONa + H₂O', a: 'oleic', b, prob: 0.2, toA: 'soap', toB: 'soap', dT: 10, note: '지방산은 염기와 바로 중화되어 비누가 됩니다.' })),
+    ...['oil', 'fat'].map((a) => ({ id: 'soft_soap', name: '물비누 만들기(칼륨 비누)', eq: '지방 + 3KOH → 칼륨 비누 + 글리세롤', a, b: 'A:KOH', minT: 40, prob: 0.05, toA: 'soap', toB: 'C3H8O3', dT: 10, note: '수산화칼륨으로 만든 비누는 부드러워 물비누가 됩니다.' })),
+    ...[['HNO3', '질산'], ['A:CuSO4', '황산구리(중금속)'], ['C2H5OH', '에탄올']].map(([b, n]) => ({ id: 'milk_denature', name: '우유 단백질의 변성(' + n + ')', kind: 'chemical', eq: '카제인 → 엉긴 단백질', a: 'milk', b, prob: 0.1, toA: 'curd', toB: 'whey', note: '산·중금속 이온·알코올은 단백질의 모양을 바꿔 엉기게 합니다. 중금속을 먹었을 때 우유를 마시게 하는 이유입니다.' })),
+    // ---- 합금 ----
+    { id: 'dezinc', name: '황동의 탈아연', eq: 'Zn(황동 속) + 2HCl → ZnCl₂ + H₂↑', a: 'brass:s', b: 'hcl', prob: 0.03, toA: [['brass:s', 0.85], ['Cu:s', 0.15]], toB: [['A:ZnCl2', 0.6], ['hydrogen', 0.4]], dT: 10, note: '황동 속 아연만 녹아 나오고 구리가 붉게 남습니다. 오래된 수도관이 약해지는 원인입니다.' },
+    { id: 'bronze_hcl', name: '청동과 염산', eq: 'Sn(청동 속) + 2HCl → SnCl₂ + H₂↑', a: 'bronze:s', b: 'hcl', prob: 0.01, toA: [['bronze:s', 0.85], ['Cu:s', 0.15]], toB: [['A:SnCl2', 0.6], ['hydrogen', 0.4]], note: '주석만 천천히 녹습니다. 청동은 구리보다 잘 녹슬지 않아 동상과 종에 씁니다.' },
+    { id: 'solder_hcl', name: '땜납과 염산', eq: 'Sn(땜납 속) + 2HCl → SnCl₂ + H₂↑', a: 'solder:s', b: 'hcl', prob: 0.015, toA: [['solder:s', 0.85], ['Pb:s', 0.15]], toB: [['A:SnCl2', 0.6], ['hydrogen', 0.4]], note: '주석이 녹아 나오고 납이 남습니다.' },
+    ...[['brass:s', 'A:Cu(NO3)2', '황동'], ['bronze:s', 'A:Cu(NO3)2', '청동'], ['solder:s', 'A:Pb(NO3)2', '땜납'], ['amalgam', 'A:Hg(NO3)2', '아말감']].map(([a, salt, n]) => ({ id: 'alloy_hno3', name: n + '과 질산', eq: '합금 속 금속 + 4HNO₃ → M(NO₃)₂ + 2NO₂ + 2H₂O', a, b: 'HNO3', prob: 0.15, toA: salt, toB: 'NO2:g', dT: 40, note: '질산은 합금 속 금속을 모두 녹여 갈색 이산화질소를 냅니다.' })),
+    { id: 'brass_cu', name: '황동과 황산구리 용액', eq: 'Zn(황동 속) + CuSO₄ → ZnSO₄ + Cu', a: 'brass:s', b: 'A:CuSO4', prob: 0.04, toA: [['brass:s', 0.8], ['Cu:s', 0.2]], toB: 'A:ZnSO4', note: '황동 속 아연이 구리 이온을 밀어내 표면에 구리가 석출됩니다.' },
+    { id: 'solder_cu', name: '땜납과 황산구리 용액', eq: 'Sn(땜납 속) + CuSO₄ → SnSO₄ + Cu', a: 'solder:s', b: 'A:CuSO4', prob: 0.03, toA: [['solder:s', 0.8], ['Cu:s', 0.2]], toB: 'A:SnSO4', note: '주석이 구리 이온을 밀어냅니다.' },
+    // ---- 암석·기타 ----
+    ...['cement', 'concrete'].map((a) => ({ id: 'concrete_acid', name: '콘크리트와 산', eq: 'CaCO₃ + 2HCl → CaCl₂ + H₂O + CO₂↑, Ca(OH)₂ + 2HCl → CaCl₂ + 2H₂O', a, b: 'hcl', prob: 0.03, toA: [[a, 0.8], ['A:CaCl2', 0.2]], toB: [['A:CaCl2', 0.7], ['CO2', 0.3]], note: '콘크리트 속 수산화칼슘·탄산칼슘이 산에 녹습니다. 산성비가 건물을 깎는 원리입니다.' })),
+    { id: 'hf_glass', name: '플루오린화수소산과 유리', reactants: ['SiO2', 'HF'], products: ['SiF4', 'H2O'], a: 'glassshards', b: 'A:acid:HF', prob: 0.05, toA: 'air', toB: 'water', note: '유리 조각도 플루오린화수소산에 녹습니다.' },
+    ...['S:s', 'S:l', 'S:l:dark'].map((a) => ({ id: 's_burn', name: '황의 연소', reactants: ['S', 'O2'], products: ['SO2'], a, b: 'fire', near: OX, prob: 0.15, toA: 'fire:S', toB: 'SO2', T: 1000, note: '불꽃이 닿은 황은 파란 불꽃을 내며 타고 자극적인 이산화황이 생깁니다.' })),
+    { id: 'pd_hno3', name: '팔라듐과 진한 질산', eq: 'Pd + 4HNO₃ → Pd(NO₃)₂ + 2NO₂ + 2H₂O', a: 'Pd:s', b: 'HNO3', prob: 0.02, toA: 'A:Pd(NO3)2', toB: 'NO2:g', note: '백금족 금속 가운데 팔라듐만 진한 질산에 천천히 녹습니다.' },
+    { id: 'pd_aqua', name: '팔라듐과 왕수', eq: '3Pd + 2HNO₃ + 12HCl → 3H₂PdCl₄ + 2NO + 4H₂O', a: 'Pd:s', b: 'aquaregia', prob: 0.05, toA: 'A:PdCl2', toB: 'NO2', note: '팔라듐은 왕수에 금보다 쉽게 녹습니다.' },
   ];
 })(globalThis.SandLab = globalThis.SandLab || {});
 
@@ -2352,7 +2449,43 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.flyers = [];
     }
 
-    // ---- 섞기 도구 ----
+    // ---- 채우기 도구 ----
+    // 누른 칸과 같은 물질(보통 공기)로 이어진 칸 가운데 누른 높이보다 아래(같은 높이 포함)만 m으로 채운다.
+    // 그릇 안을 누르면 그 높이까지 액체가 찬다. 열린 곳이라 너무 넓으면 채우지 않고 0을 돌려준다.
+    fillLevel(cx, cy, m, limit) {
+      if (!this.inside(cx, cy)) return 0;
+      const { w, mat } = this, start = this.index(cx, cy), from = mat[start];
+      if (from === m) return 0;
+      const max = limit || 6000, seen = new Uint8Array(mat.length), list = [start], stack = [start];
+      seen[start] = 1;
+      while (stack.length) {
+        const i = stack.pop(), x = i % w, y = (i / w) | 0;
+        const nb = [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > cy ? i - w : -1, i + w < mat.length ? i + w : -1];
+        for (const j of nb) {
+          if (j < 0 || seen[j] || mat[j] !== from || this.anchor[j] && this.data.state[from] !== GAS) continue;
+          seen[j] = 1; list.push(j); stack.push(j);
+          if (list.length > max) return 0;
+        }
+      }
+      const s = this.data.state[m];
+      for (const i of list) { this.setCell(i, m, this.data.t0[m]); if (s === GAS) this.gas[i] = 1; }
+      return list.length;
+    }
+
+    // ---- 그릇 도구 ----
+    // 두 점을 모서리로 하는 U자 모양 그릇(바닥과 양쪽 벽, 두께 2칸)을 고정된 칸으로 만든다.
+    vessel(x0, y0, x1, y1, id) {
+      const m = this.data.idOf[id || 'glass'];
+      const l = Math.max(0, Math.min(x0, x1)), r = Math.min(this.w - 1, Math.max(x0, x1));
+      const t = Math.max(0, Math.min(y0, y1)), b = Math.min(this.h - 1, Math.max(y0, y1));
+      if (r - l < 6 || b - t < 4) return false;
+      const put = (x, y) => { const i = this.index(x, y); this.setCell(i, m, this.data.t0[m]); this.anchor[i] = 1; };
+      for (let y = t; y <= b; y++) { put(l, y); put(l + 1, y); put(r, y); put(r - 1, y); }
+      for (let x = l; x <= r; x++) { put(x, b); put(x, b - 1); }
+      return true;
+    }
+
+    // ---- 섞기 도구 ----    // ---- 섞기 도구 ----
     // 원 안의 움직일 수 있는 칸(가루·액체·기체)을 무작위로 바꿔 섞는다. 고정된 칸과 고체는 그대로.
     stir(cx, cy, r, amount) {
       const cells = [];
@@ -3175,6 +3308,13 @@ Og|오가네손|294|noble|7|50|80|1`;
     });
   };
 
+  // 고정하지 않은 고체 덩어리(떨어지고 뜨는 칸)를 놓는다.
+  const lump = (w, id, x0, y0, x1, y1, T) => {
+    w.rect(id, x0, y0, x1, y1, T);
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) w.loose[w.index(x, y)] = 1;
+    w.looseN++;
+  };
+
   SL.SCENES = [
     {
       id: 'free', name: '빈 실험실', tab: 'materials',
@@ -3551,6 +3691,76 @@ Og|오가네손|294|noble|7|50|80|1`;
       },
     },
     {
+      id: 'so2test', name: '이산화황으로 색 지우기', tab: 'codex',
+      desc: '공기보다 무거운 이산화황이 세 비커로 가라앉습니다. 이산화황은 환원제라서 보라색 과망가니즈산 칼륨은 무색, 주황색 다이크로뮴산 칼륨은 초록, 갈색 아이오딘 용액은 무색이 됩니다. 이산화황을 확인하는 고전적인 방법입니다.',
+      setup(w) {
+        air(w);
+        beakers(w, [
+          (t) => { w.rect('A:KMnO4', t.l, 110, t.r, t.b); w.rect('SO2:g', t.l, 70, t.r, 100); },
+          (t) => { w.rect('A:K2Cr2O7', t.l, 110, t.r, t.b); w.rect('SO2:g', t.l, 70, t.r, 100); },
+          (t) => { w.rect('A:KI3', t.l, 110, t.r, t.b); w.rect('SO2:g', t.l, 70, t.r, 100); },
+        ]);
+      },
+    },
+    {
+      id: 'chlorine', name: '염소의 산화력', tab: 'codex',
+      desc: '황록색 염소 기체가 네 용액으로 가라앉습니다. 왼쪽부터: 연두색 철(II) 이온이 노란 갈색 철(III) 이온으로, 황화 이온이 노란 황 앙금으로, 아이오딘화 이온이 갈색 아이오딘으로, 브로민화 이온이 주황색 브로민으로 산화됩니다. 염소는 약한 할로젠을 밀어냅니다.',
+      setup(w) {
+        air(w);
+        beakers(w, [
+          (t) => { w.rect('A:FeSO4', t.l, 110, t.r, t.b); w.rect('Cl:g', t.l, 70, t.r, 100); },
+          (t) => { w.rect('A:Na2S', t.l, 110, t.r, t.b); w.rect('Cl:g', t.l, 70, t.r, 100); },
+          (t) => { w.rect('A:KI', t.l, 110, t.r, t.b); w.rect('Cl:g', t.l, 70, t.r, 100); },
+          (t) => { w.rect('A:NaBr', t.l, 110, t.r, t.b); w.rect('Cl:g', t.l, 70, t.r, 100); },
+        ]);
+      },
+    },
+    {
+      id: 'alloys', name: '합금과 산', tab: 'codex',
+      desc: '합금은 섞인 금속마다 다르게 반응합니다. 황동(구리+아연)은 염산에 아연만 녹아 붉은 구리가 남고(탈아연), 청동(구리+주석)과 땜납(주석+납)은 주석만 천천히 녹습니다. 오른쪽에서는 황동 속 아연이 황산구리 용액의 구리를 밀어냅니다.',
+      setup(w) {
+        air(w);
+        beakers(w, [
+          (t) => { w.rect('hcl', t.l, 110, t.r, t.b - 6); w.rect('brass:s', t.l + 6, t.b - 5, t.r - 6, t.b); },
+          (t) => { w.rect('hcl', t.l, 110, t.r, t.b - 6); w.rect('bronze:s', t.l + 6, t.b - 5, t.r - 6, t.b); },
+          (t) => { w.rect('hcl', t.l, 110, t.r, t.b - 6); w.rect('solder:s', t.l + 6, t.b - 5, t.r - 6, t.b); },
+          (t) => { w.rect('A:CuSO4', t.l, 110, t.r, t.b - 6); w.rect('brass:s', t.l + 6, t.b - 5, t.r - 6, t.b); },
+        ]);
+        w.setHeatBoost(200);
+      },
+      speed: 2,
+    },
+    {
+      id: 'lemon', name: '레몬즙(구연산)의 힘', tab: 'codex',
+      desc: '구연산은 약한 산이라 천천히 반응합니다. 왼쪽부터: 아연에서 수소 거품, 석회석(탄산칼슘)에서 이산화탄소 거품(물때 제거), 녹(산화철)이 녹아 없어짐, 베이킹소다와 만나 거품이 솟음. 식초·레몬으로 청소하는 원리입니다.',
+      setup(w) {
+        air(w);
+        beakers(w, [
+          (t) => { w.rect('A:citric', t.l, 105, t.r, t.b - 5); w.rect('Zn:s', t.l + 5, t.b - 4, t.r - 5, t.b); },
+          (t) => { w.rect('A:citric', t.l, 105, t.r, t.b - 5); w.rect('limestone', t.l + 5, t.b - 4, t.r - 5, t.b); },
+          (t) => { w.rect('A:citric', t.l, 105, t.r, t.b - 5); w.rect('S:Fe2O3', t.l + 5, t.b - 4, t.r - 5, t.b); },
+          (t) => { w.rect('A:citric', t.l, 115, t.r, t.b); w.rect('S:NaHCO3', t.l + 8, 85, t.r - 8, 92); },
+        ]);
+      },
+      speed: 2,
+    },
+    {
+      id: 'floatsink', name: '뜨는 덩어리, 가라앉는 덩어리', tab: 'physics',
+      desc: '받침 없는 고체는 한 덩어리로 떨어집니다. 물에 들어가면 밀어낸 물의 무게(부력)와 자기 무게를 비교해 나무는 뜨고 돌은 가라앉습니다(아르키메데스). 왼쪽 위의 유리판은 높은 곳에서 돌바닥에 떨어져 깨지고, 오른쪽의 뜨거운 유리(400°C)는 얼음에 닿아 열충격으로 깨집니다.',
+      setup(w) {
+        air(w);
+        w.rect('stone', 0, 146, 239, 149);
+        const t = tank(w, 'glass', 70, 180, 70, 142);
+        w.rect('water', t.l, 95, t.r, t.b);
+        lump(w, 'wood', 85, 30, 100, 38);
+        lump(w, 'stone', 120, 30, 130, 38);
+        lump(w, 'wood', 145, 50, 165, 53);
+        lump(w, 'glass', 15, 20, 40, 23);
+        w.rect('glass', 200, 136, 225, 145, 400, true);
+        w.rect('ice', 205, 110, 220, 118);
+      },
+    },
+    {
       id: 'density', name: '밀도 기둥', tab: 'materials',
       desc: '일부러 무거운 소금물을 위에, 기름을 아래에 넣었습니다. 밀도 순서대로 층이 나뉘는 과정을 보세요. 밀도 보기와 함께 쓰면 좋습니다.',
       setup(w) {
@@ -3592,6 +3802,9 @@ Og|오가네손|294|noble|7|50|80|1`;
   // check(c): c.has(발견 id), c.any(정규식), c.count(물질 id), c.cells(물질 id, 조건). 발견 기록은 저장되므로 한 번 이루면 끝이다.
   // 사이트에서는 sandlab:challenge 이벤트로 진도·점수와 연결할 수 있다.
   SL.CHALLENGES = [
+    { id: 'so2', name: '이산화황으로 색 지우기', hint: '과망가니즈산 칼륨이나 다이크로뮴산 칼륨 용액에 이산화황을 넣어 보세요.', check: (c) => c.has('kmno4_so2') || c.has('dichromate_so2') },
+    { id: 'float', name: '물에 뜨는 나무', hint: "'고정'을 끄고 나무를 물 위 공중에 그려 보세요.", check: (c) => c.has('rigid_fall') },
+    { id: 'dezinc', name: '황동에서 아연만 녹이기', hint: '황동을 염산에 넣어 보세요.', check: (c) => c.has('dezinc') },
     { id: 'neutral', name: '산과 염기 중화하기', hint: '염산에 수산화나트륨 용액을 떨어뜨려 보세요.', check: (c) => c.any(/^neutral:/) },
     { id: 'precip', name: '노란 앙금 만들기', hint: '질산납 용액과 아이오딘화 칼륨 용액을 만나게 해 보세요.', check: (c) => c.count('S:PbI2') > 0 || c.count('S:AgI') > 0 || c.count('S:PbCrO4') > 0 },
     { id: 'flame4', name: '불꽃색 네 가지 보기', hint: '여러 금속의 염화물을 불꽃에 넣어 보세요.', check: (c) => c.ids().filter((k) => /^flame:/.test(k)).length >= 4 },
@@ -3911,7 +4124,7 @@ Og|오가네손|294|noble|7|50|80|1`;
   .search { flex:1; min-width:0; width:100%; min-height:36px; padding:0 10px; font:inherit; color:inherit; background:var(--sl-bg); border:1px solid var(--sl-line); border-radius:6px; }
   .cats { flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; margin-bottom:2px; scrollbar-width:thin; }
   .cats .chip { min-height:30px; font-size:12px; padding:0 8px; flex:none; white-space:nowrap; }
-  .tools { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; }
+  .tools { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:4px; }
   .tools .chip { min-height:32px; font-size:12px; padding:0 2px; justify-content:center; white-space:nowrap; }
   .favs { margin:2px 0 8px; }
   .favs .chip { min-height:30px; font-size:12px; padding:0 7px; }
@@ -3936,11 +4149,12 @@ Og|오가네손|294|noble|7|50|80|1`;
   const STATE_NAME = { solid: '고체', powder: '고체(가루)', liquid: '액체', gas: '기체' };
   // 예전 문서에 쓰인 실험 이름도 받아 준다.
   const SCENE_ALIAS = { sodium: 'alkali', boil: 'water' };
-  const TOOLS = [['inspect', '관찰'], ['stir', '섞기'], ['heat', '가열'], ['cool', '냉각'], ['erase', '지우개'], ['ball', '공'], ['probe', '온도계']];
+  const TOOLS = [['inspect', '관찰'], ['pick', '스포이트'], ['fill', '채우기'], ['vessel', '그릇'], ['stir', '섞기'], ['heat', '가열'], ['cool', '냉각'], ['erase', '지우개'], ['ball', '공'], ['probe', '온도계']];
   const BRUSH_TOOLS = ['mat', 'erase', 'heat', 'cool', 'stir'];
   // 자주 쓰는 재료. 재료 탭 맨 위에 늘 보인다.
   const FAVORITES = ['water', 'ice', 'fire', 'salt', 'hcl', 'naoh', 'vinegar', 'S:NaHCO3', 'Na:s', 'Mg:s', 'iron', 'copper', 'H2O2', 'sugar', 'oil', 'wood'];
-  const TOOL_HINT = { inspect: '칸을 누르면 정보 탭에 자세히 나옵니다', erase: '공기로 지웁니다', heat: '누르고 있는 동안 데웁니다', cool: '누르고 있는 동안 식힙니다', ball: '끌었다 놓으면 던집니다', probe: '누른 곳의 온도를 측정 탭에 그립니다', stir: '누르고 문지르면 가루·액체·기체가 섞입니다(고체·고정 칸은 그대로)' };
+  const TOOL_HINT = { inspect: '칸을 누르면 정보 탭에 자세히 나옵니다', erase: '공기로 지웁니다', heat: '누르고 있는 동안 데웁니다', cool: '누르고 있는 동안 식힙니다', ball: '끌었다 놓으면 던집니다', probe: '누른 곳의 온도를 측정 탭에 그립니다', stir: '누르고 문지르면 가루·액체·기체가 섞입니다(고체·고정 칸은 그대로)',
+    pick: '실험 공간의 칸을 누르면 그 물질을 재료로 고릅니다', fill: '그릇 안을 누르면 마지막으로 고른 재료를 누른 높이까지 채웁니다', vessel: '끌어서 유리 그릇(바닥과 양쪽 벽)을 만듭니다' };
   const GRAVITY = [['무중력', 0], ['달', 1.62], ['화성', 3.71], ['지구', 9.81], ['목성', 24.79]];
   const fmt = (v, d) => (v == null || !isFinite(v) ? '-' : v.toFixed(d));
 
@@ -3956,6 +4170,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.speed = 1;
       this.acc = 0;
       this.tool = { kind: 'mat', id: 'Na:s' };
+      this.matId = 'Na:s'; // 채우기 도구가 쓸 마지막 재료
       this.paletteCat = 'element';
       this.query = '';
       this.anchored = false;
@@ -4130,7 +4345,7 @@ Og|오가네손|294|noble|7|50|80|1`;
         const b = e.target.closest('button');
         if (!b) return;
         if (b.classList.contains('more')) { this.setTab('info'); return; }
-        if (b.dataset.mat) this.tool = { kind: 'mat', id: b.dataset.mat };
+        if (b.dataset.mat) { this.tool = { kind: 'mat', id: b.dataset.mat }; this.matId = b.dataset.mat; }
         else if (b.dataset.tool) this.tool = { kind: b.dataset.tool };
         else if (b.dataset.cat) { this.paletteCat = b.dataset.cat; this.query = ''; pane.querySelector('.search').value = ''; this.renderPalette(); }
         this.markSelection();
@@ -4195,7 +4410,8 @@ Og|오가네손|294|noble|7|50|80|1`;
         picked.innerHTML = `<i style="background:${d.color}"></i><span class="nm"><b>${d.name}</b><small>${d.formula}</small></span><button class="more" title="설명과 함께 떨어뜨려 볼 재료">정보 ›</button>`;
       } else {
         const t = TOOLS.find(([k]) => k === this.tool.kind);
-        picked.innerHTML = `<span class="nm"><b>${t ? t[1] : ''}</b><small>${TOOL_HINT[this.tool.kind] || ''}</small></span>`;
+        const fillMat = this.tool.kind === 'fill' ? this.world.data.defs[this.world.data.idOf[this.matId]] : null;
+        picked.innerHTML = `${fillMat ? `<i style="background:${fillMat.color}"></i>` : ''}<span class="nm"><b>${t ? t[1] : ''}${fillMat ? ' · ' + fillMat.name : ''}</b><small>${TOOL_HINT[this.tool.kind] || ''}</small></span>`;
       }
     }
 
@@ -4223,7 +4439,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       pane.onclick = (e) => {
         const b = e.target.closest('[data-mat]');
         if (!b) return;
-        this.tool = { kind: 'mat', id: b.dataset.mat };
+        this.tool = { kind: 'mat', id: b.dataset.mat }; this.matId = b.dataset.mat;
         this.renderPane();
       };
     }
@@ -4332,7 +4548,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       e.currentTarget.setPointerCapture(e.pointerId);
       this.$('.hint').hidden = true;
       this.$('.root').focus({ preventScroll: true });
-      if (BRUSH_TOOLS.includes(this.tool.kind) || this.tool.kind === 'ball') this.remember();
+      if (BRUSH_TOOLS.includes(this.tool.kind) || this.tool.kind === 'ball' || this.tool.kind === 'vessel') this.remember();
       const c = this.cellAt(e);
       this.hover = c;
       const hit = this.bodyAt(c);
@@ -4342,9 +4558,23 @@ Og|오가네손|294|noble|7|50|80|1`;
         return;
       }
       this.pointer = { start: c, last: c, cur: c };
+      if (this.tool.kind === 'pick') {
+        const info = this.world.inspect(c.x, c.y);
+        this.pointer = null;
+        if (info && info.def.id !== 'air') { this.tool = { kind: 'mat', id: info.def.id }; this.matId = info.def.id; this.setTab('materials'); }
+        return;
+      }
+      if (this.tool.kind === 'fill') {
+        this.pointer = null;
+        this.remember();
+        const n = this.world.fillLevel(c.x, c.y, this.world.data.idOf[this.matId]);
+        this.dirty = true;
+        if (!n) { this.history.pop(); this.toast({ name: '채울 수 없음', eq: '벽으로 둘러싸인 그릇 안을 눌러 주세요(너무 넓으면 채우지 않습니다).' }); }
+        return;
+      }
       if (this.tool.kind === 'inspect') { this.inspected = this.world.inspect(c.x, c.y); this.pointer = null; this.setTab('info'); return; }
       if (this.tool.kind === 'probe') { this.world.setProbe(c.x, c.y); this.graphMode = 'T'; this.pointer = null; if (this.tab === 'physics') this.renderPane(); return; }
-      if (this.tool.kind !== 'ball') this.applyBrush(c.x, c.y);
+      if (this.tool.kind !== 'ball' && this.tool.kind !== 'vessel') this.applyBrush(c.x, c.y);
     }
     onMove(e) {
       const c = this.cellAt(e);
@@ -4353,7 +4583,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       const p = this.pointer;
       if (!p) return;
       p.cur = c;
-      if (this.tool.kind === 'ball') return;
+      if (this.tool.kind === 'ball' || this.tool.kind === 'vessel') return;
       // 빠르게 그어도 끊기지 않도록 사이 칸을 채운다.
       const steps = Math.max(1, Math.max(Math.abs(c.x - p.last.x), Math.abs(c.y - p.last.y)));
       for (let n = 1; n <= steps; n++) {
@@ -4365,6 +4595,12 @@ Og|오가네손|294|noble|7|50|80|1`;
       const p = this.pointer;
       this.pointer = null;
       if (e.pointerType !== 'mouse') this.hover = null;
+      if (p && this.tool.kind === 'vessel') {
+        const c = this.cellAt(e);
+        if (!this.world.vessel(p.start.x, p.start.y, c.x, c.y, 'glass')) this.history.pop();
+        this.dirty = true;
+        return;
+      }
       if (!p || this.tool.kind !== 'ball') return;
       const w = this.world, dx = w.dx, c = this.cellAt(e);
       const b = w.addBody({
@@ -4507,6 +4743,10 @@ Og|오가네손|294|noble|7|50|80|1`;
         const sx = (p.start.x + 0.5) * cell, sy = (p.start.y + 0.5) * cell;
         ctx.strokeStyle = '#5cc8b8'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(sx, sy, this.ballR * s, 0, 7); ctx.moveTo(sx, sy); ctx.lineTo((p.cur.x + 0.5) * cell, (p.cur.y + 0.5) * cell); ctx.stroke();
+      } else if (p && this.tool.kind === 'vessel') {
+        const x0 = Math.min(p.start.x, p.cur.x), x1 = Math.max(p.start.x, p.cur.x) + 1, y0 = Math.min(p.start.y, p.cur.y), y1 = Math.max(p.start.y, p.cur.y) + 1;
+        ctx.strokeStyle = '#9fd6d8'; ctx.lineWidth = Math.max(2, cell * 2); ctx.beginPath();
+        ctx.moveTo(x0 * cell, y0 * cell); ctx.lineTo(x0 * cell, y1 * cell); ctx.lineTo(x1 * cell, y1 * cell); ctx.lineTo(x1 * cell, y0 * cell); ctx.stroke();
       } else if (this.hover && BRUSH_TOOLS.includes(this.tool.kind)) {
         ctx.strokeStyle = { heat: '#ff9a5c', cool: '#7cc4ff', stir: '#c9a8ff', erase: '#ff7a7a' }[this.tool.kind] || '#ffffff99'; ctx.lineWidth = 1;
         if (this.tool.kind === 'stir') ctx.setLineDash([4, 3]);
@@ -4652,7 +4892,7 @@ Og|오가네손|294|noble|7|50|80|1`;
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,effects?:boolean,storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.13.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.14.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);

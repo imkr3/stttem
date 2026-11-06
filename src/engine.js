@@ -575,7 +575,43 @@
       this.flyers = [];
     }
 
-    // ---- 섞기 도구 ----
+    // ---- 채우기 도구 ----
+    // 누른 칸과 같은 물질(보통 공기)로 이어진 칸 가운데 누른 높이보다 아래(같은 높이 포함)만 m으로 채운다.
+    // 그릇 안을 누르면 그 높이까지 액체가 찬다. 열린 곳이라 너무 넓으면 채우지 않고 0을 돌려준다.
+    fillLevel(cx, cy, m, limit) {
+      if (!this.inside(cx, cy)) return 0;
+      const { w, mat } = this, start = this.index(cx, cy), from = mat[start];
+      if (from === m) return 0;
+      const max = limit || 6000, seen = new Uint8Array(mat.length), list = [start], stack = [start];
+      seen[start] = 1;
+      while (stack.length) {
+        const i = stack.pop(), x = i % w, y = (i / w) | 0;
+        const nb = [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > cy ? i - w : -1, i + w < mat.length ? i + w : -1];
+        for (const j of nb) {
+          if (j < 0 || seen[j] || mat[j] !== from || this.anchor[j] && this.data.state[from] !== GAS) continue;
+          seen[j] = 1; list.push(j); stack.push(j);
+          if (list.length > max) return 0;
+        }
+      }
+      const s = this.data.state[m];
+      for (const i of list) { this.setCell(i, m, this.data.t0[m]); if (s === GAS) this.gas[i] = 1; }
+      return list.length;
+    }
+
+    // ---- 그릇 도구 ----
+    // 두 점을 모서리로 하는 U자 모양 그릇(바닥과 양쪽 벽, 두께 2칸)을 고정된 칸으로 만든다.
+    vessel(x0, y0, x1, y1, id) {
+      const m = this.data.idOf[id || 'glass'];
+      const l = Math.max(0, Math.min(x0, x1)), r = Math.min(this.w - 1, Math.max(x0, x1));
+      const t = Math.max(0, Math.min(y0, y1)), b = Math.min(this.h - 1, Math.max(y0, y1));
+      if (r - l < 6 || b - t < 4) return false;
+      const put = (x, y) => { const i = this.index(x, y); this.setCell(i, m, this.data.t0[m]); this.anchor[i] = 1; };
+      for (let y = t; y <= b; y++) { put(l, y); put(l + 1, y); put(r, y); put(r - 1, y); }
+      for (let x = l; x <= r; x++) { put(x, b); put(x, b - 1); }
+      return true;
+    }
+
+    // ---- 섞기 도구 ----    // ---- 섞기 도구 ----
     // 원 안의 움직일 수 있는 칸(가루·액체·기체)을 무작위로 바꿔 섞는다. 고정된 칸과 고체는 그대로.
     stir(cx, cy, r, amount) {
       const cells = [];

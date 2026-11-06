@@ -120,6 +120,14 @@ test('표로 지정한 특수 반응식의 원자 수가 맞음', () => {
 
 // ---- 반응이 일어나야 하는 경우 ----
 const SHOULD = [
+  // 0.14.0에서 채운 반응
+  ['베릴륨+염산', 'Be', 'hcl', null, 'acid:Be:Cl'], ['란타넘+질산', 'La', 'HNO3aq', null, 'hno3:La:NO'], ['타이타늄+플루오린화수소산', 'Ti', 'A:acid:HF', null, 'acid:Ti:F'],
+  ['아연+레몬즙', 'Zn', 'A:citric', null, 'citric-metal:Zn'], ['탄산마그네슘+레몬즙', 'S:MgCO3', 'A:citric', null, 'citric-co3:MgCO3'],
+  ['과망가니즈산+이산화황', 'A:KMnO4', 'SO2:g', null, 'kmno4_so2'], ['다이크로뮴산+이산화황', 'A:K2Cr2O7', 'SO2:g', null, 'dichromate_so2'], ['아이오딘 용액+이산화황', 'A:KI3', 'SO2:g', null, 'i_so2'],
+  ['과산화수소+황화수소', 'H2O2', 'H2S:g', null, 'h2o2_h2s'], ['염소+철(II)', 'Cl:g', 'A:FeSO4', null, 'hal_fe2:Cl:g'], ['표백제+아이오딘화칼륨', 'A:NaClO', 'A:KI', null, 'naclo_ki'],
+  ['오존+아이오딘화칼륨', 'O3:g', 'A:KI', null, 'o3_ki'], ['암모니아+브로민화수소', 'NH3', 'HBrg:g', null, 'nh3_hbr'], ['이산화질소+물', 'NO2:g', 'water', null, 'no2_water'],
+  ['황동+염산', 'brass:s', 'hcl', null, 'dezinc'], ['땜납+질산', 'solder:s', 'HNO3', null, 'alloy_hno3'], ['플루오린+나무', 'F:g', 'wood', null, 'f2_burn'], ['인+염소', 'P:s', 'Cl:g', null, 'p_halogen'],
+  ['칼륨+에탄올', 'K', 'C2H5OH', null, 'k_ethanol'], ['우유+에탄올', 'milk', 'C2H5OH', null, 'milk_denature'], ['팔라듐+왕수', 'Pd', 'aquaregia', null, 'pd_aqua'], ['설탕+진한 질산(가열)', 'sugar', 'HNO3', 80, 'hno3_sugar'],
   ['나트륨+물', 'Na', 'water', null, 'water:Na'], ['칼륨+물', 'K', 'water', null, 'water:K'], ['칼슘+물', 'Ca', 'water', null, 'water:Ca'],
   ['아연+염산', 'Zn', 'hcl', null, 'acid:Zn:Cl'], ['철+묽은 황산', 'Fe', 'H2SO4aq', null, 'acid:Fe:SO4'], ['마그네슘+식초', 'Mg', 'CH3COOHaq', null, 'acid:Mg:CH3COO'],
   ['구리+진한 질산', 'Cu', 'HNO3', null, 'hno3:Cu:NO2'], ['은+묽은 질산', 'Ag', 'HNO3aq', null, 'hno3:Ag:NO'], ['구리+진한 황산(고온)', 'Cu', 'H2SO4', 150, 'h2so4c:Cu'],
@@ -202,6 +210,7 @@ test(`반응이 일어나야 하는 ${SHOULD.length}쌍`, () => {
 
 // ---- 반응이 일어나지 않아야 하는 경우 ----
 const SHOULD_NOT = [
+  ['타이타늄+찬 염산 (산화막)', 'Ti', 'hcl'], ['타이타늄+진한 질산', 'Ti', 'HNO3'], ['베네딕트+설탕 (환원당 아님)', 'benedict', 'sugar'],
   ['구리+염산 (수소보다 약함)', 'Cu', 'hcl'], ['은+염산', 'Ag', 'hcl'], ['금+진한 질산', 'Au', 'HNO3'], ['금+물', 'Au', 'water'], ['백금+염산', 'Pt', 'hcl'], ['헬륨+나트륨', 'He', 'Na'], ['아르곤+마그네슘', 'Ar', 'Mg'],
   ['구리+황산철 (철이 더 활발)', 'Cu', 'A:FeSO4'], ['철+염화아연', 'Fe', 'A:ZnCl2'], ['질산칼륨+소금물 (앙금 없음)', 'A:KNO3', 'brine'], ['황산바륨+물 (불용성)', 'S:BaSO4', 'water'], ['염화은+물', 'S:AgCl', 'water'], ['기름+물', 'oil', 'water'], ['브로민+염화칼륨 (염소가 더 강함)', 'Br', 'A:KCl'], ['철+차가운 물(산소 차단)', 'iron', 'water'],
   ['석회암 저온', 'limestone', 'air'], ['메테인 저온', 'CH4', 'air'], ['마그네슘 저온', 'Mg', 'air'],
@@ -317,8 +326,8 @@ test('세 물질이 있어야 하는 반응: 백금 촉매, 강철의 녹', () =
 });
 test('반응이 거의 없던 드문 화합물을 정리함', () => {
   const ids = new Set(SandLab.MATERIALS.map((d) => d.id));
-  for (const id of ['S:LaCl3', 'A:Nd(NO3)3', 'S:TlCl', 'S:BiCl3', 'S:ZrCl4', 'S:CuI2', 'S:FeI3', 'S:Fe2S3', 'S:BeSO4']) assert(!ids.has(id), id + ' 남아 있음');
-  for (const id of ['S:La2O3', 'S:La(OH)3', 'S:Sb2O3', 'S:TiCl4', 'S:AuCl3']) assert(ids.has(id), id + ' 없음');
+  for (const id of ['A:Nd(NO3)3', 'S:TlCl', 'S:BiCl3', 'S:ZrCl4', 'S:CuI2', 'S:FeI3', 'S:Fe2S3']) assert(!ids.has(id), id + ' 남아 있음');
+  for (const id of ['S:La2O3', 'S:La(OH)3', 'S:Sb2O3', 'S:TiCl4', 'S:AuCl3', 'S:LaCl3', 'S:BeSO4']) assert(ids.has(id), id + ' 없음');
   return `물질 전체 ${ids.size}종`;
 });
 test('핵분열: 임계 질량, 감속재, 제어봉', () => {
@@ -811,6 +820,17 @@ test('고체 덩어리: 나무는 물에 뜨고 돌은 가라앉고, 높이 떨�
   assert(shards > 10, `유리 조각 ${shards}`);
   assert(rest[1] === 143 || rest[1] === 144, `바닥의 나무 y${rest}`);
   return `나무 y${wood[0]}~${wood[1]}(수면 약 100), 돌 바닥 ${stone[1]}, 유리 조각 ${shards}칸`;
+});
+test('도구: 그릇 만들기와 높이까지 채우기', () => {
+  const w = fresh();
+  assert(w.vessel(80, 90, 160, 144, 'glass'), '그릇 실패');
+  const water = w.data.idOf.water;
+  const n = w.fillLevel(120, 110, water);
+  assert(n > 2000 && n < 3000, `채운 칸 ${n}`);
+  let top = 999; for (let i = 0; i < w.mat.length; i++) if (w.mat[i] === water) top = Math.min(top, (i / w.w) | 0);
+  assert(top === 110, `수면 y=${top}`);
+  assert(w.fillLevel(120, 20, water) === 0, '열린 공간도 채움');
+  return `그릇 안 ${n}칸, 수면 y=${top}`;
 });
 test('성능: 틱당 시간', () => {
   const out = [];

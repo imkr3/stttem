@@ -20,6 +20,13 @@
     });
   };
 
+  // 고정하지 않은 고체 덩어리(떨어지고 뜨는 칸)를 놓는다.
+  const lump = (w, id, x0, y0, x1, y1, T) => {
+    w.rect(id, x0, y0, x1, y1, T);
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) w.loose[w.index(x, y)] = 1;
+    w.looseN++;
+  };
+
   SL.SCENES = [
     {
       id: 'free', name: '빈 실험실', tab: 'materials',
@@ -396,6 +403,76 @@
       },
     },
     {
+      id: 'so2test', name: '이산화황으로 색 지우기', tab: 'codex',
+      desc: '공기보다 무거운 이산화황이 세 비커로 가라앉습니다. 이산화황은 환원제라서 보라색 과망가니즈산 칼륨은 무색, 주황색 다이크로뮴산 칼륨은 초록, 갈색 아이오딘 용액은 무색이 됩니다. 이산화황을 확인하는 고전적인 방법입니다.',
+      setup(w) {
+        air(w);
+        beakers(w, [
+          (t) => { w.rect('A:KMnO4', t.l, 110, t.r, t.b); w.rect('SO2:g', t.l, 70, t.r, 100); },
+          (t) => { w.rect('A:K2Cr2O7', t.l, 110, t.r, t.b); w.rect('SO2:g', t.l, 70, t.r, 100); },
+          (t) => { w.rect('A:KI3', t.l, 110, t.r, t.b); w.rect('SO2:g', t.l, 70, t.r, 100); },
+        ]);
+      },
+    },
+    {
+      id: 'chlorine', name: '염소의 산화력', tab: 'codex',
+      desc: '황록색 염소 기체가 네 용액으로 가라앉습니다. 왼쪽부터: 연두색 철(II) 이온이 노란 갈색 철(III) 이온으로, 황화 이온이 노란 황 앙금으로, 아이오딘화 이온이 갈색 아이오딘으로, 브로민화 이온이 주황색 브로민으로 산화됩니다. 염소는 약한 할로젠을 밀어냅니다.',
+      setup(w) {
+        air(w);
+        beakers(w, [
+          (t) => { w.rect('A:FeSO4', t.l, 110, t.r, t.b); w.rect('Cl:g', t.l, 70, t.r, 100); },
+          (t) => { w.rect('A:Na2S', t.l, 110, t.r, t.b); w.rect('Cl:g', t.l, 70, t.r, 100); },
+          (t) => { w.rect('A:KI', t.l, 110, t.r, t.b); w.rect('Cl:g', t.l, 70, t.r, 100); },
+          (t) => { w.rect('A:NaBr', t.l, 110, t.r, t.b); w.rect('Cl:g', t.l, 70, t.r, 100); },
+        ]);
+      },
+    },
+    {
+      id: 'alloys', name: '합금과 산', tab: 'codex',
+      desc: '합금은 섞인 금속마다 다르게 반응합니다. 황동(구리+아연)은 염산에 아연만 녹아 붉은 구리가 남고(탈아연), 청동(구리+주석)과 땜납(주석+납)은 주석만 천천히 녹습니다. 오른쪽에서는 황동 속 아연이 황산구리 용액의 구리를 밀어냅니다.',
+      setup(w) {
+        air(w);
+        beakers(w, [
+          (t) => { w.rect('hcl', t.l, 110, t.r, t.b - 6); w.rect('brass:s', t.l + 6, t.b - 5, t.r - 6, t.b); },
+          (t) => { w.rect('hcl', t.l, 110, t.r, t.b - 6); w.rect('bronze:s', t.l + 6, t.b - 5, t.r - 6, t.b); },
+          (t) => { w.rect('hcl', t.l, 110, t.r, t.b - 6); w.rect('solder:s', t.l + 6, t.b - 5, t.r - 6, t.b); },
+          (t) => { w.rect('A:CuSO4', t.l, 110, t.r, t.b - 6); w.rect('brass:s', t.l + 6, t.b - 5, t.r - 6, t.b); },
+        ]);
+        w.setHeatBoost(200);
+      },
+      speed: 2,
+    },
+    {
+      id: 'lemon', name: '레몬즙(구연산)의 힘', tab: 'codex',
+      desc: '구연산은 약한 산이라 천천히 반응합니다. 왼쪽부터: 아연에서 수소 거품, 석회석(탄산칼슘)에서 이산화탄소 거품(물때 제거), 녹(산화철)이 녹아 없어짐, 베이킹소다와 만나 거품이 솟음. 식초·레몬으로 청소하는 원리입니다.',
+      setup(w) {
+        air(w);
+        beakers(w, [
+          (t) => { w.rect('A:citric', t.l, 105, t.r, t.b - 5); w.rect('Zn:s', t.l + 5, t.b - 4, t.r - 5, t.b); },
+          (t) => { w.rect('A:citric', t.l, 105, t.r, t.b - 5); w.rect('limestone', t.l + 5, t.b - 4, t.r - 5, t.b); },
+          (t) => { w.rect('A:citric', t.l, 105, t.r, t.b - 5); w.rect('S:Fe2O3', t.l + 5, t.b - 4, t.r - 5, t.b); },
+          (t) => { w.rect('A:citric', t.l, 115, t.r, t.b); w.rect('S:NaHCO3', t.l + 8, 85, t.r - 8, 92); },
+        ]);
+      },
+      speed: 2,
+    },
+    {
+      id: 'floatsink', name: '뜨는 덩어리, 가라앉는 덩어리', tab: 'physics',
+      desc: '받침 없는 고체는 한 덩어리로 떨어집니다. 물에 들어가면 밀어낸 물의 무게(부력)와 자기 무게를 비교해 나무는 뜨고 돌은 가라앉습니다(아르키메데스). 왼쪽 위의 유리판은 높은 곳에서 돌바닥에 떨어져 깨지고, 오른쪽의 뜨거운 유리(400°C)는 얼음에 닿아 열충격으로 깨집니다.',
+      setup(w) {
+        air(w);
+        w.rect('stone', 0, 146, 239, 149);
+        const t = tank(w, 'glass', 70, 180, 70, 142);
+        w.rect('water', t.l, 95, t.r, t.b);
+        lump(w, 'wood', 85, 30, 100, 38);
+        lump(w, 'stone', 120, 30, 130, 38);
+        lump(w, 'wood', 145, 50, 165, 53);
+        lump(w, 'glass', 15, 20, 40, 23);
+        w.rect('glass', 200, 136, 225, 145, 400, true);
+        w.rect('ice', 205, 110, 220, 118);
+      },
+    },
+    {
       id: 'density', name: '밀도 기둥', tab: 'materials',
       desc: '일부러 무거운 소금물을 위에, 기름을 아래에 넣었습니다. 밀도 순서대로 층이 나뉘는 과정을 보세요. 밀도 보기와 함께 쓰면 좋습니다.',
       setup(w) {
@@ -437,6 +514,9 @@
   // check(c): c.has(발견 id), c.any(정규식), c.count(물질 id), c.cells(물질 id, 조건). 발견 기록은 저장되므로 한 번 이루면 끝이다.
   // 사이트에서는 sandlab:challenge 이벤트로 진도·점수와 연결할 수 있다.
   SL.CHALLENGES = [
+    { id: 'so2', name: '이산화황으로 색 지우기', hint: '과망가니즈산 칼륨이나 다이크로뮴산 칼륨 용액에 이산화황을 넣어 보세요.', check: (c) => c.has('kmno4_so2') || c.has('dichromate_so2') },
+    { id: 'float', name: '물에 뜨는 나무', hint: "'고정'을 끄고 나무를 물 위 공중에 그려 보세요.", check: (c) => c.has('rigid_fall') },
+    { id: 'dezinc', name: '황동에서 아연만 녹이기', hint: '황동을 염산에 넣어 보세요.', check: (c) => c.has('dezinc') },
     { id: 'neutral', name: '산과 염기 중화하기', hint: '염산에 수산화나트륨 용액을 떨어뜨려 보세요.', check: (c) => c.any(/^neutral:/) },
     { id: 'precip', name: '노란 앙금 만들기', hint: '질산납 용액과 아이오딘화 칼륨 용액을 만나게 해 보세요.', check: (c) => c.count('S:PbI2') > 0 || c.count('S:AgI') > 0 || c.count('S:PbCrO4') > 0 },
     { id: 'flame4', name: '불꽃색 네 가지 보기', hint: '여러 금속의 염화물을 불꽃에 넣어 보세요.', check: (c) => c.ids().filter((k) => /^flame:/.test(k)).length >= 4 },
