@@ -67,7 +67,7 @@
           const n = 2 + (Math.random() * 3 | 0);
           for (let k = 0; k < n; k++) {
             const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4, sp = 0.3 + Math.random() * 0.9;
-            this.spark(e.x + 0.5, e.y + 0.5, Math.cos(a) * sp, Math.sin(a) * sp, 10 + Math.random() * 18, e.hot > 1500 ? [255, 250, 220] : [255, 190, 90]);
+            this.spark(e.x + 0.5, e.y + 0.5, Math.cos(a) * sp, Math.sin(a) * sp, 10 + Math.random() * 18, e.dust ? [190, 200, 205] : e.hot > 1500 ? [255, 250, 220] : [255, 190, 90]);
           }
         }
       }
@@ -82,21 +82,15 @@
       const W = this.world, g = W.g * W.dt * W.dt / W.dx * 0.5;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      if (this.glowCount && this.mode === 'normal' && this.effects) {
+      if (this.glowCount && this.mode === 'normal' && this.effects && !this.lite) {
+        // 빛나는 칸만 담은 작은 그림을 두 번 줄였다가 크게 늘려 흐리게 만든다. 흐림 필터보다 훨씬 가볍다(휴대폰).
         const cw = ctx.canvas.width, ch = ctx.canvas.height;
         ctx.imageSmoothingEnabled = true;
-        if (this.canFilter == null) { ctx.filter = 'blur(2px)'; this.canFilter = ctx.filter === 'blur(2px)'; ctx.filter = 'none'; }
-        if (this.canFilter) {
-          ctx.globalAlpha = 0.75; ctx.filter = `blur(${Math.max(2, cell * 2.2)}px)`;
-          ctx.drawImage(this.glowCanvas, 0, 0, cw, ch);
-          ctx.filter = 'none';
-        } else {
-          // filter가 없는 브라우저: 두 번 줄였다 키워 흐리게 만든다.
-          const h = this.half.getContext('2d'), q = this.quarter.getContext('2d');
-          h.clearRect(0, 0, this.half.width, this.half.height); h.drawImage(this.glowCanvas, 0, 0, this.half.width, this.half.height);
-          q.clearRect(0, 0, this.quarter.width, this.quarter.height); q.drawImage(this.half, 0, 0, this.quarter.width, this.quarter.height);
-          ctx.globalAlpha = 0.9; ctx.drawImage(this.quarter, 0, 0, cw, ch);
-        }
+        const hc = this.halfCtx || (this.halfCtx = this.half.getContext('2d')), qc = this.quarterCtx || (this.quarterCtx = this.quarter.getContext('2d'));
+        hc.clearRect(0, 0, this.half.width, this.half.height); hc.drawImage(this.glowCanvas, 0, 0, this.half.width, this.half.height);
+        qc.clearRect(0, 0, this.quarter.width, this.quarter.height); qc.drawImage(this.half, 0, 0, this.quarter.width, this.quarter.height);
+        ctx.globalAlpha = 0.85; ctx.drawImage(this.quarter, 0, 0, cw, ch);
+        ctx.globalAlpha = 0.5; ctx.drawImage(this.half, 0, 0, cw, ch);
         ctx.globalAlpha = 1;
       }
       for (const f of this.flashes) {
@@ -147,7 +141,8 @@
       } else {
         const air = W.AIR, defs = W.data.defs, st = W.data.state, w = W.w, gp = this.glowPx;
         let glow = 0;
-        gp.fill(0);
+        const lite = this.lite || !this.effects;
+        if (this.glowCount) gp.fill(0);
         for (let i = 0; i < n; i++) {
           const m = mat[i];
           if (m === air) { px[i] = rgba(16, 21, 27); continue; }
@@ -173,7 +168,7 @@
             r = flame[0] * f; g = flame[1] * f; b = flame[2] * f;
             gp[i] = rgba(r * 0.8, g * 0.8, b * 0.8); glow++;
             // 불꽃 위로 가끔 불티가 날린다.
-            if (defs[m].flame && Math.random() < 0.0025 && i >= w && mat[i - w] !== m) {
+            if (defs[m].flame && !lite && Math.random() < 0.0025 && i >= w && mat[i - w] !== m) {
               this.particles.length < 400 && this.particles.push({ x: i % w + Math.random(), y: (i / w | 0), vx: (Math.random() - 0.5) * 0.15, vy: -0.25 - Math.random() * 0.3, life: 25 + Math.random() * 35, max: 60, rgb: [255, 170 + (Math.random() * 60 | 0), 70], size: 0.7, float: true });
             }
           } else if (T[i] > 450) {

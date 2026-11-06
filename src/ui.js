@@ -153,6 +153,7 @@
       this.pointer = null;
       this.hover = null;
       this.cleanups = [];
+      this.stepMs = 2; this.drawMs = 2; this.budget = 12; this.dirty = true;
       this.touch = typeof matchMedia === 'function' && matchMedia('(hover: none)').matches;
       this.buildDom();
       this.renderer = new SL.Renderer(this.$('.grid'), this.world);
@@ -187,7 +188,7 @@
         </div>
         <div class="stage"><div class="frame"><canvas class="grid"></canvas><canvas class="over" aria-label="실험 공간"></canvas></div>
           <div class="scale" hidden></div><div class="toast" role="status"></div>
-          <div class="hint" hidden><div><b>재료를 고른 뒤 여기에 그려 보세요.</b><br>두 물질을 맞닿게 놓거나 섞기 도구로 문지르면 반응이 일어납니다.<br>가열·냉각 도구로 온도를 바꿀 수 있습니다.</div></div></div>
+          <div class="hint" hidden><div><b>재료를 고른 뒤 여기에 그려 보세요.</b><br>두 물질을 맞닿게 놓거나 섞기 도구로 문지르면 반응이 일어납니다.<br>가열·냉각 도구로 온도를 바꿀 수 있습니다.<br>공중에 그린 고체는 떨어집니다. 그 자리에 두려면 '고정'을 켜세요.</div></div></div>
         <div class="status">&nbsp;</div>
         <div class="side">
           <div class="tabs" role="tablist">${TABS.map(([id, n]) => `<button role="tab" data-tab="${id}">${n}</button>`).join('')}</div>
@@ -198,7 +199,7 @@
 
     bindEvents() {
       this.listen(this.$('.play'), 'click', () => this.setRunning(!this.running));
-      this.listen(this.$('.stepone'), 'click', () => { this.setRunning(false); this.world.step(); this.afterStep(); });
+      this.listen(this.$('.stepone'), 'click', () => { this.setRunning(false); this.world.step(); this.afterStep(); this.dirty = true; });
       this.listen(this.$('.restart'), 'click', () => this.loadScene(this.currentScene.id));
       this.listen(this.$('.undo'), 'click', () => this.undo());
       // 단축키는 실험실 안을 누른 뒤에만 받는다(사이트의 다른 단축키를 가로채지 않도록).
@@ -215,7 +216,7 @@
       this.listen(over, 'pointermove', (e) => this.onMove(e));
       this.listen(over, 'pointerup', (e) => this.onUp(e));
       this.listen(over, 'pointercancel', () => { this.pointer = null; });
-      this.listen(over, 'pointerleave', () => { this.hover = null; });
+      this.listen(over, 'pointerleave', () => { this.hover = null; this.hoverMoved = true; });
 
       const ro = new ResizeObserver(() => this.fit());
       ro.observe(this.$('.stage'));
@@ -233,7 +234,9 @@
       const f = this.$('.frame');
       f.style.width = Math.floor(this.world.w * s) + 'px';
       f.style.height = Math.floor(this.world.h * s) + 'px';
-      const over = this.$('.over'), dpr = Math.min(2, devicePixelRatio || 1);
+      // 덮개 캔버스는 선·불티만 그리므로 터치 기기에서는 해상도를 낮춰 부담을 줄인다.
+      const over = this.$('.over'), dpr = Math.min(this.touch ? 1.25 : 2, devicePixelRatio || 1);
+      this.dirty = true;
       over.width = Math.floor(this.world.w * s * dpr);
       over.height = Math.floor(this.world.h * s * dpr);
     }
@@ -245,10 +248,10 @@
       if (cb) cb.checked = !!v;
     }
 
-    setRunning(v) { this.running = v; this.$('.play').textContent = v ? '일시정지' : '재생'; }
+    setRunning(v) { this.running = v; this.dirty = true; this.$('.play').textContent = v ? '일시정지' : '재생'; }
 
     setView(v) {
-      this.renderer.mode = v;
+      this.renderer.mode = v; this.dirty = true;
       this.$('.view').value = v;
       const sc = this.$('.scale');
       sc.hidden = v === 'normal';
@@ -300,7 +303,7 @@
       const count = this.world.data.defs.length;
       pane.innerHTML = `<div class="chips tools">${TOOLS.map(([k, n]) => `<button class="chip" data-tool="${k}" title="${TOOL_HINT[k]}">${n}</button>`).join('')}</div>
         <div class="row compact"><label>붓 <input type="range" class="brush" min="1" max="16" value="${this.brush}"></label><span class="val">${this.brush}칸</span>
-          <label title="끄면 가루처럼 쌓이고, 켜면 놓은 자리에 덩어리로 고정됩니다." style="flex:none"><input type="checkbox" class="anchor" ${this.anchored ? 'checked' : ''}> 고정</label></div>
+          <label title="끄면: 가루는 쌓이고, 나무·유리·돌 같은 고체는 한 덩어리로 떨어져 물에 뜨거나 가라앉습니다(높이 떨어진 유리는 깨짐). 켜면: 그린 자리에 그대로 고정됩니다. 공중에 그릇이나 벽을 만들 때 켜세요." style="flex:none"><input type="checkbox" class="anchor" ${this.anchored ? 'checked' : ''}> 고정</label></div>
         <input type="search" class="search" placeholder="물질 ${count}종 검색 (예: 황산, Cu, 소금)" aria-label="물질 검색" value="${this.query}">
         <div class="chips cats" style="margin-top:6px">${SL.CATEGORIES.map(([k, n]) => `<button class="chip" data-cat="${k}">${n}</button>`).join('')}</div>
         <div class="picked"></div>
@@ -505,6 +508,7 @@
     undo() {
       if (!this.history || !this.history.length) return;
       this.world.restoreSnapshot(this.history.pop());
+      this.dirty = true;
       this.$('.undo').disabled = !this.history.length;
     }
     onDown(e) {
@@ -527,6 +531,7 @@
     }
     onMove(e) {
       const c = this.cellAt(e);
+      this.hoverMoved = true;
       this.hover = c;
       const p = this.pointer;
       if (!p) return;
@@ -552,6 +557,7 @@
       w.select(b);
     }
     applyBrush(x, y) {
+      this.dirty = true;
       const w = this.world, t = this.tool, r = this.brush - 1;
       if (t.kind === 'mat') w.paint(x, y, r, w.data.idOf[t.id], true, this.anchored);
       else if (t.kind === 'erase') {
@@ -571,18 +577,35 @@
       if (!this.visible) return;
       // 누르고 있는 동안 가열/냉각을 계속한다.
       if (this.pointer && ['heat', 'cool', 'stir'].includes(this.tool.kind)) this.applyBrush(this.pointer.cur.x, this.pointer.cur.y);
+      let n = 0;
       if (this.running) {
         this.acc += real * this.speed;
-        let n = 0;
-        while (this.acc >= this.world.dt && n < 4) { this.world.step(); this.acc -= this.world.dt; n++; }
-        if (n === 4) this.acc = 0; // 느린 기기에서는 시간을 늦춘다.
+        // 한 프레임에 쓸 계산 시간을 정해 두고, 그 안에서만 틱을 돌린다. 느린 기기에서는 몰아서 계산하다
+        // 화면이 멈추는 대신 시뮬레이션이 조금 느리게 흐른다.
+        const maxSteps = Math.max(1, Math.min(4, Math.floor(this.budget / Math.max(0.3, this.stepMs))));
+        while (this.acc >= this.world.dt && n < maxSteps) {
+          const t0 = performance.now();
+          this.world.step();
+          this.stepMs = this.stepMs * 0.9 + (performance.now() - t0) * 0.1;
+          this.acc -= this.world.dt; n++;
+        }
+        if (n === maxSteps && this.acc >= this.world.dt) this.acc = 0;
         if (n) this.afterStep();
       }
+      // 바뀐 것이 없으면 다시 그리지 않는다(120Hz 화면, 일시정지 중).
+      const fxBusy = this.renderer.particles.length || this.renderer.flashes.length || this.renderer.shake;
+      if (!n && !this.dirty && !this.pointer && !fxBusy && !this.hoverMoved) return;
+      this.dirty = false; this.hoverMoved = false;
+      const t1 = performance.now();
       this.renderer.draw();
       this.drawOverlay();
-      this.$('.clock').textContent = fmt(this.world.time, 2) + '초';
+      const clock = fmt(this.world.time, 2) + '초';
+      if (clock !== this.clockText) { this.$('.clock').textContent = clock; this.clockText = clock; }
       this.updateStatus();
       if (this.tab === 'physics') this.drawPlot();
+      // 그리기가 계속 오래 걸리면 빛 번짐처럼 무거운 효과를 줄인다.
+      this.drawMs = this.drawMs * 0.95 + (performance.now() - t1) * 0.05;
+      this.renderer.lite = this.drawMs + this.stepMs * n > 22;
     }
 
     afterStep() {
@@ -602,7 +625,10 @@
 
     checkChallenges() {
       const w = this.world, d = w.data;
-      const count = (id) => { const k = d.idOf[id]; if (k == null) return 0; let n = 0; for (let i = 0; i < w.mat.length; i++) if (w.mat[i] === k) n++; return n; };
+      // 칸 수는 한 번만 세어 둔다(과제마다 격자 전체를 다시 돌지 않도록).
+      const hist = new Uint32Array(d.defs.length);
+      for (let i = 0; i < w.mat.length; i++) hist[w.mat[i]]++;
+      const count = (id) => { const k = d.idOf[id]; return k == null ? 0 : hist[k]; };
       const ctx = {
         has: (id) => this.codex.has(id), ids: () => [...this.codex.keys()], any: (re) => [...this.codex.keys()].some((k) => re.test(k)),
         count, cells: (id, f) => { const k = d.idOf[id]; let n = 0; for (let i = 0; i < w.mat.length; i++) if (w.mat[i] === k && f(w.T[i])) n++; return n; },
@@ -642,7 +668,7 @@
       ctx.clearRect(0, 0, over.width, over.height);
       this.renderer.drawFx(ctx, cell);
       const sh = this.renderer.shake;
-      this.$('.frame').style.transform = sh ? `translate(${((Math.random() - 0.5) * sh).toFixed(1)}px,${((Math.random() - 0.5) * sh).toFixed(1)}px)` : '';
+      if (sh || this.shaking) { this.$('.frame').style.transform = sh ? `translate(${((Math.random() - 0.5) * sh).toFixed(1)}px,${((Math.random() - 0.5) * sh).toFixed(1)}px)` : ''; this.shaking = !!sh; }
       for (const b of w.bodies) {
         if (b === w.selected && b.trail.length > 2) {
           ctx.strokeStyle = '#ffffff66'; ctx.lineWidth = 1.5; ctx.beginPath();
@@ -809,7 +835,7 @@
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,effects?:boolean,storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.12.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.13.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);
@@ -826,7 +852,7 @@
       setView: (v) => app.setView(v),
       setEffects: (on) => app.setEffects(on),
       save: () => app.world.toJSON(),
-      restore: (data) => app.world.fromJSON(data),
+      restore: (data) => { app.world.fromJSON(data); app.dirty = true; },
       discoveries: () => [...app.codex.values()],
       scenes: () => SL.SCENES.map((s) => ({ id: s.id, name: s.name, desc: s.desc })),
       destroy: () => app.destroy(),

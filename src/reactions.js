@@ -929,6 +929,8 @@
     // ---- 가열·냉각으로 일어나는 변화 ----
     { id: 'glass_shock', name: '유리의 열 충격', kind: 'physical', eq: '뜨거운 유리 + 찬물 → 깨진 유리', a: 'glass', b: 'water', minT: 250, prob: 0.2, toA: 'glassshards', toB: 'steam', note: '바깥만 급히 식어 줄어들면서 안쪽과 어긋나 유리가 깨집니다. 내열 유리는 덜 늘어나서 잘 견딥니다.' },
     { id: 'quench', name: '강철 담금질', kind: 'physical', eq: '달군 강철(750°C 이상) + 물 → 단단한 강철', a: 'steel:s', b: 'water', minT: 700, prob: 0.3, toA: 'steel:hard', toB: 'steam', note: '대장간에서 칼을 단단하게 만드는 방법입니다. 탄소가 철 결정 속에 갇혀 단단해집니다.' },
+    { id: 'glass_shock', name: '유리의 열 충격', kind: 'physical', eq: '뜨거운 유리(200°C 이상) + 얼음 → 깨진 유리', a: 'glass', b: 'ice', minT: 200, prob: 0.08, toA: 'glassshards', toB: 'water', note: '겉면만 갑자기 식어 줄어들면 아직 뜨거운 속과 크기가 달라져 금이 갑니다.' },
+    { id: 'fire_setting', name: '불 지르기 채굴(열충격)', kind: 'physical', eq: '달군 바위(400°C 이상) + 찬물 → 돌 부스러기', a: 'stone', b: 'water', minT: 400, prob: 0.03, toA: 'gravel', toB: 'steam', note: '옛 광부들은 바위를 불로 달군 뒤 찬물을 끼얹어 갈라지게 했습니다. 겉과 속의 팽창 차이 때문에 바위에 금이 갑니다.' },
     { id: 'quench', name: '강철 담금질', kind: 'physical', eq: '달군 강철(750°C 이상) + 물 → 단단한 강철', a: 'steel:s', b: 'steam', minT: 700, prob: 0.2, toA: 'steel:hard', toB: null, note: '대장간에서 칼을 단단하게 만드는 방법입니다. 탄소가 철 결정 속에 갇혀 단단해집니다.' },
     { id: 'plastic_sulfur', name: '고무상 황 만들기', kind: 'physical', eq: '진한 액체 황 + 찬물 → 고무상 황', a: 'S:l:dark', b: 'water', prob: 0.3, toA: 'S:plastic', toB: 'steam', note: '긴 사슬 모양의 황이 결정을 만들 틈 없이 굳어 고무처럼 늘어납니다.' },
     { id: 'iodine_sublime', name: '아이오딘의 승화', kind: 'physical', eq: 'I₂(s) → I₂(g)', a: 'I:s', b: 'air', minT: 50, prob: 0.01, toA: 'I:vapor', note: '아이오딘은 녹기 전에도 보라색 증기로 많이 날아갑니다. 데울수록 빠릅니다.' },

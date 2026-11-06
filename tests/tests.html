@@ -796,6 +796,22 @@ test('수압: 깊을수록 압력이 높고 끓는점이 오름', () => {
   assert(b > 102 && b < 104, `끓는점 ${b}`);
   return `바닥 ${p.toFixed(3)}기압, 끓는점 ${b.toFixed(1)}°C`;
 });
+test('고체 덩어리: 나무는 물에 뜨고 돌은 가라앉고, 높이 떨어진 유리는 깨짐', () => {
+  const w = fresh();
+  w.rect('glass', 0, 145, 239, 149, null, true); w.rect('glass', 100, 80, 101, 144, null, true); w.rect('glass', 200, 80, 201, 144, null, true);
+  w.rect('water', 102, 100, 199, 144);
+  w.paint(120, 40, 4, w.data.idOf.wood, false, false); w.paint(170, 40, 3, w.data.idOf.stone, false, false); w.paint(40, 30, 3, w.data.idOf.glass, false, false);
+  w.paint(60, 141, 2, w.data.idOf.wood, false, false); // 바닥에 놓인 것은 그대로
+  const span = (id, x0, x1) => { const k = w.data.idOf[id]; let lo = 999, hi = -1; for (let i = 0; i < w.mat.length; i++) { const x = i % w.w; if (w.mat[i] === k && x >= x0 && x <= x1) { const y = (i / w.w) | 0; lo = Math.min(lo, y); hi = Math.max(hi, y); } } return [lo, hi]; };
+  run(w, 6);
+  const wood = span('wood', 102, 199), stone = span('stone', 102, 199), rest = span('wood', 50, 70);
+  let shards = 0; for (const m of w.mat) if (m === w.data.idOf.glassshards) shards++;
+  assert(wood[0] < 100 && wood[1] > 100 && wood[1] < 110, `나무 y${wood}`);
+  assert(stone[1] === 144, `돌 y${stone}`);
+  assert(shards > 10, `유리 조각 ${shards}`);
+  assert(rest[1] === 143 || rest[1] === 144, `바닥의 나무 y${rest}`);
+  return `나무 y${wood[0]}~${wood[1]}(수면 약 100), 돌 바닥 ${stone[1]}, 유리 조각 ${shards}칸`;
+});
 test('성능: 틱당 시간', () => {
   const out = [];
   for (const id of ['volcano', 'precip', 'furnace']) {

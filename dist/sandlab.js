@@ -1715,6 +1715,8 @@ Og|오가네손|294|noble|7|50|80|1`;
     // ---- 가열·냉각으로 일어나는 변화 ----
     { id: 'glass_shock', name: '유리의 열 충격', kind: 'physical', eq: '뜨거운 유리 + 찬물 → 깨진 유리', a: 'glass', b: 'water', minT: 250, prob: 0.2, toA: 'glassshards', toB: 'steam', note: '바깥만 급히 식어 줄어들면서 안쪽과 어긋나 유리가 깨집니다. 내열 유리는 덜 늘어나서 잘 견딥니다.' },
     { id: 'quench', name: '강철 담금질', kind: 'physical', eq: '달군 강철(750°C 이상) + 물 → 단단한 강철', a: 'steel:s', b: 'water', minT: 700, prob: 0.3, toA: 'steel:hard', toB: 'steam', note: '대장간에서 칼을 단단하게 만드는 방법입니다. 탄소가 철 결정 속에 갇혀 단단해집니다.' },
+    { id: 'glass_shock', name: '유리의 열 충격', kind: 'physical', eq: '뜨거운 유리(200°C 이상) + 얼음 → 깨진 유리', a: 'glass', b: 'ice', minT: 200, prob: 0.08, toA: 'glassshards', toB: 'water', note: '겉면만 갑자기 식어 줄어들면 아직 뜨거운 속과 크기가 달라져 금이 갑니다.' },
+    { id: 'fire_setting', name: '불 지르기 채굴(열충격)', kind: 'physical', eq: '달군 바위(400°C 이상) + 찬물 → 돌 부스러기', a: 'stone', b: 'water', minT: 400, prob: 0.03, toA: 'gravel', toB: 'steam', note: '옛 광부들은 바위를 불로 달군 뒤 찬물을 끼얹어 갈라지게 했습니다. 겉과 속의 팽창 차이 때문에 바위에 금이 갑니다.' },
     { id: 'quench', name: '강철 담금질', kind: 'physical', eq: '달군 강철(750°C 이상) + 물 → 단단한 강철', a: 'steel:s', b: 'steam', minT: 700, prob: 0.2, toA: 'steel:hard', toB: null, note: '대장간에서 칼을 단단하게 만드는 방법입니다. 탄소가 철 결정 속에 갇혀 단단해집니다.' },
     { id: 'plastic_sulfur', name: '고무상 황 만들기', kind: 'physical', eq: '진한 액체 황 + 찬물 → 고무상 황', a: 'S:l:dark', b: 'water', prob: 0.3, toA: 'S:plastic', toB: 'steam', note: '긴 사슬 모양의 황이 결정을 만들 틈 없이 굳어 고무처럼 늘어납니다.' },
     { id: 'iodine_sublime', name: '아이오딘의 승화', kind: 'physical', eq: 'I₂(s) → I₂(g)', a: 'I:s', b: 'air', minT: 50, prob: 0.01, toA: 'I:vapor', note: '아이오딘은 녹기 전에도 보라색 증기로 많이 날아갑니다. 데울수록 빠릅니다.' },
@@ -1910,6 +1912,8 @@ Og|오가네손|294|noble|7|50|80|1`;
       const size = this.w * this.h;
       this.mat = new Uint16Array(size);
       this.anchor = new Uint8Array(size); // 고정된 덩어리 칸. 가루처럼 흘러내리지 않는다.
+      this.loose = new Uint8Array(size); // 고정하지 않고 놓은 고체 칸. 이어진 칸끼리 한 덩어리로 떨어지고 뜬다.
+      this.rlab = new Uint32Array(size); this.rgen = 0; this.looseN = 0;
       this.T = new Float32Array(size);
       this.store = new Float32Array(size); // 상변화 중 축적된 잠열 J/kg (+가열, -냉각)
       this.gas = new Float32Array(size); // 기체 칸의 기체량(보통 1)
@@ -1963,6 +1967,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.store[i] = 0;
       this.vy[i] = 0;
       this.anchor[i] = 0;
+      this.loose[i] = 0;
       const lt = this.data.lifetime[m];
       this.life[i] = lt ? lt * (0.6 + 0.8 * Math.random()) : 0;
       const g = this.data.grain[m];
@@ -1974,6 +1979,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       let t;
       t = mat[i]; mat[i] = mat[j]; mat[j] = t;
       t = anchor[i]; anchor[i] = anchor[j]; anchor[j] = t;
+      t = this.loose[i]; this.loose[i] = this.loose[j]; this.loose[j] = t;
       t = T[i]; T[i] = T[j]; T[j] = t;
       t = store[i]; store[i] = store[j]; store[j] = t;
       t = vy[i]; vy[i] = vy[j]; vy[j] = t;
@@ -2000,6 +2006,7 @@ Og|오가네손|294|noble|7|50|80|1`;
         this.setCell(i, m, m === this.AIR ? this.ambient : this.data.t0[m]);
         if (s === GAS) this.gas[i] = 1; // 사람이 놓은 기체는 1기압
         if (anchored && s === POWDER) this.anchor[i] = 1;
+        if (!anchored && s === SOLID && m !== this.AIR) { this.loose[i] = 1; this.looseN++; }
       });
     }
     addHeat(cx, cy, r, dT) {
@@ -2030,6 +2037,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.time += this.dt;
       this.boomBudget = 40;
       this.stepMotion();
+      this.stepRigid();
       this.stepFlyers();
       this.stepHeat();
       this.stepNuclear();
@@ -2041,14 +2049,17 @@ Og|오가네손|294|noble|7|50|80|1`;
     }
 
     stepMotion() {
-      const { w, h } = this;
+      const { w, h, mat, T } = this, air = this.AIR, st = this.data.state;
       const flip = this.tick & 1;
       for (let y = h - 1; y >= 0; y--) {
         for (let k = 0; k < w; k++) {
           const x = flip ? k : w - 1 - k;
           const i = y * w + x;
           if (this.stamp[i] === this.tick) continue;
-          const s = this.data.state[this.mat[i]];
+          const m = this.mat[i];
+          // 가장 흔한 경우(공기 위에 같은 온도의 공기)는 바로 건너뛴다.
+          if (m === air && (y + 1 >= h || (mat[i + w] === air && T[i + w] - T[i] <= 2))) continue;
+          const s = st[m];
           if (s === SOLID) continue;
           if (s === GAS) this.moveGas(i, x, y);
           else this.moveDense(i, x, y, s);
@@ -2177,6 +2188,118 @@ Og|오가네손|294|noble|7|50|80|1`;
       }
     }
 
+    // ---- 고체 덩어리 ----
+    // 고정하지 않고 놓은 고체는 이어진 칸끼리 한 덩어리(강체)로 움직인다. 받침이 없으면 떨어지고,
+    // 액체 속에서는 무게와 부력(잠긴 부분이 밀어낸 액체의 무게, 아르키메데스)을 비교해 가라앉거나 떠오른다.
+    stepRigid() {
+      if (!this.looseN) return;
+      const { w, loose } = this, lab = this.rlab;
+      if (this.rgen > 0xfff00000) { lab.fill(0); this.rgen = 0; }
+      const start = this.rgen + 1; // 이번 틱에 붙인 덩어리 번호는 모두 start 이상
+      let found = 0;
+      const stack = [];
+      for (let s0 = 0; s0 < loose.length; s0++) {
+        if (!loose[s0] || lab[s0] >= start) continue;
+        const gen = ++this.rgen;
+        const cells = [s0]; lab[s0] = gen; stack.length = 0; stack.push(s0);
+        while (stack.length) {
+          const i = stack.pop(), x = i % w;
+          if (x > 0 && loose[i - 1] && lab[i - 1] < start) { lab[i - 1] = gen; stack.push(i - 1); cells.push(i - 1); }
+          if (x < w - 1 && loose[i + 1] && lab[i + 1] < start) { lab[i + 1] = gen; stack.push(i + 1); cells.push(i + 1); }
+          if (i >= w && loose[i - w] && lab[i - w] < start) { lab[i - w] = gen; stack.push(i - w); cells.push(i - w); }
+          if (i + w < loose.length && loose[i + w] && lab[i + w] < start) { lab[i + w] = gen; stack.push(i + w); cells.push(i + w); }
+        }
+        found += cells.length;
+        this.moveBody(cells, gen);
+      }
+      this.looseN = found;
+    }
+    // 빠르게 떨어지던 덩어리가 단단한 바닥에 부딪힘. 약 30 cm 넘게 떨어진 유리·돌은 깨진다.
+    impact(cells, vy) {
+      if (vy < 4.5) return;
+      const d = this.data, mat = this.mat;
+      let broke = 0;
+      for (const i of cells) if (this.loose[i] && d.shatter[mat[i]] >= 0 && Math.random() < Math.min(0.9, (vy - 4) * 0.25)) { this.setCell(i, d.shatter[mat[i]], this.T[i]); broke++; }
+      if (broke && this.fx.length < 200) { const c = cells[(cells.length / 2) | 0]; this.fx.push({ type: 'spark', x: c % this.w, y: (c / this.w) | 0, hot: 0, dust: true }); }
+      if (broke) this.note('shatter_fall', () => ({ type: 'reaction', id: 'shatter_fall', name: '떨어져 깨짐', kind: 'physical', eq: '운동 에너지 ½mv² → 부서짐', note: '높은 곳에서 떨어진 유리·돌은 바닥에 부딪힐 때 짧은 순간 큰 힘을 받아 조각납니다. 높이 떨어질수록(속도가 빠를수록) 잘 깨집니다.' }));
+    }
+    moveBody(cells, gen) {
+      const w = this.w, h = this.h, mat = this.mat, lab = this.rlab;
+      const d = this.data, st = d.state;
+      const inBody = (j) => lab[j] === gen && this.loose[j];
+      // 무게와 부력. 한 줄(같은 y)의 양 끝 옆이 액체이면 그 줄은 잠긴 것으로 본다(위로 넘친 물은 세지 않음).
+      let W = 0, B = 0, wet = 0, canDown = true, canUp = true, vy = 0;
+      const rows = new Map();
+      for (const i of cells) {
+        const x = i % w, y = (i / w) | 0, m = mat[i];
+        W += d.rho[m]; vy += this.vy[i];
+        let r = rows.get(y);
+        if (!r) { r = { n: 0, lo: x, hi: x, liq: 0, rho: 0 }; rows.set(y, r); }
+        r.n++; if (x < r.lo) r.lo = x; if (x > r.hi) r.hi = x;
+        if (y + 1 >= h) canDown = false;
+        else if (!inBody(i + w)) {
+          const b = mat[i + w], sb = st[b];
+          if (sb === SOLID || sb === POWDER || this.anchor[i + w]) canDown = false;
+          else if (sb === LIQUID && !r.liq) { r.liq = 1; r.rho = this.effRho(i + w); }
+        }
+        if (y === 0) canUp = false;
+        else if (!inBody(i - w)) {
+          const a = mat[i - w], sa = st[a];
+          if (sa === SOLID || sa === POWDER || this.anchor[i - w]) canUp = false;
+        }
+      }
+      for (const [y, r] of rows) {
+        for (const x of [r.lo - 1, r.hi + 1]) {
+          if (x < 0 || x >= w) continue;
+          const j = y * w + x;
+          if (st[mat[j]] === LIQUID && !inBody(j)) { r.liq = 2; r.rho = this.effRho(j); }
+        }
+        if (r.liq === 2) { B += r.n * r.rho; wet += r.n; }
+      }
+      vy /= cells.length;
+      const gC = this.g * this.dt * this.dt / this.dx;
+      let dir = 0, steps = 0;
+      if (W > B && canDown) {
+        if (!wet) { vy = Math.min(MAX_FALL, Math.max(0, vy) + gC); steps = Math.floor(vy); if (Math.random() < vy - steps) steps++; }
+        else { vy = 0; steps = Math.random() < 0.6 * (W - B) / W ? 1 : 0; } // 액체 속에서는 끌림 때문에 천천히
+        dir = 1;
+      } else if (B > W * 1.03 && canUp && wet) {
+        vy = 0; dir = -1; steps = Math.random() < 0.6 * (B - W) / B ? 1 : 0; // 떠오름
+      } else {
+        if (!wet) this.impact(cells, vy);
+        vy = 0;
+      }
+      if (dir && steps) {
+        for (let s = 0; s < steps; s++) {
+          if (s > 0) { // 여러 칸을 갈 때는 칸마다 다시 확인한다.
+            let ok = true;
+            let hard = false; // 단단한 것에 부딪혔는지, 액체 면에 닿았는지
+            for (const i of cells) {
+              const j = i + w;
+              if (j >= mat.length) { ok = false; hard = true; break; }
+              if (inBody(j)) continue;
+              const sj = st[mat[j]];
+              if (sj === SOLID || sj === POWDER || this.anchor[j]) { ok = false; hard = true; break; }
+              if (sj === LIQUID) ok = false;
+            }
+            if (!ok) { if (hard && !wet) this.impact(cells, vy); else if (!hard) vy = Math.min(vy, 2); break; }
+          }
+          cells.sort(dir > 0 ? (a, b) => b - a : (a, b) => a - b);
+          const splash = dir > 0 && vy >= 3;
+          for (let k = 0; k < cells.length; k++) {
+            const i = cells[k], j = i + dir * w;
+            if (splash && st[mat[j]] === LIQUID && j >= w && Math.random() < 0.3) this.launch(j, (Math.random() - 0.5) * vy, -vy * 0.5);
+            this.swap(i, j); lab[j] = gen; cells[k] = j;
+          }
+          for (const i of cells) lab[i] = gen;
+        }
+        if (dir > 0 && steps) this.note('rigid_fall', () => ({ type: 'reaction', id: 'rigid_fall', name: '덩어리의 낙하와 부력', kind: 'physical', eq: '무게 > 부력 → 가라앉음, 무게 < 부력 → 뜸', note: '받침이 없는 고체는 한 덩어리로 떨어집니다. 액체에 잠기면 밀어낸 액체의 무게만큼 떠받쳐져(아르키메데스), 물보다 가벼운 나무는 뜨고 돌·유리는 가라앉습니다.' }));
+      }
+      for (const i of cells) this.vy[i] = vy;
+      // 움직인 칸의 표시를 지운다(다음 덩어리 탐색이 섞이지 않도록 lab은 세대 번호로 관리).
+      for (const i of cells) lab[i] = gen;
+    }
+
     // ---- 튀는 칸 ----
     // 칸을 격자에서 떼어 포물선 운동을 시킨다(단위: 칸/틱). 닿을 곳이 막히면 마지막 빈 칸에 내려앉는다.
     launch(i, vx, vy) {
@@ -2244,27 +2367,26 @@ Og|오가네손|294|noble|7|50|80|1`;
     }
 
     stepHeat() {
-      const { w, h, mat, T } = this;
-      const cap = this.data.heatCap;
+      const { w, h, mat, T } = this, d = this.data;
+      const cap = d.heatCap, K = d.k, st = d.state;
       const scale = this.dt * this.heatBoost / (this.dx * this.dx);
       const gasScale = scale * Math.min(1, 50 / this.heatBoost);
+      // conductance()와 같은 계산을 안쪽 반복에 풀어 쓴다(가장 많이 도는 반복이라).
+      const flow = (i, j) => {
+        const a = mat[i], b = mat[j], ka = K[a], kb = K[b];
+        let g = (a === b ? ka : 2 * ka * kb / (ka + kb)) * (st[a] === GAS || st[b] === GAS ? gasScale : scale);
+        const ca = cap[a], cb = cap[b], lim = 0.2 * (ca < cb ? ca : cb);
+        if (g > lim) g = lim;
+        const q = g * (T[j] - T[i]);
+        T[i] += q / ca; T[j] -= q / cb;
+      };
+      const last = w - 1;
       for (let y = 0; y < h; y++) {
+        const row = y * w, down = y + 1 < h;
         for (let x = 0; x < w; x++) {
-          const i = y * w + x, a = mat[i];
-          if (x + 1 < w) {
-            const b = mat[i + 1], dT = T[i + 1] - T[i];
-            if (dT > 0.01 || dT < -0.01) {
-              const q = this.conductance(a, b, scale, gasScale) * dT;
-              T[i] += q / cap[a]; T[i + 1] -= q / cap[b];
-            }
-          }
-          if (y + 1 < h) {
-            const j = i + w, b = mat[j], dT = T[j] - T[i];
-            if (dT > 0.01 || dT < -0.01) {
-              const q = this.conductance(a, b, scale, gasScale) * dT;
-              T[i] += q / cap[a]; T[j] -= q / cap[b];
-            }
-          }
+          const i = row + x, t = T[i];
+          if (x < last) { const dT = T[i + 1] - t; if (dT > 0.01 || dT < -0.01) flow(i, i + 1); }
+          if (down) { const dT = T[i + w] - T[i]; if (dT > 0.01 || dT < -0.01) flow(i, i + w); }
         }
       }
     }
@@ -2983,12 +3105,12 @@ Og|오가네손|294|noble|7|50|80|1`;
     snapshot() {
       this.settleFlyers();
       return {
-        mat: this.mat.slice(), T: this.T.slice(), gas: this.gas.slice(), anchor: this.anchor.slice(), store: this.store.slice(), vy: this.vy.slice(), life: this.life.slice(), shade: this.shade.slice(),
+        mat: this.mat.slice(), T: this.T.slice(), gas: this.gas.slice(), anchor: this.anchor.slice(), loose: this.loose.slice(), store: this.store.slice(), vy: this.vy.slice(), life: this.life.slice(), shade: this.shade.slice(),
         bodies: this.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] })), probe: this.probe && { x: this.probe.x, y: this.probe.y },
       };
     }
     restoreSnapshot(s) {
-      this.mat.set(s.mat); this.T.set(s.T); if (s.gas) this.gas.set(s.gas); this.anchor.set(s.anchor); this.store.set(s.store); this.vy.set(s.vy); this.life.set(s.life); this.shade.set(s.shade);
+      this.mat.set(s.mat); this.T.set(s.T); if (s.loose) { this.loose.set(s.loose); this.looseN = 1; } if (s.gas) this.gas.set(s.gas); this.anchor.set(s.anchor); this.store.set(s.store); this.vy.set(s.vy); this.life.set(s.life); this.shade.set(s.shade);
       this.bodies = s.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] }));
       this.selected = null; this.fq = []; this.flyers = [];
       if (s.probe) this.setProbe(s.probe.x, s.probe.y); else this.probe = null;
@@ -3006,7 +3128,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       };
       return {
         version: 2, w: this.w, h: this.h, g: this.g, vacuum: this.vacuum, heatBoost: this.heatBoost,
-        materials: this.data.defs.map((d) => d.id), mat: enc(this.mat), T: enc(this.T), anchor: enc(this.anchor),
+        materials: this.data.defs.map((d) => d.id), mat: enc(this.mat), T: enc(this.T), anchor: enc(this.anchor), loose: enc(this.loose),
         bodies: this.bodies.map((b) => ({ type: b.type, r: b.r, x: b.x, y: b.y, vx: b.vx, vy: b.vy })),
       };
     }
@@ -3022,6 +3144,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       // 물질 목록이 나중에 바뀌어도 복원되도록 저장된 이름으로 다시 찾는다.
       const remap = o.materials.map((id) => (id in this.data.idOf ? this.data.idOf[id] : this.AIR));
       for (let i = 0; i < mats.length; i++) { this.setCell(i, remap[mats[i]], temps[i]); this.anchor[i] = anchors[i]; if (this.data.state[this.mat[i]] === GAS) this.gas[i] = 1; }
+      if (o.loose) { this.loose.set(dec(o.loose, Uint8Array)); this.looseN = 1; } // 예전 저장 데이터에는 없음
       this.g = o.g; this.vacuum = o.vacuum; this.setHeatBoost(o.heatBoost);
       o.bodies.forEach((b) => this.addBody(b));
     }
@@ -3561,7 +3684,7 @@ Og|오가네손|294|noble|7|50|80|1`;
           const n = 2 + (Math.random() * 3 | 0);
           for (let k = 0; k < n; k++) {
             const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4, sp = 0.3 + Math.random() * 0.9;
-            this.spark(e.x + 0.5, e.y + 0.5, Math.cos(a) * sp, Math.sin(a) * sp, 10 + Math.random() * 18, e.hot > 1500 ? [255, 250, 220] : [255, 190, 90]);
+            this.spark(e.x + 0.5, e.y + 0.5, Math.cos(a) * sp, Math.sin(a) * sp, 10 + Math.random() * 18, e.dust ? [190, 200, 205] : e.hot > 1500 ? [255, 250, 220] : [255, 190, 90]);
           }
         }
       }
@@ -3576,21 +3699,15 @@ Og|오가네손|294|noble|7|50|80|1`;
       const W = this.world, g = W.g * W.dt * W.dt / W.dx * 0.5;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      if (this.glowCount && this.mode === 'normal' && this.effects) {
+      if (this.glowCount && this.mode === 'normal' && this.effects && !this.lite) {
+        // 빛나는 칸만 담은 작은 그림을 두 번 줄였다가 크게 늘려 흐리게 만든다. 흐림 필터보다 훨씬 가볍다(휴대폰).
         const cw = ctx.canvas.width, ch = ctx.canvas.height;
         ctx.imageSmoothingEnabled = true;
-        if (this.canFilter == null) { ctx.filter = 'blur(2px)'; this.canFilter = ctx.filter === 'blur(2px)'; ctx.filter = 'none'; }
-        if (this.canFilter) {
-          ctx.globalAlpha = 0.75; ctx.filter = `blur(${Math.max(2, cell * 2.2)}px)`;
-          ctx.drawImage(this.glowCanvas, 0, 0, cw, ch);
-          ctx.filter = 'none';
-        } else {
-          // filter가 없는 브라우저: 두 번 줄였다 키워 흐리게 만든다.
-          const h = this.half.getContext('2d'), q = this.quarter.getContext('2d');
-          h.clearRect(0, 0, this.half.width, this.half.height); h.drawImage(this.glowCanvas, 0, 0, this.half.width, this.half.height);
-          q.clearRect(0, 0, this.quarter.width, this.quarter.height); q.drawImage(this.half, 0, 0, this.quarter.width, this.quarter.height);
-          ctx.globalAlpha = 0.9; ctx.drawImage(this.quarter, 0, 0, cw, ch);
-        }
+        const hc = this.halfCtx || (this.halfCtx = this.half.getContext('2d')), qc = this.quarterCtx || (this.quarterCtx = this.quarter.getContext('2d'));
+        hc.clearRect(0, 0, this.half.width, this.half.height); hc.drawImage(this.glowCanvas, 0, 0, this.half.width, this.half.height);
+        qc.clearRect(0, 0, this.quarter.width, this.quarter.height); qc.drawImage(this.half, 0, 0, this.quarter.width, this.quarter.height);
+        ctx.globalAlpha = 0.85; ctx.drawImage(this.quarter, 0, 0, cw, ch);
+        ctx.globalAlpha = 0.5; ctx.drawImage(this.half, 0, 0, cw, ch);
         ctx.globalAlpha = 1;
       }
       for (const f of this.flashes) {
@@ -3641,7 +3758,8 @@ Og|오가네손|294|noble|7|50|80|1`;
       } else {
         const air = W.AIR, defs = W.data.defs, st = W.data.state, w = W.w, gp = this.glowPx;
         let glow = 0;
-        gp.fill(0);
+        const lite = this.lite || !this.effects;
+        if (this.glowCount) gp.fill(0);
         for (let i = 0; i < n; i++) {
           const m = mat[i];
           if (m === air) { px[i] = rgba(16, 21, 27); continue; }
@@ -3667,7 +3785,7 @@ Og|오가네손|294|noble|7|50|80|1`;
             r = flame[0] * f; g = flame[1] * f; b = flame[2] * f;
             gp[i] = rgba(r * 0.8, g * 0.8, b * 0.8); glow++;
             // 불꽃 위로 가끔 불티가 날린다.
-            if (defs[m].flame && Math.random() < 0.0025 && i >= w && mat[i - w] !== m) {
+            if (defs[m].flame && !lite && Math.random() < 0.0025 && i >= w && mat[i - w] !== m) {
               this.particles.length < 400 && this.particles.push({ x: i % w + Math.random(), y: (i / w | 0), vx: (Math.random() - 0.5) * 0.15, vy: -0.25 - Math.random() * 0.3, life: 25 + Math.random() * 35, max: 60, rgb: [255, 170 + (Math.random() * 60 | 0), 70], size: 0.7, float: true });
             }
           } else if (T[i] > 450) {
@@ -3852,6 +3970,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.pointer = null;
       this.hover = null;
       this.cleanups = [];
+      this.stepMs = 2; this.drawMs = 2; this.budget = 12; this.dirty = true;
       this.touch = typeof matchMedia === 'function' && matchMedia('(hover: none)').matches;
       this.buildDom();
       this.renderer = new SL.Renderer(this.$('.grid'), this.world);
@@ -3886,7 +4005,7 @@ Og|오가네손|294|noble|7|50|80|1`;
         </div>
         <div class="stage"><div class="frame"><canvas class="grid"></canvas><canvas class="over" aria-label="실험 공간"></canvas></div>
           <div class="scale" hidden></div><div class="toast" role="status"></div>
-          <div class="hint" hidden><div><b>재료를 고른 뒤 여기에 그려 보세요.</b><br>두 물질을 맞닿게 놓거나 섞기 도구로 문지르면 반응이 일어납니다.<br>가열·냉각 도구로 온도를 바꿀 수 있습니다.</div></div></div>
+          <div class="hint" hidden><div><b>재료를 고른 뒤 여기에 그려 보세요.</b><br>두 물질을 맞닿게 놓거나 섞기 도구로 문지르면 반응이 일어납니다.<br>가열·냉각 도구로 온도를 바꿀 수 있습니다.<br>공중에 그린 고체는 떨어집니다. 그 자리에 두려면 '고정'을 켜세요.</div></div></div>
         <div class="status">&nbsp;</div>
         <div class="side">
           <div class="tabs" role="tablist">${TABS.map(([id, n]) => `<button role="tab" data-tab="${id}">${n}</button>`).join('')}</div>
@@ -3897,7 +4016,7 @@ Og|오가네손|294|noble|7|50|80|1`;
 
     bindEvents() {
       this.listen(this.$('.play'), 'click', () => this.setRunning(!this.running));
-      this.listen(this.$('.stepone'), 'click', () => { this.setRunning(false); this.world.step(); this.afterStep(); });
+      this.listen(this.$('.stepone'), 'click', () => { this.setRunning(false); this.world.step(); this.afterStep(); this.dirty = true; });
       this.listen(this.$('.restart'), 'click', () => this.loadScene(this.currentScene.id));
       this.listen(this.$('.undo'), 'click', () => this.undo());
       // 단축키는 실험실 안을 누른 뒤에만 받는다(사이트의 다른 단축키를 가로채지 않도록).
@@ -3914,7 +4033,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.listen(over, 'pointermove', (e) => this.onMove(e));
       this.listen(over, 'pointerup', (e) => this.onUp(e));
       this.listen(over, 'pointercancel', () => { this.pointer = null; });
-      this.listen(over, 'pointerleave', () => { this.hover = null; });
+      this.listen(over, 'pointerleave', () => { this.hover = null; this.hoverMoved = true; });
 
       const ro = new ResizeObserver(() => this.fit());
       ro.observe(this.$('.stage'));
@@ -3932,7 +4051,9 @@ Og|오가네손|294|noble|7|50|80|1`;
       const f = this.$('.frame');
       f.style.width = Math.floor(this.world.w * s) + 'px';
       f.style.height = Math.floor(this.world.h * s) + 'px';
-      const over = this.$('.over'), dpr = Math.min(2, devicePixelRatio || 1);
+      // 덮개 캔버스는 선·불티만 그리므로 터치 기기에서는 해상도를 낮춰 부담을 줄인다.
+      const over = this.$('.over'), dpr = Math.min(this.touch ? 1.25 : 2, devicePixelRatio || 1);
+      this.dirty = true;
       over.width = Math.floor(this.world.w * s * dpr);
       over.height = Math.floor(this.world.h * s * dpr);
     }
@@ -3944,10 +4065,10 @@ Og|오가네손|294|noble|7|50|80|1`;
       if (cb) cb.checked = !!v;
     }
 
-    setRunning(v) { this.running = v; this.$('.play').textContent = v ? '일시정지' : '재생'; }
+    setRunning(v) { this.running = v; this.dirty = true; this.$('.play').textContent = v ? '일시정지' : '재생'; }
 
     setView(v) {
-      this.renderer.mode = v;
+      this.renderer.mode = v; this.dirty = true;
       this.$('.view').value = v;
       const sc = this.$('.scale');
       sc.hidden = v === 'normal';
@@ -3999,7 +4120,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       const count = this.world.data.defs.length;
       pane.innerHTML = `<div class="chips tools">${TOOLS.map(([k, n]) => `<button class="chip" data-tool="${k}" title="${TOOL_HINT[k]}">${n}</button>`).join('')}</div>
         <div class="row compact"><label>붓 <input type="range" class="brush" min="1" max="16" value="${this.brush}"></label><span class="val">${this.brush}칸</span>
-          <label title="끄면 가루처럼 쌓이고, 켜면 놓은 자리에 덩어리로 고정됩니다." style="flex:none"><input type="checkbox" class="anchor" ${this.anchored ? 'checked' : ''}> 고정</label></div>
+          <label title="끄면: 가루는 쌓이고, 나무·유리·돌 같은 고체는 한 덩어리로 떨어져 물에 뜨거나 가라앉습니다(높이 떨어진 유리는 깨짐). 켜면: 그린 자리에 그대로 고정됩니다. 공중에 그릇이나 벽을 만들 때 켜세요." style="flex:none"><input type="checkbox" class="anchor" ${this.anchored ? 'checked' : ''}> 고정</label></div>
         <input type="search" class="search" placeholder="물질 ${count}종 검색 (예: 황산, Cu, 소금)" aria-label="물질 검색" value="${this.query}">
         <div class="chips cats" style="margin-top:6px">${SL.CATEGORIES.map(([k, n]) => `<button class="chip" data-cat="${k}">${n}</button>`).join('')}</div>
         <div class="picked"></div>
@@ -4204,6 +4325,7 @@ Og|오가네손|294|noble|7|50|80|1`;
     undo() {
       if (!this.history || !this.history.length) return;
       this.world.restoreSnapshot(this.history.pop());
+      this.dirty = true;
       this.$('.undo').disabled = !this.history.length;
     }
     onDown(e) {
@@ -4226,6 +4348,7 @@ Og|오가네손|294|noble|7|50|80|1`;
     }
     onMove(e) {
       const c = this.cellAt(e);
+      this.hoverMoved = true;
       this.hover = c;
       const p = this.pointer;
       if (!p) return;
@@ -4251,6 +4374,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       w.select(b);
     }
     applyBrush(x, y) {
+      this.dirty = true;
       const w = this.world, t = this.tool, r = this.brush - 1;
       if (t.kind === 'mat') w.paint(x, y, r, w.data.idOf[t.id], true, this.anchored);
       else if (t.kind === 'erase') {
@@ -4270,18 +4394,35 @@ Og|오가네손|294|noble|7|50|80|1`;
       if (!this.visible) return;
       // 누르고 있는 동안 가열/냉각을 계속한다.
       if (this.pointer && ['heat', 'cool', 'stir'].includes(this.tool.kind)) this.applyBrush(this.pointer.cur.x, this.pointer.cur.y);
+      let n = 0;
       if (this.running) {
         this.acc += real * this.speed;
-        let n = 0;
-        while (this.acc >= this.world.dt && n < 4) { this.world.step(); this.acc -= this.world.dt; n++; }
-        if (n === 4) this.acc = 0; // 느린 기기에서는 시간을 늦춘다.
+        // 한 프레임에 쓸 계산 시간을 정해 두고, 그 안에서만 틱을 돌린다. 느린 기기에서는 몰아서 계산하다
+        // 화면이 멈추는 대신 시뮬레이션이 조금 느리게 흐른다.
+        const maxSteps = Math.max(1, Math.min(4, Math.floor(this.budget / Math.max(0.3, this.stepMs))));
+        while (this.acc >= this.world.dt && n < maxSteps) {
+          const t0 = performance.now();
+          this.world.step();
+          this.stepMs = this.stepMs * 0.9 + (performance.now() - t0) * 0.1;
+          this.acc -= this.world.dt; n++;
+        }
+        if (n === maxSteps && this.acc >= this.world.dt) this.acc = 0;
         if (n) this.afterStep();
       }
+      // 바뀐 것이 없으면 다시 그리지 않는다(120Hz 화면, 일시정지 중).
+      const fxBusy = this.renderer.particles.length || this.renderer.flashes.length || this.renderer.shake;
+      if (!n && !this.dirty && !this.pointer && !fxBusy && !this.hoverMoved) return;
+      this.dirty = false; this.hoverMoved = false;
+      const t1 = performance.now();
       this.renderer.draw();
       this.drawOverlay();
-      this.$('.clock').textContent = fmt(this.world.time, 2) + '초';
+      const clock = fmt(this.world.time, 2) + '초';
+      if (clock !== this.clockText) { this.$('.clock').textContent = clock; this.clockText = clock; }
       this.updateStatus();
       if (this.tab === 'physics') this.drawPlot();
+      // 그리기가 계속 오래 걸리면 빛 번짐처럼 무거운 효과를 줄인다.
+      this.drawMs = this.drawMs * 0.95 + (performance.now() - t1) * 0.05;
+      this.renderer.lite = this.drawMs + this.stepMs * n > 22;
     }
 
     afterStep() {
@@ -4301,7 +4442,10 @@ Og|오가네손|294|noble|7|50|80|1`;
 
     checkChallenges() {
       const w = this.world, d = w.data;
-      const count = (id) => { const k = d.idOf[id]; if (k == null) return 0; let n = 0; for (let i = 0; i < w.mat.length; i++) if (w.mat[i] === k) n++; return n; };
+      // 칸 수는 한 번만 세어 둔다(과제마다 격자 전체를 다시 돌지 않도록).
+      const hist = new Uint32Array(d.defs.length);
+      for (let i = 0; i < w.mat.length; i++) hist[w.mat[i]]++;
+      const count = (id) => { const k = d.idOf[id]; return k == null ? 0 : hist[k]; };
       const ctx = {
         has: (id) => this.codex.has(id), ids: () => [...this.codex.keys()], any: (re) => [...this.codex.keys()].some((k) => re.test(k)),
         count, cells: (id, f) => { const k = d.idOf[id]; let n = 0; for (let i = 0; i < w.mat.length; i++) if (w.mat[i] === k && f(w.T[i])) n++; return n; },
@@ -4341,7 +4485,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       ctx.clearRect(0, 0, over.width, over.height);
       this.renderer.drawFx(ctx, cell);
       const sh = this.renderer.shake;
-      this.$('.frame').style.transform = sh ? `translate(${((Math.random() - 0.5) * sh).toFixed(1)}px,${((Math.random() - 0.5) * sh).toFixed(1)}px)` : '';
+      if (sh || this.shaking) { this.$('.frame').style.transform = sh ? `translate(${((Math.random() - 0.5) * sh).toFixed(1)}px,${((Math.random() - 0.5) * sh).toFixed(1)}px)` : ''; this.shaking = !!sh; }
       for (const b of w.bodies) {
         if (b === w.selected && b.trail.length > 2) {
           ctx.strokeStyle = '#ffffff66'; ctx.lineWidth = 1.5; ctx.beginPath();
@@ -4508,7 +4652,7 @@ Og|오가네손|294|noble|7|50|80|1`;
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,effects?:boolean,storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.12.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.13.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);
@@ -4525,7 +4669,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       setView: (v) => app.setView(v),
       setEffects: (on) => app.setEffects(on),
       save: () => app.world.toJSON(),
-      restore: (data) => app.world.fromJSON(data),
+      restore: (data) => { app.world.fromJSON(data); app.dirty = true; },
       discoveries: () => [...app.codex.values()],
       scenes: () => SL.SCENES.map((s) => ({ id: s.id, name: s.name, desc: s.desc })),
       destroy: () => app.destroy(),

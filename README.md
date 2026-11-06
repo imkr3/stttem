@@ -45,6 +45,7 @@
 | 메서드 | `loadScene(id)`, `scenes()`, `undo()`, `challenges()`, `pause()`, `resume()`, `setView('normal'｜'heat'｜'density')`, `setEffects(true｜false)`, `save()`, `restore(data)`, `discoveries()`, `destroy()` |
 | 버전 | `SandLab.version` (저장 데이터나 공개 API가 바뀌면 올림) |
 | 이벤트 | `sandlab:ready`, `sandlab:scenechange`, `sandlab:discover`, `sandlab:challenge`(도전 과제 완료: `id`, `name`, `done`, `total`) |
+| 성능 | 느린 기기에서는 화면이 끊기는 대신 시뮬레이션이 조금 느리게 흐르고, 무거운 효과는 자동으로 줄어듦. 화면 밖에 있거나 바뀐 것이 없으면 계산·그리기를 쉼 |
 | 화면 효과 | 불티·폭발 섬광·빛 번짐·화면 흔들림. 사용자의 운영체제에서 '동작 줄이기'를 켜면 흔들림은 하지 않음 |
 | 색상 변경 | 사이트 CSS에서 `--sl-accent`, `--sl-bg`, `--sl-panel` 등을 지정 |
 
