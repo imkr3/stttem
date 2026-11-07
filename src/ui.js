@@ -72,7 +72,7 @@
   .partners:not(:empty) { border-bottom:1px solid var(--sl-line); margin-bottom:6px; }
   .scenes { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
   .scene { display:block; width:100%; text-align:left; padding:6px 9px; font-size:13px; line-height:1.3; }
-  .picked { display:flex; align-items:center; gap:8px; padding:6px 8px; margin:6px 0 8px; background:var(--sl-raised); border-radius:6px; min-height:38px; }
+  .picked { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:6px 8px; margin:6px 0 8px; background:var(--sl-raised); border-radius:6px; min-height:38px; }
   .picked i { width:14px; height:14px; border-radius:3px; flex:none; box-shadow:0 0 0 1px #fff3; }
   .picked .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .picked small { color:var(--sl-muted); margin-left:4px; }
@@ -204,6 +204,7 @@
       this.allowed = Array.isArray(opts.materials) ? new Set(opts.materials.map((id) => { const k = this.world.data.idOf[id]; return k == null ? id : this.world.data.defs[k].id; })) : null;
       if (this.allowed && !this.allowed.has(this.tool.id)) { const first = [...this.allowed][0]; this.tool = { kind: 'mat', id: first }; this.matId = first; }
       this.boxMat = 'glass';
+      this.paintConc = 1; // 용액을 그릴 때의 농도
       this.paletteCat = 'element';
       this.query = '';
       this.anchored = false;
@@ -397,6 +398,7 @@
         const b = e.target.closest('button');
         if (!b) return;
         if (b.classList.contains('more')) { this.setTab('info'); return; }
+        if (b.dataset.conc) { this.paintConc = +b.dataset.conc; this.markSelection(); return; }
         if (b.dataset.mat) { this.tool = { kind: 'mat', id: b.dataset.mat }; this.matId = b.dataset.mat; }
         else if (b.dataset.tool) this.tool = { kind: b.dataset.tool };
         else if (b.dataset.cat) { this.paletteCat = b.dataset.cat; this.query = ''; pane.querySelector('.search').value = ''; this.renderPalette(); }
@@ -460,7 +462,9 @@
       if (!picked) return;
       if (this.tool.kind === 'mat') {
         const d = this.world.data.defs[this.world.data.idOf[this.tool.id]];
-        picked.innerHTML = `<i style="background:${d.color}"></i><span class="nm"><b>${d.name}</b><small>${d.formula}</small></span><button class="more" title="설명과 함께 떨어뜨려 볼 재료">정보 ›</button>`;
+        const sol = this.world.data.solute[this.world.data.idOf[d.id]];
+        picked.innerHTML = `<i style="background:${d.color}"></i><span class="nm"><b>${d.name}</b><small>${d.formula}</small></span><button class="more" title="설명과 함께 떨어뜨려 볼 재료">정보 ›</button>` +
+          (sol ? `<div class="concs" role="group" aria-label="농도" style="flex-basis:100%;display:flex;gap:4px;align-items:center;margin-top:6px"><small class="hint" style="margin:0">농도</small>${[[1, '기준'], [0.1, '×0.1'], [0.01, '×0.01'], [0.001, '×0.001']].map(([c, n]) => `<button class="chip${this.paintConc === c ? ' on' : ''}" data-conc="${c}" style="min-height:26px">${n}</button>`).join('')}</div>` : '');
       } else {
         const t = TOOLS.find(([k]) => k === this.tool.kind);
         const fillMat = this.tool.kind === 'fill' ? this.world.data.defs[this.world.data.idOf[this.matId]] : null;
@@ -551,7 +555,7 @@
     panePhysics(pane) {
       const w = this.world;
       pane.innerHTML = `<h3>측정</h3>
-        <div class="chips">${[['v', '수직 속도'], ['h', '높이'], ['E', '역학적 에너지'], ['T', '온도계'], ['P', '압력계']].map(([k, n]) => `<button class="chip${this.graphMode === k ? ' on' : ''}" data-graph="${k}">${n}</button>`).join('')}</div>
+        <div class="chips">${[['v', '수직 속도'], ['h', '높이'], ['E', '역학적 에너지'], ['T', '온도계'], ['P', '압력계'], ['pH', 'pH계']].map(([k, n]) => `<button class="chip${this.graphMode === k ? ' on' : ''}" data-graph="${k}">${n}</button>`).join('')}</div>
         <div class="graph"><canvas class="plot"></canvas></div><div class="legend"></div><div class="stats"></div>
         <div class="chips" style="margin-top:6px"><button class="chip csv" title="지금 그래프의 측정값을 표 파일(CSV)로 저장">CSV로 저장</button><button class="chip clearprobes">온도계 모두 지우기</button></div>
         <h3>중력</h3><div class="chips">${GRAVITY.map(([n, g]) => `<button class="chip${Math.abs(w.g - g) < 0.005 ? ' on' : ''}" data-g="${g}">${n}</button>`).join('')}</div>
@@ -716,7 +720,7 @@
       if (this.tool.kind === 'fill') {
         this.pointer = null;
         this.remember();
-        const n = this.world.fillLevel(c.x, c.y, this.world.data.idOf[this.matId]);
+        const n = this.world.fillLevel(c.x, c.y, this.world.data.idOf[this.matId], null, this.paintConc);
         this.dirty = true;
         if (!n) { this.history.pop(); this.toast({ name: '채울 수 없음', eq: '벽으로 둘러싸인 그릇 안을 눌러 주세요(너무 넓으면 채우지 않습니다).' }, ''); }
         return;
@@ -778,7 +782,7 @@
     applyBrush(x, y) {
       this.dirty = true;
       const w = this.world, t = this.tool, r = this.brush - 1;
-      if (t.kind === 'mat') w.paint(x, y, r, w.data.idOf[t.id], true, this.anchored);
+      if (t.kind === 'mat') w.paint(x, y, r, w.data.idOf[t.id], true, this.anchored, this.paintConc);
       else if (t.kind === 'erase') {
         w.paint(x, y, r, w.AIR, false);
         const hit = this.bodyAt({ x, y });
@@ -881,7 +885,7 @@
       const c = this.hover;
       const info = c && this.world.inspect(c.x, c.y);
       const html = info
-        ? `<b>${info.def.name}</b> ${info.def.formula} · ${fmt(info.T, 1)}°C · ${info.rho >= 10 ? fmt(info.rho, 0) : fmt(info.rho, 2)} kg/m³${Math.abs(info.P - 1) > 0.02 ? ` · <b>${fmt(info.P, 2)}기압</b>` : ''}`
+        ? `<b>${info.def.name}</b> ${info.def.formula} · ${fmt(info.T, 1)}°C · ${info.rho >= 10 ? fmt(info.rho, 0) : fmt(info.rho, 2)} kg/m³${Math.abs(info.P - 1) > 0.02 ? ` · <b>${fmt(info.P, 2)}기압</b>` : ''}${info.pH != null && info.def.state === 'liquid' ? ` · <b>pH ${fmt(info.pH, 1)}</b>` : ''}${info.conc != null && info.conc < 0.995 ? ` · 농도 ×${info.conc < 0.1 ? info.conc.toFixed(3) : info.conc.toFixed(2)}` : ''}`
         : this.touch ? '손가락으로 그리면 고른 재료가 떨어집니다. 관찰 도구로 누르면 그 칸의 정보가 나옵니다.' : '실험 공간 위에 커서를 올리면 그 칸의 물질과 온도가 보입니다. 관찰 도구로 누르면 정보 탭에 자세히 나옵니다.';
       if (html !== this.statusHtml) { el.innerHTML = html; this.statusHtml = html; }
     }
@@ -938,12 +942,12 @@
     // 그래프 하나, 축 하나. 측정값은 실선, 이론값은 점선으로 구분한다.
     plotData() {
       const w = this.world, m = this.graphMode;
-      if (m === 'T' || m === 'P') {
+      if (m === 'T' || m === 'P' || m === 'pH') {
         const ps = w.probes || [];
         if (!ps.length) return { empty: '온도계 도구로 측정할 곳을 눌러 주세요(최대 3곳). 압력은 밀폐 용기 안의 기체에서 잽니다.' };
         const t0 = Math.min(...ps.map((p) => (p.log.length ? p.log[0].t : Infinity)));
-        const val = (s) => (m === 'P' ? s.P || 1 : s.T);
-        const p = ps[0], unit = m === 'P' ? '기압' : '°C', label = m === 'P' ? '압력' : '온도';
+        const val = (s) => (m === 'P' ? s.P || 1 : m === 'pH' ? (s.pH == null ? null : s.pH) : s.T);
+        const p = ps[0], unit = m === 'P' ? '기압' : m === 'pH' ? 'pH' : '°C', label = m === 'P' ? '압력' : m === 'pH' ? 'pH' : '온도';
         const more = ps.slice(1).map((q, k) => ({ xs: q.log.map((s) => s.t - t0), ys: q.log.map(val), color: PROBE_COLORS[k + 1], label: `${label} ${k + 2}` }));
         return { unit, xs: p.log.map((s) => s.t - (isFinite(t0) ? t0 : 0)), ys: p.log.map(val), label: ps.length > 1 ? label + ' 1' : label, more };
       }
@@ -983,7 +987,8 @@
       const more = d.more || [];
       const xMax = Math.max(1, d.xs[d.xs.length - 1], ...more.map((q) => q.xs[q.xs.length - 1] || 0));
       const theoryPts = d.theory ? d.xs.map((t) => d.theory(t)) : [];
-      const all = d.ys.concat(theoryPts.filter((v) => v != null), ...more.map((q) => q.ys));
+      const all = d.ys.concat(theoryPts, ...more.map((q) => q.ys)).filter((v) => v != null && isFinite(v));
+      if (!all.length) { ctx.fillStyle = ink; ctx.textAlign = 'center'; ctx.fillText('측정할 액체가 없습니다', W / 2, H / 2); return; }
       let lo = Math.min(...all), hi = Math.max(...all);
       if (hi - lo < 1e-3) { hi += 1; lo -= 1; }
       const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
@@ -1011,7 +1016,8 @@
       if (d.theory) path(theoryPts, c2, [6, 4]);
       for (const q of more) {
         ctx.strokeStyle = q.color; ctx.lineWidth = 2; ctx.beginPath();
-        q.ys.forEach((v, i) => { if (i) ctx.lineTo(X(q.xs[i]), Y(v)); else ctx.moveTo(X(q.xs[i]), Y(v)); });
+        let open = false;
+        q.ys.forEach((v, i) => { if (v == null) { open = false; return; } if (open) ctx.lineTo(X(q.xs[i]), Y(v)); else { ctx.moveTo(X(q.xs[i]), Y(v)); open = true; } });
         ctx.stroke();
       }
       // 커서 위치의 값 표시
@@ -1063,7 +1069,13 @@
       if (!box) return;
       const stat = (n, v) => `<div class="stat"><small>${n}</small>${v}</div>`;
       let html = '';
-      if (this.graphMode === 'P') {
+      if (this.graphMode === 'pH') {
+        if (w.probe) {
+          const pH = w.pHMeter(w.probe.x, w.probe.y), here = w.inspect(w.probe.x, w.probe.y);
+          html = stat('현재 pH', pH == null ? '액체 없음' : fmt(pH, 2)) + stat('성질', pH == null ? '-' : pH < 6.5 ? '산성' : pH > 7.5 ? '염기성' : '중성') +
+            stat('그 칸', here.def.name + (here.conc != null && here.conc < 0.995 ? ` ×${fmt(here.conc, 3)}` : '')) + stat('도움말', '둘레 액체의 평균 pH');
+        }
+      } else if (this.graphMode === 'P') {
         if (w.probe) {
           const i = w.index(w.probe.x, w.probe.y), P = w.pressureAt(i), T = w.T[i];
           // 게이뤼삭 법칙: 부피가 일정하면 P/T(절대 온도)가 일정하다.
@@ -1106,7 +1118,7 @@
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,effects?:boolean,sound?:boolean,materials?:string[],storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.16.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.17.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);

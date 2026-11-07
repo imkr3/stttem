@@ -162,6 +162,7 @@
         }
       } else {
         const air = W.AIR, defs = W.data.defs, st = W.data.state, w = W.w, gp = this.glowPx;
+        const sol = W.data.solute, cc = W.conc, wc = this.base[W.data.idOf['H2O:l']];
         let glow = 0;
         const lite = this.lite || !this.effects;
         if (this.glowCount) gp.fill(0);
@@ -183,6 +184,8 @@
           const c = this.base[m];
           const s = shade[i];
           let r = c[0] + s, g = c[1] + s, b = c[2] + s;
+          // 묽은 용액은 물 색에 가깝게(진한 보라 과망가니즈산 용액도 묽히면 연한 분홍)
+          if (sol[m] && cc[i] < 0.97) { const t = 1 - Math.pow(cc[i], 0.4); r += (wc[0] - r) * t; g += (wc[1] - g) * t; b += (wc[2] - b) * t; }
           const flame = defs[m].flame || defs[m].glow; // glow: 열 없이 빛만 내는 물질(화학 발광)
           if (flame) {
             // 불꽃색을 중심으로 밝기만 일렁인다.

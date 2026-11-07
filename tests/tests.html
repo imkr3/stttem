@@ -121,6 +121,7 @@ test('표로 지정한 특수 반응식의 원자 수가 맞음', () => {
 // ---- 반응이 일어나야 하는 경우 ----
 const SHOULD = [
   ['철+뜨거운 수증기', 'iron', 'steam', 600, 'fe_steam'],
+  ['산성비 확인: 묽은 염산+BTB', 'btb', 'hcl', null, 'indicator:btb:acid'],
   // 0.14.0에서 채운 반응
   ['베릴륨+염산', 'Be', 'hcl', null, 'acid:Be:Cl'], ['란타넘+질산', 'La', 'HNO3aq', null, 'hno3:La:NO'], ['타이타늄+플루오린화수소산', 'Ti', 'A:acid:HF', null, 'acid:Ti:F'],
   ['아연+레몬즙', 'Zn', 'A:citric', null, 'citric-metal:Zn'], ['탄산마그네슘+레몬즙', 'S:MgCO3', 'A:citric', null, 'citric-co3:MgCO3'],
@@ -729,13 +730,13 @@ test('물 끓이기 실험: 온도계가 100°C 근처에 머무름', () => {
   assert(w.T[w.index(30, 40)] < 80, `방 공기 ${w.T[w.index(30, 40)]}°C`);
   return `물 최고 ${max.toFixed(1)}°C, 90°C 초과 ${near}샘플`;
 });
-test('밀도 기둥: 기름 < 물 < 소금물 순서', () => {
+test('밀도 기둥: 기름 < 물 < 글리세롤 순서', () => {
   const w = fresh(); scene(w, 'density');
   run(w, 25);
   const meanY = (id) => { const k = w.data.idOf[id]; let s = 0, n = 0; for (let y = 0; y < w.h; y++) for (let x = 0; x < w.w; x++) if (w.mat[w.index(x, y)] === k) { s += y; n++; } return s / n; };
-  const o = meanY('oil'), wa = meanY('water'), b = meanY('brine');
-  assert(o < wa && wa <= b + 3, `기름 ${o}, 물 ${wa}, 소금물 ${b}`);
-  return `평균 y: 기름 ${o.toFixed(0)}, 물 ${wa.toFixed(0)}, 소금물 ${b.toFixed(0)}`;
+  const o = meanY('oil'), wa = meanY('water'), b = meanY('C3H8O3');
+  assert(o < wa && wa <= b + 3, `기름 ${o}, 물 ${wa}, 글리세롤 ${b}`);
+  return `평균 y: 기름 ${o.toFixed(0)}, 물 ${wa.toFixed(0)}, 글리세롤 ${b.toFixed(0)}`;
 });
 test('얼음은 물 위에 뜸', () => {
   const w = fresh(); w.rect('stone', 0, 146, 239, 149); w.rect('water', 0, 100, 239, 145, 5);
@@ -906,6 +907,41 @@ test('장치: 스위치로 전구 끄기, 밸브 열고 닫기', () => {
   const open = w.toggleDevice(82, 144), close = w.toggleDevice(82, 144);
   assert(open === 'valve-open' && close === 'valve-close', `${open} ${close}`);
   return `스위치 켬: 전구 ${on1}칸 켜짐 → 끔: ${off}칸, 밸브 ${open} → ${close}`;
+});
+test('농도: 묽혀도 녹은 양은 그대로, pH는 묽힌 만큼 오름', () => {
+  const w = fresh(); w.rect('glass', 60, 145, 180, 149, null, true); w.rect('glass', 60, 60, 62, 145, null, true); w.rect('glass', 178, 60, 180, 145, null, true);
+  w.rect('stirrer', 63, 144, 177, 144, null, true); w.rect('water', 63, 100, 177, 143); w.rect('hcl', 110, 95, 130, 99);
+  const k = w.data.idOf.hcl, sum = () => { let s = 0; for (let i = 0; i < w.mat.length; i++) if (w.mat[i] === k) s += w.conc[i]; return s; };
+  const s0 = sum(); run(w, 20); const s1 = sum();
+  assert(Math.abs(s1 - s0) < 0.5, `녹은 양 ${s0} → ${s1}`);
+  const pH = w.pHMeter(120, 125, 8), want = 1 + Math.log10((115 * 44 + 105) / 105);
+  assert(Math.abs(pH - want) < 0.5, `pH ${pH.toFixed(2)} (이론 ${want.toFixed(2)})`);
+  // 같은 농도면 pHAt이 정해진 식을 따른다
+  const v = fresh(); v.rect('hcl', 10, 10, 12, 12); v.setConc(10, 10, 12, 12, 0.01); v.rect('vinegar', 20, 10, 22, 12); v.setConc(20, 10, 22, 12, 0.01);
+  const pS = v.pHAt(v.index(11, 11)), pW = v.pHAt(v.index(21, 11)), pW0 = v.data.pH0[v.data.idOf.vinegar];
+  assert(Math.abs(pS - 3) < 0.01 && Math.abs(pW - (pW0 + 1)) < 0.01, `강산 ${pS}, 약산 ${pW}`);
+  return `녹은 양 ${s0.toFixed(1)} → ${s1.toFixed(1)}, 50배 묽힌 염산 pH ${pH.toFixed(2)} (이론 ${want.toFixed(2)}), 100배 묽히면 강산 pH 1→3, 약산 ${pW0}→${pW.toFixed(1)}`;
+});
+test('적정: 당량점에서 pH가 급하게 오르고 페놀프탈레인이 분홍', () => {
+  const w = fresh(); scene(w, 'titration');
+  const na = w.data.idOf.naoh, left = () => { let n = 0; for (let y = 15; y < 81; y++) for (let x = 118; x <= 122; x++) if (w.mat[w.index(x, y)] === na) n++; return n; };
+  const n0 = left(); run(w, 2); w.toggleDevice(120, 81);
+  const curve = [];
+  for (let t = 0; t < 40; t++) { run(w, 1); curve.push([n0 - left(), w.pHMeter(120, 128, 8)]); }
+  const eq = 55 * 29 * 0.1; // 산의 H⁺ 양 = 염기 방울 수
+  const before = curve.filter(([u]) => u < eq * 0.7), after = curve.filter(([u]) => u > eq * 1.3);
+  assert(before.length && before.every(([, p]) => p < 4), '당량점 전에 염기성');
+  assert(after.length && after.every(([, p]) => p > 9), '당량점 뒤에 산성 ' + after.map(([u, p]) => u + ':' + p.toFixed(1)).join(' '));
+  assert(w.discovered.has('indicator:phth:base'), '지시약이 안 바뀜');
+  const jump = curve.find(([, p]) => p > 7);
+  return `당량점 이론 ${eq.toFixed(0)}방울, pH 7을 넘은 곳 ${jump[0]}방울`;
+});
+test('농도: 묽은 산은 거품이 적고 묽은 중화는 열이 적음', () => {
+  const bubbles = (c) => { const w = fresh(); w.rect('glass', 60, 145, 180, 149, null, true); w.rect('hcl', 63, 120, 177, 144); w.setConc(63, 120, 177, 144, c); w.rect('Mg', 100, 140, 140, 144, 20, true);
+    let n = 0; for (let i = 0; i < 300; i++) { w.step(); for (const m of w.mat) if (m === w.data.idOf.hydrogen) n++; } return n; };
+  const hi = bubbles(1), lo = bubbles(0.05);
+  assert(lo < hi * 0.3, `수소 진한 ${hi}, 묽은 ${lo}`);
+  return `수소 거품(누적): 기준 농도 ${hi}, ×0.05 ${lo}`;
 });
 test('성능: 틱당 시간', () => {
   const out = [];

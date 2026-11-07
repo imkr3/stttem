@@ -501,14 +501,43 @@
       },
     },
     {
+      id: 'titration', name: '산·염기 적정', tab: 'physics', graph: 'pH',
+      desc: "비커에는 묽은 염산(농도 ×0.1)과 페놀프탈레인이, 위의 뷰렛에는 수산화나트륨 용액이 들어 있습니다. 측정 탭의 '켜기·끄기' 도구로 뷰렛 아래 빨간 꼭지를 눌러 열면(초록) 염기가 한 방울씩 떨어지고, 바닥의 자석 교반기가 섞습니다. pH계 그래프는 처음에 천천히 오르다가 당량점(산의 H⁺와 염기의 OH⁻ 양이 같아지는 곳)에서 갑자기 뛰고, 이때 지시약이 분홍색으로 바뀝니다. 분홍색이 보이면 꼭지를 다시 눌러 잠그세요. 넣은 염기의 부피로 산의 농도를 알아내는 것이 적정입니다.",
+      setup(w) {
+        air(w);
+        w.rect('stone', 0, 146, 239, 149);
+        const t = tank(w, 'glass', 90, 150, 95, 142);
+        w.rect('stirrer', t.l, t.b, t.r, t.b, null, true);
+        w.rect('hcl', t.l, 112, t.r, t.b - 1); w.setConc(t.l, 112, t.r, t.b - 1, 0.1);
+        w.rect('phth', t.l, 109, t.r, 111);
+        // 뷰렛: 좁은 유리관, 아래는 밸브 한 칸
+        w.rect('glass', 116, 15, 117, 82, null, true); w.rect('glass', 123, 15, 124, 82, null, true);
+        w.rect('glass', 118, 81, 122, 82, null, true); w.rect('dropper:off', 120, 81, 120, 82, null, true);
+        w.rect('naoh', 118, 18, 122, 80);
+        w.setProbe(120, 128);
+      },
+    },
+    {
+      id: 'dilution', name: '묽힘과 농도', tab: 'materials',
+      desc: '세 비커의 물 위에 진한 용액을 조금씩 떨어뜨렸습니다. 자석 교반기가 섞으면서 녹아 있는 양은 그대로 부피만 늘어 농도가 낮아집니다. 왼쪽: 진한 보라색 과망가니즈산 칼륨이 연한 분홍이 됩니다. 가운데: 염산(pH 1)을 물 50배쯤에 섞으면 pH가 약 2.7이 됩니다(강산은 10배 묽힐 때마다 pH +1). 오른쪽: 파란 황산구리 용액이 옅어집니다. 칸에 커서를 올리면 농도와 pH가 보입니다.',
+      setup(w) {
+        air(w);
+        beakers(w, [
+          (t) => { w.rect('stirrer', t.l, t.b, t.r, t.b, null, true); w.rect('water', t.l, 100, t.r, t.b - 1); w.rect('A:KMnO4', t.l + 30, 90, t.r - 30, 96); },
+          (t) => { w.rect('stirrer', t.l, t.b, t.r, t.b, null, true); w.rect('water', t.l, 100, t.r, t.b - 1); w.rect('hcl', t.l + 25, 90, t.r - 25, 96); w.setProbe(Math.round((t.l + t.r) / 2), 125); },
+          (t) => { w.rect('stirrer', t.l, t.b, t.r, t.b, null, true); w.rect('water', t.l, 100, t.r, t.b - 1); w.rect('A:CuSO4', t.l + 25, 90, t.r - 25, 96); },
+        ]);
+      },
+    },
+    {
       id: 'density', name: '밀도 기둥', tab: 'materials',
-      desc: '일부러 무거운 소금물을 위에, 기름을 아래에 넣었습니다. 밀도 순서대로 층이 나뉘는 과정을 보세요. 밀도 보기와 함께 쓰면 좋습니다.',
+      desc: '일부러 무거운 글리세롤(1260 kg/m³)을 위에, 기름(900)을 아래에 넣었습니다. 밀도 순서대로 층이 나뉘는 과정을 보세요. 밀도 보기와 함께 쓰면 좋습니다. 소금물로 하면 가라앉으면서 물과 섞여 묽어지므로(농도) 층이 흐려집니다.',
       setup(w) {
         air(w);
         const t = tank(w, 'glass', 80, 160, 30, 142);
         w.rect('oil', t.l, 112, t.r, t.b);
         w.rect('water', t.l, 82, t.r, 111);
-        w.rect('brine', t.l, 52, t.r, 81);
+        w.rect('C3H8O3', t.l, 52, t.r, 81);
       },
     },
     {
@@ -542,6 +571,8 @@
   // check(c): c.has(발견 id), c.any(정규식), c.count(물질 id), c.cells(물질 id, 조건). 발견 기록은 저장되므로 한 번 이루면 끝이다.
   // 사이트에서는 sandlab:challenge 이벤트로 진도·점수와 연결할 수 있다.
   SL.CHALLENGES = [
+    { id: 'titrate', name: '적정으로 당량점 찾기', hint: "'산·염기 적정' 실험에서 밸브를 열어 페놀프탈레인이 분홍색이 될 때까지 염기를 넣어 보세요.", check: (c) => c.has('indicator:phth:base') && c.any(/^neutral:/) },
+    { id: 'dilute', name: '용액 묽히기', hint: '물에 용액을 떨어뜨려 섞어 보세요.', check: (c) => c.has('dilute') },
     { id: 'so2', name: '이산화황으로 색 지우기', hint: '과망가니즈산 칼륨이나 다이크로뮴산 칼륨 용액에 이산화황을 넣어 보세요.', check: (c) => c.has('kmno4_so2') || c.has('dichromate_so2') },
     { id: 'float', name: '물에 뜨는 나무', hint: "'고정'을 끄고 나무를 물 위 공중에 그려 보세요.", check: (c) => c.has('rigid_fall') },
     { id: 'dezinc', name: '황동에서 아연만 녹이기', hint: '황동을 염산에 넣어 보세요.', check: (c) => c.has('dezinc') },

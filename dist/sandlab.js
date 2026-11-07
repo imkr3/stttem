@@ -662,6 +662,9 @@ Og|오가네손|294|noble|7|50|80|1`;
     { id: 'switch:on', name: '스위치(켜짐)', formula: '닫힌 접점', fx: 'Cu', state: 'solid', cat: 'device', color: '#d8b040', density: 8000, c: 400, k: 50, inert: true, wire: true, grain: 2, desc: '전기가 통하는 스위치. 측정 탭의 "켜기·끄기" 도구로 누르면 꺼집니다.' },
     { id: 'switch:off', name: '스위치(꺼짐)', formula: '열린 접점', fx: 'Cu', state: 'solid', cat: null, aliasOf: 'switch:on', color: '#6a5a30', density: 8000, c: 400, k: 0.5, inert: true, grain: 2, desc: '전기가 통하지 않는 상태의 스위치. 켜기·끄기 도구로 누르면 켜집니다.' },
     { id: 'valve', name: '밸브(닫힘)', formula: '마개', fx: 'Fe', state: 'solid', cat: 'device', color: '#b04a4a', density: 7800, c: 500, k: 20, inert: true, strength: 100, grain: 2, desc: '관이나 용기 벽에 끼워 두는 마개. 켜기·끄기 도구로 누르면 열려 기체·액체가 지나가고, 다시 누르면 닫힙니다.' },
+    { id: 'dropper:off', name: '방울 꼭지(잠김)', formula: '뷰렛 꼭지', fx: 'Fe', state: 'solid', cat: 'device', color: '#a04040', density: 3000, c: 500, k: 5, inert: true, grain: 1, desc: '뷰렛·스포이트 끝의 꼭지. 켜기·끄기 도구로 누르면 열려 위의 액체를 한 방울씩 떨어뜨립니다.' },
+    { id: 'dropper:on', name: '방울 꼭지(열림)', formula: '뷰렛 꼭지', fx: 'Fe', state: 'solid', cat: null, aliasOf: 'dropper:off', color: '#40a060', density: 3000, c: 500, k: 5, inert: true, grain: 1, desc: '위의 액체를 1초에 몇 방울씩 아래로 떨어뜨립니다. 다시 누르면 잠깁니다.' },
+    { id: 'stirrer', name: '자석 교반기', formula: '회전 자석', fx: 'Fe', state: 'solid', cat: 'device', color: '#4a6a8a', density: 3000, c: 500, k: 5, inert: true, grain: 2, desc: '비커 바닥에 두면 그 위의 액체를 계속 저어 섞습니다. 적정처럼 고르게 섞여야 하는 실험에 씁니다.' },
     { id: 'piston', name: '피스톤', formula: '금속 판', fx: 'Fe', state: 'solid', cat: 'device', color: '#7d8fa3', density: 7800, c: 500, k: 20, inert: true, strength: 500, grain: 2, desc: '밀폐 용기 안의 기체를 새지 않게 밀고 당기는 판. 측정 탭의 피스톤 도구로 넣고 빼면 기체의 양은 그대로 부피만 바뀝니다(보일 법칙).' },
     { id: 'can', name: '얇은 금속 벽(캔)', formula: '알루미늄 판', fx: 'Al', state: 'solid', cat: 'device', color: '#b8c0c8', density: 2700, c: 900, k: 200, inert: true, strength: 1, shatter: 'can:crushed', grain: 3, desc: '견디는 압력이 1기압 정도인 얇은 벽. 안의 압력이 많이 낮아지면 바깥 공기에 눌려 찌그러집니다.' },
     { id: 'can:crushed', name: '찌그러진 캔', formula: '알루미늄 조각', fx: 'Al', state: 'powder', color: '#8c949c', density: 2700, c: 900, k: 200, inert: true, desc: '대기압에 눌려 찌그러진 캔 조각.' },
@@ -1108,7 +1111,8 @@ Og|오가네손|294|noble|7|50|80|1`;
       const eProd = e ? formOf(e) : null;
       const pace = 0.3 * Math.max(0.3, A.acid.strength || 0.9);
       if (a === 'OH' && eProd) {
-        out.push(R('neutral:' + A.fx + ':' + B.fx, '중화: ' + A.name + '과 ' + B.name, [A.fx, B.fx], [e.fx, 'H2O'], { prob: pace, toA: eProd, toB: 'H2O:l', dT: 45, note: '산과 염기가 만나 염과 물이 되고 열이 납니다.' }));
+        const hA = (SL.ANION[A.acid.a] || { charge: 1 }).charge, ohB = (SL.CATION[c] || { charge: 1 }).charge;
+        out.push(R('neutral:' + A.fx + ':' + B.fx, '중화: ' + A.name + '과 ' + B.name, [A.fx, B.fx], [e.fx, 'H2O'], { prob: pace, toA: eProd, toB: 'H2O:l', dT: 45, neutral: [hA, ohB], note: '산과 염기가 만나 염과 물이 되고 열이 납니다. 산의 H⁺와 염기의 OH⁻ 양이 같아지는 곳(당량점)에서 중성이 됩니다.' }));
       } else if ((a === 'CO3' || a === 'HCO3') && eProd && A.acid.a !== 'CO3') {
         out.push(R('carbonate:' + A.fx + ':' + B.fx, A.name + '과 ' + B.name, [A.fx, B.fx], [e.fx, 'CO2', 'H2O'], { prob: pace * 0.7, toA: eProd, toB: 'CO2', dT: 5, note: '이산화탄소 거품이 발생합니다.' }));
       } else if (a === 'O' && eProd) {
@@ -1289,7 +1293,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       if (to !== A.id) {
         const side = B.pH < 7 ? 'acid' : 'base';
         const toDef = SL.MATERIALS.find((d) => d.id === to);
-        out.push(R('indicator:' + A.indicator + ':' + side, `${ind.name}의 색 변화 (${side === 'acid' ? '산성' : '염기성'})`, [], [], { kind: 'physical', eq: `${ind.name} + pH ${B.pH} 용액 → ${toDef.name}`, prob: 0.5, toA: to, note: '지시약은 용액의 pH에 따라 색이 바뀌고, 지시약마다 색이 바뀌는 pH 범위가 다릅니다.' }));
+        out.push(R('indicator:' + A.indicator + ':' + side, `${ind.name}의 색 변화 (${side === 'acid' ? '산성' : '염기성'})`, [], [], { kind: 'physical', indicator: A.indicator, eq: `${ind.name} + pH ${B.pH} 용액 → ${toDef.name}`, prob: 0.5, toA: to, note: '지시약은 용액의 pH에 따라 색이 바뀌고, 지시약마다 색이 바뀌는 pH 범위가 다릅니다.' }));
       }
     }
 
@@ -1492,7 +1496,7 @@ Og|오가네손|294|noble|7|50|80|1`;
     return { to, e: ch, key: 'electro:anode:' + el, name: '전기 분해: (+)극의 ' + metalDef.name + '이(가) 녹음', eq: `${el} → ${el}${SUP[ch] || '⁺'} + ${ch}e⁻`, note: '금속을 (+)극으로 쓰면 전극 자체가 이온으로 녹아 들어갑니다. 구리를 순수하게 만드는 정련과 전기 도금에 씁니다.' };
   }
 
-  SL.CHEM = { rulesFor, equation, balance, parseFormula, METALS, SERIES, electrolysis, anodeDissolve, electrolyteIons };
+  SL.CHEM = { rulesFor, equation, balance, parseFormula, METALS, SERIES, electrolysis, anodeDissolve, electrolyteIons, INDICATORS };
 
   // ---- 표로 지정하는 특수 반응 ----
   const WOOD = { id: 'wood_burn', name: '나무의 연소', reactants: ['C6H10O5', 'O2'], products: ['CO2', 'H2O'], note: '공기가 없으면 타지 않습니다.' };
@@ -1929,7 +1933,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       up: [], down: [], decay: [], explicit: new Map(), cache: new Map(), reactive: new Uint8Array(n), base: new Uint16Array(n),
       fast: new Float32Array(n), thermal: new Float32Array(n), spont: new Float32Array(n), emitter: new Uint8Array(n),
       moder: new Uint8Array(n), absorb: new Float32Array(n), heat: new Float32Array(n), armor: new Uint8Array(n),
-      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), pump: new Uint8Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
+      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), pump: new Uint8Array(n), pH0: new Float32Array(n).fill(NaN), solute: new Uint8Array(n), weak: new Uint8Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
     };
     materials.forEach((d, i) => {
       c.state[i] = STATES[d.state];
@@ -1952,6 +1956,10 @@ Og|오가네손|294|noble|7|50|80|1`;
       c.grain[i] = d.grain != null ? d.grain : d.state === 'liquid' ? 5 : d.state === 'gas' ? 7 : d.metal ? 7 : d.state === 'solid' ? 16 : 13;
       if (d.electrode) c.anyElectrode = true;
       c.pump[i] = d.pump ? 1 : 0;
+      // 농도: 물에 녹아 있는 용액(산·염기·염 용액)은 칸마다 농도를 가진다. 1 = 이 물질의 기준 농도.
+      if (d.pH != null) c.pH0[i] = d.pH;
+      c.solute[i] = d.aq && d.state === 'liquid' && !d.indicator && d.id !== 'H2O:l' && (d.salt || d.acid || d.cat === 'acid' || d.cat === 'base' || d.cat === 'solution') ? 1 : 0;
+      c.weak[i] = (d.acid && (d.acid.weak || (d.acid.strength != null && d.acid.strength < 0.5))) || (d.pH != null && Math.abs(d.pH - 7) < 4) ? 1 : 0; // 약산·약염기·가수 분해하는 염: 묽혀도 pH가 덜 변함
       c.conductor[i] = d.electrode || d.wire || (d.metal && d.state !== 'gas') ? 1 : 0; // 전기가 통하는 고체·액체 금속, 도선
       c.load[i] = d.load ? 1 : 0; // 전구처럼 전류가 지나가며 일을 하는 것
       // 갇힌 기체의 압력을 견디는 정도(기압). 액체는 밀려날 뿐 터지지 않으므로 경계로 치지 않는다.
@@ -2022,6 +2030,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.T = new Float32Array(size);
       this.store = new Float32Array(size); // 상변화 중 축적된 잠열 J/kg (+가열, -냉각)
       this.gas = new Float32Array(size); // 기체 칸의 기체량(보통 1)
+      this.conc = new Float32Array(size).fill(1); // 용액 칸의 농도(기준 농도에 대한 비율)
       this.vy = new Float32Array(size);
       this.life = new Uint16Array(size);
       this.shade = new Int8Array(size);
@@ -2073,6 +2082,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.vy[i] = 0;
       this.anchor[i] = 0;
       this.loose[i] = 0;
+      this.conc[i] = 1;
       const lt = this.data.lifetime[m];
       this.life[i] = lt ? lt * (0.6 + 0.8 * Math.random()) : 0;
       const g = this.data.grain[m];
@@ -2085,6 +2095,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       t = mat[i]; mat[i] = mat[j]; mat[j] = t;
       t = anchor[i]; anchor[i] = anchor[j]; anchor[j] = t;
       t = this.loose[i]; this.loose[i] = this.loose[j]; this.loose[j] = t;
+      t = this.conc[i]; this.conc[i] = this.conc[j]; this.conc[j] = t;
       t = T[i]; T[i] = T[j]; T[j] = t;
       t = store[i]; store[i] = store[j]; store[j] = t;
       t = vy[i]; vy[i] = vy[j]; vy[j] = t;
@@ -2097,12 +2108,12 @@ Og|오가네손|294|noble|7|50|80|1`;
     effRho(i) {
       const m = this.mat[i], s = this.data.state[m], r = this.data.rho[m];
       if (s === GAS) return r * (this.gas[i] || 1) * 293 / (Math.max(this.T[i], -200) + 273); // 이상 기체: 압축된 기체는 더 무겁다
-      if (s === LIQUID) return r * (1 - 2e-4 * (this.T[i] - 20)); // 열팽창
+      if (s === LIQUID) { const c = this.data.solute[m] ? this.conc[i] : 1; return (c < 1 ? 1000 + (r - 1000) * c : r) * (1 - 2e-4 * (this.T[i] - 20)); } // 묽을수록 물에 가깝다, 열팽창
       return r;
     }
 
     // ---- 그리기 도구 ----
-    paint(cx, cy, r, m, onlyEmpty, anchored) {
+    paint(cx, cy, r, m, onlyEmpty, anchored, conc) {
       const s = this.data.state[m];
       const density = s === SOLID || anchored ? 1 : s === GAS ? 0.5 : 0.7;
       this.forDisc(cx, cy, r, (i) => {
@@ -2112,6 +2123,7 @@ Og|오가네손|294|noble|7|50|80|1`;
         if (s === GAS) this.gas[i] = 1; // 사람이 놓은 기체는 1기압
         if (anchored && s === POWDER) this.anchor[i] = 1;
         if (!anchored && s === SOLID && m !== this.AIR) { this.loose[i] = 1; this.looseN++; }
+        if (conc != null && this.data.solute[m]) this.conc[i] = conc;
       });
     }
     addHeat(cx, cy, r, dT) {
@@ -2143,6 +2155,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.boomBudget = 40;
       this.stepMotion();
       this.stepRigid();
+      this.stepStirrers();
       this.stepFlyers();
       this.stepHeat();
       this.stepNuclear();
@@ -2460,7 +2473,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       const m = this.mat[i], s = this.data.state[m];
       if (s === GAS || s === SOLID || this.anchor[i] || this.flyers.length >= 2500) return false;
       const w = this.w;
-      this.flyers.push({ x: i % w + 0.5, y: ((i / w) | 0) + 0.5, vx, vy, m, T: this.T[i], store: this.store[i], shade: this.shade[i] });
+      this.flyers.push({ x: i % w + 0.5, y: ((i / w) | 0) + 0.5, vx, vy, m, T: this.T[i], store: this.store[i], shade: this.shade[i], conc: this.conc[i] });
       // 빈자리는 바로 위의 기체로 채운다(이산화탄소 덮개 속에 공기가 새로 생기지 않도록).
       const up = i >= w && this.data.state[this.mat[i - w]] === GAS ? i - w : -1;
       this.setCell(i, up >= 0 ? this.mat[up] : this.AIR, up >= 0 ? this.T[up] : this.ambient);
@@ -2489,7 +2502,7 @@ Og|오가네손|294|noble|7|50|80|1`;
         const at = last >= 0 ? last : (f.y | 0) * w + (f.x | 0);
         if (st[mat[at]] !== GAS) { f.vx = 0; f.vy = 0; f.y -= 1; if (f.y >= 0) keep.push(f); continue; } // 자리가 찼으면 한 칸 위에서 다시
         this.setCell(at, f.m, f.T);
-        this.store[at] = f.store; this.shade[at] = f.shade; this.vy[at] = Math.max(0, Math.min(2, f.vy));
+        this.store[at] = f.store; this.shade[at] = f.shade; this.conc[at] = f.conc == null ? 1 : f.conc; this.vy[at] = Math.max(0, Math.min(2, f.vy));
         this.stamp[at] = this.tick;
       }
       this.flyers = keep;
@@ -2501,7 +2514,7 @@ Og|오가네손|294|noble|7|50|80|1`;
         let x = Math.min(w - 1, Math.max(0, f.x | 0)), y = Math.min(h - 1, Math.max(0, f.y | 0));
         while (y > 0 && st[mat[y * w + x]] !== GAS) y--;
         const i = y * w + x;
-        if (st[mat[i]] === GAS) { this.setCell(i, f.m, f.T); this.shade[i] = f.shade; }
+        if (st[mat[i]] === GAS) { this.setCell(i, f.m, f.T); this.shade[i] = f.shade; this.conc[i] = f.conc == null ? 1 : f.conc; }
       }
       this.flyers = [];
     }
@@ -2509,7 +2522,7 @@ Og|오가네손|294|noble|7|50|80|1`;
     // ---- 채우기 도구 ----
     // 누른 칸과 같은 물질(보통 공기)로 이어진 칸 가운데 누른 높이보다 아래(같은 높이 포함)만 m으로 채운다.
     // 그릇 안을 누르면 그 높이까지 액체가 찬다. 열린 곳이라 너무 넓으면 채우지 않고 0을 돌려준다.
-    fillLevel(cx, cy, m, limit) {
+    fillLevel(cx, cy, m, limit, conc) {
       if (!this.inside(cx, cy)) return 0;
       const { w, mat } = this, start = this.index(cx, cy), from = mat[start];
       if (from === m) return 0;
@@ -2525,7 +2538,7 @@ Og|오가네손|294|noble|7|50|80|1`;
         }
       }
       const s = this.data.state[m];
-      for (const i of list) { this.setCell(i, m, this.data.t0[m]); if (s === GAS) this.gas[i] = 1; }
+      for (const i of list) { this.setCell(i, m, this.data.t0[m]); if (s === GAS) this.gas[i] = 1; if (conc != null && this.data.solute[m]) this.conc[i] = conc; }
       return list.length;
     }
 
@@ -2614,12 +2627,62 @@ Og|오가네손|294|noble|7|50|80|1`;
       return n;
     }
 
+    // ---- 농도와 pH ----
+    // 직사각형 안의 용액 칸 농도를 정한다(실험 준비용).
+    setConc(x0, y0, x1, y1, c) {
+      for (let y = Math.max(0, y0); y <= Math.min(this.h - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(this.w - 1, x1); x++) {
+        const i = this.index(x, y); if (this.data.solute[this.mat[i]]) this.conc[i] = c;
+      }
+    }
+    // 한 칸의 pH. 기준 pH에서 묽힌 만큼 7 쪽으로 간다: 강산은 10배 묽히면 pH +1, 약산·가수 분해하는 염은 +0.5.
+    pHAt(i) {
+      const d = this.data, m = this.mat[i], p0 = d.pH0[m];
+      if (m === d.idOf['H2O:l']) return 7;
+      if (p0 !== p0) return null; // pH가 없는 물질
+      if (!d.solute[m]) return p0;
+      const L = -Math.log10(Math.max(1e-9, this.conc[i])) * (d.weak[m] ? 0.5 : 1);
+      return p0 < 7 ? Math.min(7, p0 + L) : p0 > 7 ? Math.max(7, p0 - L) : 7;
+    }
+    // pH 측정기: 둘레의 액체 칸들의 H⁺와 OH⁻를 평균 내어 읽는다(산과 염기 칸이 섞여 있어도 하나의 값).
+    pHMeter(cx, cy, r) {
+      let net = 0, n = 0;
+      const R = r == null ? 3 : r;
+      this.forDisc(cx, cy, R, (i) => {
+        if (this.data.state[this.mat[i]] !== LIQUID) return;
+        const p = this.pHAt(i);
+        if (p == null) return;
+        net += Math.pow(10, -p) - Math.pow(10, p - 14); n++;
+      });
+      if (!n) return null;
+      net /= n;
+      if (Math.abs(net) < 1e-7) return 7 - Math.sign(net) * 0; // 거의 중성
+      return net > 0 ? -Math.log10(net + 1e-7) : 14 + Math.log10(-net + 1e-7);
+    }
+    // 묽힘: 용액 칸이 순수한 물과 닿으면 용질을 나눠 가진다(용질의 양 Σ농도는 그대로). 같은 용액끼리는 농도가 고르게 퍼진다.
+    diffuseSolute(i, j) {
+      const { mat, conc } = this, d = this.data, m = mat[i], mj = mat[j];
+      if (mj === m) {
+        if (Math.abs(conc[i] - conc[j]) > 0.01) { const a = (conc[i] + conc[j]) / 2; conc[i] = a; conc[j] = a; }
+        return true;
+      }
+      // 가만히 맞닿은 층은 분자 확산으로 아주 천천히, 흐르거나 저어 섞이는 칸(이번 틱에 움직인 칸)은 빠르게 묽어진다.
+      if (mj !== d.idOf['H2O:l']) return false;
+      const moving = this.stamp[i] === this.tick || this.stamp[j] === this.tick || this.stamp[i] === this.tick - 1 || this.stamp[j] === this.tick - 1;
+      if (Math.random() > (moving ? 0.3 : 0.002)) return false;
+      const half = conc[i] / 2;
+      if (half < 0.002) return true; // 이보다 묽게는 나누지 않는다(용질은 버리지 않음)
+      const T = this.T[j];
+      this.setCell(j, m, T); conc[j] = half; conc[i] = half;
+      this.note('dilute', () => ({ type: 'reaction', id: 'dilute', name: '묽힘', kind: 'physical', eq: '용액 + 물 → 더 묽은 용액 (녹아 있는 양은 그대로)', note: '용액에 물을 섞으면 녹아 있는 물질은 그대로이고 부피만 늘어 농도가 낮아집니다. 강산을 10배 묽히면 pH가 1 오릅니다.' }));
+      return true;
+    }
+
     // ---- 켜기·끄기 도구 (스위치, 밸브) ----
     // 누른 칸과 이어진 스위치는 켜짐↔꺼짐을 바꾸고, 밸브는 열어(빈칸) 자리를 기억해 두었다가 다시 누르면 닫는다.
     toggleDevice(cx, cy) {
       if (!this.inside(cx, cy)) return null;
       const { w, mat } = this, d = this.data, start = this.index(cx, cy);
-      const on = d.idOf['switch:on'], off = d.idOf['switch:off'], valve = d.idOf.valve;
+      const on = d.idOf['switch:on'], off = d.idOf['switch:off'], valve = d.idOf.valve, dOn = d.idOf['dropper:on'], dOff = d.idOf['dropper:off'];
       const group = (i0, test) => {
         const out = [i0], seen = new Set(out);
         for (let k = 0; k < out.length; k++) {
@@ -2629,6 +2692,12 @@ Og|오가네손|294|noble|7|50|80|1`;
         return out;
       };
       const m = mat[start];
+      if (m === dOn || m === dOff) {
+        const cells = group(start, (j) => mat[j] === dOn || mat[j] === dOff), to = m === dOn ? dOff : dOn;
+        for (const i of cells) { const T = this.T[i]; this.setCell(i, to, T); this.anchor[i] = 1; }
+        this.stirCells = null;
+        return to === dOn ? 'dropper-open' : 'dropper-close';
+      }
       if (m === on || m === off) {
         const cells = group(start, (j) => mat[j] === on || mat[j] === off), to = m === on ? off : on;
         for (const i of cells) { const T = this.T[i]; this.setCell(i, to, T); this.anchor[i] = 1; }
@@ -2651,6 +2720,38 @@ Og|오가네손|294|noble|7|50|80|1`;
         return 'valve-close';
       }
       return null;
+    }
+
+    // ---- 자석 교반기 ----
+    // 교반기 칸 위쪽의 액체·가루를 계속 섞는다(실제로는 비커 안의 자석 막대가 돈다). 30틱마다 위치를 다시 찾는다.
+    stepStirrers() {
+      const d = this.data, sid = d.idOf.stirrer, did = d.idOf['dropper:on'];
+      if (sid == null) return;
+      if (!this.stirCells || this.tick % 30 === 0) {
+        this.stirCells = []; this.dropCells = [];
+        for (let i = 0; i < this.mat.length; i++) { if (this.mat[i] === sid && this.stirCells.length < 400) this.stirCells.push(i); else if (this.mat[i] === did) this.dropCells.push(i); }
+      }
+      const { w, mat } = this, st = d.state;
+      // 방울 꼭지: 위의 액체 한 칸을 아래 빈칸으로 옮긴다(위에는 공기 방울이 올라간다).
+      for (const c0 of this.dropCells) {
+        const up = c0 - w;
+        let dn = c0 + w;
+        while (dn < mat.length && mat[dn] === did) dn += w; // 두꺼운 꼭지는 아래 끝까지 통과
+        if (up < 0 || dn >= mat.length || mat[up] === did || Math.random() > 0.12) continue;
+        if (st[mat[up]] === LIQUID && st[mat[dn]] === GAS) { this.swap(up, dn); this.vy[dn] = 1; }
+        else if (st[mat[up]] === GAS && up - w >= 0 && st[mat[up - w]] === LIQUID) this.swap(up, up - w); // 꼭지 위에 갇힌 공기 방울은 올려 보낸다
+      }
+      if (!this.stirCells.length) return;
+      for (const s0 of this.stirCells) {
+        const x0 = s0 % w, y0 = (s0 / w) | 0;
+        for (let k = 0; k < 4; k++) {
+          const a = (y0 - 1 - ((Math.random() * 30) | 0)) * w + x0 + (((Math.random() - 0.5) * 24) | 0);
+          const b = (y0 - 1 - ((Math.random() * 30) | 0)) * w + x0 + (((Math.random() - 0.5) * 24) | 0);
+          if (a < 0 || b < 0 || a === b || mat[a] === mat[b]) continue;
+          if (st[mat[a]] !== LIQUID || st[mat[b]] !== LIQUID || this.anchor[a] || this.anchor[b]) continue;
+          this.swap(a, b);
+        }
+      }
     }
 
     // ---- 섞기 도구 ----
@@ -2746,7 +2847,15 @@ Og|오가네손|294|noble|7|50|80|1`;
           if (!d.reactive[cur]) continue;
           const r = Math.random();
           const j = r < 0.25 ? (x > 0 ? i - 1 : -1) : r < 0.5 ? (x < w - 1 ? i + 1 : -1) : r < 0.75 ? (y > 0 ? i - w : -1) : (y < h - 1 ? i + w : -1);
-          if (j < 0 || mat[j] === cur) continue;
+          if (j < 0) continue;
+          if (d.solute[cur]) {
+            if (mat[j] === cur) { this.diffuseSolute(i, j); continue; }
+            const list0 = reactionsBetween(d, cur, mat[j]);
+            if (list0) { this.react(i, j, list0); continue; }
+            this.diffuseSolute(i, j);
+            continue;
+          }
+          if (mat[j] === cur) continue;
           const list = reactionsBetween(d, cur, mat[j]);
           if (list) this.react(i, j, list);
         }
@@ -2820,22 +2929,75 @@ Og|오가네손|294|noble|7|50|80|1`;
         if (Math.random() > r.prob) continue;
         if (e.near && !this.hasNear(i, e.near) && !this.hasNear(j, e.near)) continue;
         if (e.far && (this.hasNear(i, e.far) || this.hasNear(j, e.far))) continue; // 이 물질이 옆에 있으면 일어나지 않음
-        const dT = r.dT || 0;
-        const apply = (cell, to) => {
+        const d = this.data, conc = this.conc;
+        if (r.indicator) { if (this.indicate(i, j, r)) return; continue; }
+        if (r.neutral) { this.neutralize(i, j, r, e); return; }
+        // 농도: 묽은 용액은 같은 횟수로 반응해도 생기는 기체·앙금·열이 그만큼 적다(나머지는 물로 남는다).
+        const ci = d.solute[this.mat[i]] ? conc[i] : 1, cj = d.solute[this.mat[j]] ? conc[j] : 1;
+        const cmin = ci < cj ? ci : cj;
+        const dT = (r.dT || 0) * (cmin < 1 ? Math.max(0.05, cmin) : 1);
+        const water = d.idOf['H2O:l'];
+        const apply = (cell, to, cSelf, cOther) => {
           let t = T[cell] + dT;
-          if (r.T != null) t = Math.max(t, r.T);
-          if (to == null) { if (!this.data.fixed[this.mat[cell]]) T[cell] = t; return; }
-          const next = pick(to);
+          if (r.T != null && cmin > 0.2) t = Math.max(t, r.T);
+          if (to == null) { if (!d.fixed[this.mat[cell]]) T[cell] = t; return; }
+          let next = pick(to);
           if (next === this.mat[cell]) { T[cell] = t; return; } // 그대로 남는 칸은 고정 상태·잠열을 지킨다.
+          if (cSelf < 1 && !d.solute[next] && Math.random() > cSelf) next = water; // 묽은 용액 칸: 녹아 있던 만큼만 생성물이 된다
+          else if (cSelf >= 1 && cOther < 1 && !d.solute[next] && Math.random() > cOther) { T[cell] = t; return; } // 묽은 상대: 이쪽은 그만큼 덜 변한다
+          const keep = cSelf < 1 ? cSelf : cOther < 1 ? cOther : 1;
           this.setCell(cell, next, t);
+          if (d.solute[next]) conc[cell] = keep;
         };
-        apply(i, e.toSelf);
-        apply(j, e.toOther);
+        apply(i, e.toSelf, ci, cj);
+        apply(j, e.toOther, cj, ci);
         if (r.explode && (r.explodeP == null || Math.random() < r.explodeP)) this.explode(j, r.explode, r.T != null ? Math.max(r.T, 1500) : 1500);
         else if ((dT >= 250 || (r.T != null && r.T >= 900)) && this.fx.length < 200 && Math.random() < 0.2) this.fx.push({ type: 'spark', x: j % this.w, y: (j / this.w) | 0, hot: Math.max(r.T || 0, T[j]) });
         if (!r.silent) this.note(r.id, () => ({ type: 'reaction', id: r.id, name: r.name, eq: SL.CHEM ? SL.CHEM.equation(r) : r.eq, kind: r.kind || 'chemical', note: r.note }));
         return;
       }
+    }
+
+    // 지시약: 상대 칸의 실제 pH(농도 반영)로 색을 정한다.
+    indicate(i, j, r) {
+      const d = this.data, ind = SL.CHEM && SL.CHEM.INDICATORS && SL.CHEM.INDICATORS[r.indicator];
+      if (!ind) return false;
+      const indCell = d.defs[this.mat[i]].indicator ? i : j, sol = indCell === i ? j : i;
+      const pH = this.pHAt(sol);
+      if (pH == null || Math.abs(pH - 7) < 0.5) return false;
+      const to = d.idOf[ind.to(pH)];
+      if (to == null || to === this.mat[indCell]) return false;
+      const T = this.T[indCell];
+      this.setCell(indCell, to, T);
+      const side = pH < 7 ? 'acid' : 'base', key = 'indicator:' + r.indicator + ':' + side;
+      this.note(key, () => ({ type: 'reaction', id: key, name: `${ind.name}의 색 변화 (${side === 'acid' ? '산성' : '염기성'})`, kind: 'physical', eq: `${ind.name} + pH ${pH.toFixed(1)} 용액 → ${d.defs[to].name}`, note: r.note }));
+      return true;
+    }
+    // 중화: 산과 염기의 당량(H⁺·OH⁻의 양 = 농도 × 가수)을 비교한다. 적은 쪽은 염이 되고, 많은 쪽은 남은 만큼 묽어진 채 남는다.
+    // 그래서 염기를 조금씩 넣으면 산이 점점 줄다가 당량점에서 지시약 색이 바뀐다(적정).
+    neutralize(i, j, r, e) {
+      const d = this.data, conc = this.conc, [hA, ohB] = r.neutral;
+      const iAcid = (d.pH0[this.mat[i]] < 7) === true;
+      const a = iAcid ? i : j, b = iAcid ? j : i;
+      const ca = d.solute[this.mat[a]] ? conc[a] : 1, cb = d.solute[this.mat[b]] ? conc[b] : 1;
+      const eA = ca * hA, eB = cb * ohB, used = Math.min(eA, eB);
+      const salt = pick(a === i ? e.toSelf : e.toOther); // 산 칸이 바뀌는 생성물이 염
+      const water = d.idOf['H2O:l'];
+      const lcm = (x, y) => { let p = x, q = y; while (q) [p, q] = [q, p % q]; return x * y / p; };
+      const cSalt = Math.min(1, used / lcm(hA, ohB) * Math.max(hA, ohB));
+      const heat = (r.dT || 0) * Math.min(1, used);
+      const Ta = this.T[a] + heat, Tb = this.T[b] + heat;
+      if (eA > eB * 1.02) { // 산이 남는다
+        conc[a] = (eA - eB) / hA; this.T[a] = Ta;
+        this.setCell(b, salt, Tb); conc[b] = cSalt;
+      } else if (eB > eA * 1.02) { // 염기가 남는다
+        conc[b] = (eB - eA) / ohB; this.T[b] = Tb;
+        this.setCell(a, salt, Ta); conc[a] = cSalt;
+      } else { // 당량점
+        this.setCell(a, salt, Ta); conc[a] = cSalt;
+        this.setCell(b, water, Tb);
+      }
+      if (!r.silent) this.note(r.id, () => ({ type: 'reaction', id: r.id, name: r.name, eq: SL.CHEM ? SL.CHEM.equation(r) : r.eq, kind: r.kind || 'chemical', note: r.note }));
     }
 
     // ---- 폭발 ----
@@ -3448,7 +3610,15 @@ Og|오가네손|294|noble|7|50|80|1`;
       if (this.probes && this.probes.length && this.tick % 6 === 0) {
         for (const p of this.probes) {
           const pi = this.index(p.x, p.y);
-          p.log.push({ t: this.time, T: this.T[pi], m: this.mat[pi], P: this.pressureAt(pi) });
+          // pH 측정기는 실제 전극처럼 반응이 조금 느리다(덜 섞인 방울 때문에 값이 튀지 않게 H⁺ 농도를 시간 평균).
+          const ph = this.pHMeter(p.x, p.y);
+          let pHs = null;
+          if (ph != null) {
+            const net = ph < 7 ? Math.pow(10, -ph) : -Math.pow(10, ph - 14);
+            p.net = p.net == null ? net : p.net * 0.75 + net * 0.25;
+            pHs = Math.abs(p.net) < 1e-7 ? 7 : p.net > 0 ? -Math.log10(p.net) : 14 + Math.log10(-p.net);
+          }
+          p.log.push({ t: this.time, T: this.T[pi], m: this.mat[pi], P: this.pressureAt(pi), pH: pHs });
           if (p.log.length > 1200) p.log.shift();
         }
       }
@@ -3469,19 +3639,20 @@ Og|오가네손|294|noble|7|50|80|1`;
       if (!this.inside(x, y)) return null;
       const i = this.index(x, y), def = this.data.defs[this.mat[i]];
       const s = this.data.state[this.mat[i]];
-      return { def, T: this.T[i], rho: this.effRho(i), P: s === LIQUID || s === POWDER ? this.regionP(i) + this.hydroP(i) : this.pressureAt(i) };
+      const sol = this.data.solute[this.mat[i]];
+      return { def, T: this.T[i], rho: this.effRho(i), P: s === LIQUID || s === POWDER ? this.regionP(i) + this.hydroP(i) : this.pressureAt(i), pH: this.pHAt(i), conc: sol ? this.conc[i] : null };
     }
 
     // ---- 되돌리기용 스냅숏 (메모리 안에서만, 빠르게) ----
     snapshot() {
       this.settleFlyers();
       return {
-        mat: this.mat.slice(), T: this.T.slice(), gas: this.gas.slice(), anchor: this.anchor.slice(), loose: this.loose.slice(), store: this.store.slice(), vy: this.vy.slice(), life: this.life.slice(), shade: this.shade.slice(),
+        mat: this.mat.slice(), T: this.T.slice(), gas: this.gas.slice(), anchor: this.anchor.slice(), loose: this.loose.slice(), conc: this.conc.slice(), store: this.store.slice(), vy: this.vy.slice(), life: this.life.slice(), shade: this.shade.slice(),
         bodies: this.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] })), probe: this.probe && { x: this.probe.x, y: this.probe.y }, probes: (this.probes || []).map((p) => ({ x: p.x, y: p.y })), valves: this.valves.map((v) => ({ cells: v.cells.slice(), x: v.x, y: v.y })),
       };
     }
     restoreSnapshot(s) {
-      this.mat.set(s.mat); this.T.set(s.T); if (s.loose) { this.loose.set(s.loose); this.looseN = 1; } if (s.gas) this.gas.set(s.gas); this.anchor.set(s.anchor); this.store.set(s.store); this.vy.set(s.vy); this.life.set(s.life); this.shade.set(s.shade);
+      this.mat.set(s.mat); this.T.set(s.T); if (s.loose) { this.loose.set(s.loose); this.looseN = 1; } if (s.conc) this.conc.set(s.conc); if (s.gas) this.gas.set(s.gas); this.anchor.set(s.anchor); this.store.set(s.store); this.vy.set(s.vy); this.life.set(s.life); this.shade.set(s.shade);
       this.bodies = s.bodies.map((b) => Object.assign({}, b, { trail: [], log: [] }));
       this.selected = null; this.fq = []; this.flyers = []; this.valves = (s.valves || []).map((v) => ({ cells: v.cells.slice(), x: v.x, y: v.y }));
       if (s.probes) this.probes = s.probes.map((p) => ({ x: p.x, y: p.y, log: [] })); else if (s.probe) this.setProbe(s.probe.x, s.probe.y); else this.probe = null;
@@ -3499,7 +3670,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       };
       return {
         version: 2, w: this.w, h: this.h, g: this.g, vacuum: this.vacuum, heatBoost: this.heatBoost,
-        materials: this.data.defs.map((d) => d.id), mat: enc(this.mat), T: enc(this.T), anchor: enc(this.anchor), loose: enc(this.loose),
+        materials: this.data.defs.map((d) => d.id), mat: enc(this.mat), T: enc(this.T), anchor: enc(this.anchor), loose: enc(this.loose), conc: enc(this.conc),
         bodies: this.bodies.map((b) => ({ type: b.type, r: b.r, x: b.x, y: b.y, vx: b.vx, vy: b.vy })),
         valves: this.valves.map((v) => ({ cells: v.cells, x: v.x, y: v.y })),
       };
@@ -3517,6 +3688,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       const remap = o.materials.map((id) => (id in this.data.idOf ? this.data.idOf[id] : this.AIR));
       for (let i = 0; i < mats.length; i++) { this.setCell(i, remap[mats[i]], temps[i]); this.anchor[i] = anchors[i]; if (this.data.state[this.mat[i]] === GAS) this.gas[i] = 1; }
       if (o.loose) { this.loose.set(dec(o.loose, Uint8Array)); this.looseN = 1; } // 예전 저장 데이터에는 없음
+      if (o.conc) this.conc.set(dec(o.conc, Float32Array)); // 예전 저장 데이터에는 없음(모두 기준 농도)
       if (o.valves) this.valves = o.valves.map((v) => ({ cells: v.cells.slice(), x: v.x, y: v.y }));
       this.g = o.g; this.vacuum = o.vacuum; this.setHeatBoost(o.heatBoost);
       o.bodies.forEach((b) => this.addBody(b));
@@ -4029,14 +4201,43 @@ Og|오가네손|294|noble|7|50|80|1`;
       },
     },
     {
+      id: 'titration', name: '산·염기 적정', tab: 'physics', graph: 'pH',
+      desc: "비커에는 묽은 염산(농도 ×0.1)과 페놀프탈레인이, 위의 뷰렛에는 수산화나트륨 용액이 들어 있습니다. 측정 탭의 '켜기·끄기' 도구로 뷰렛 아래 빨간 꼭지를 눌러 열면(초록) 염기가 한 방울씩 떨어지고, 바닥의 자석 교반기가 섞습니다. pH계 그래프는 처음에 천천히 오르다가 당량점(산의 H⁺와 염기의 OH⁻ 양이 같아지는 곳)에서 갑자기 뛰고, 이때 지시약이 분홍색으로 바뀝니다. 분홍색이 보이면 꼭지를 다시 눌러 잠그세요. 넣은 염기의 부피로 산의 농도를 알아내는 것이 적정입니다.",
+      setup(w) {
+        air(w);
+        w.rect('stone', 0, 146, 239, 149);
+        const t = tank(w, 'glass', 90, 150, 95, 142);
+        w.rect('stirrer', t.l, t.b, t.r, t.b, null, true);
+        w.rect('hcl', t.l, 112, t.r, t.b - 1); w.setConc(t.l, 112, t.r, t.b - 1, 0.1);
+        w.rect('phth', t.l, 109, t.r, 111);
+        // 뷰렛: 좁은 유리관, 아래는 밸브 한 칸
+        w.rect('glass', 116, 15, 117, 82, null, true); w.rect('glass', 123, 15, 124, 82, null, true);
+        w.rect('glass', 118, 81, 122, 82, null, true); w.rect('dropper:off', 120, 81, 120, 82, null, true);
+        w.rect('naoh', 118, 18, 122, 80);
+        w.setProbe(120, 128);
+      },
+    },
+    {
+      id: 'dilution', name: '묽힘과 농도', tab: 'materials',
+      desc: '세 비커의 물 위에 진한 용액을 조금씩 떨어뜨렸습니다. 자석 교반기가 섞으면서 녹아 있는 양은 그대로 부피만 늘어 농도가 낮아집니다. 왼쪽: 진한 보라색 과망가니즈산 칼륨이 연한 분홍이 됩니다. 가운데: 염산(pH 1)을 물 50배쯤에 섞으면 pH가 약 2.7이 됩니다(강산은 10배 묽힐 때마다 pH +1). 오른쪽: 파란 황산구리 용액이 옅어집니다. 칸에 커서를 올리면 농도와 pH가 보입니다.',
+      setup(w) {
+        air(w);
+        beakers(w, [
+          (t) => { w.rect('stirrer', t.l, t.b, t.r, t.b, null, true); w.rect('water', t.l, 100, t.r, t.b - 1); w.rect('A:KMnO4', t.l + 30, 90, t.r - 30, 96); },
+          (t) => { w.rect('stirrer', t.l, t.b, t.r, t.b, null, true); w.rect('water', t.l, 100, t.r, t.b - 1); w.rect('hcl', t.l + 25, 90, t.r - 25, 96); w.setProbe(Math.round((t.l + t.r) / 2), 125); },
+          (t) => { w.rect('stirrer', t.l, t.b, t.r, t.b, null, true); w.rect('water', t.l, 100, t.r, t.b - 1); w.rect('A:CuSO4', t.l + 25, 90, t.r - 25, 96); },
+        ]);
+      },
+    },
+    {
       id: 'density', name: '밀도 기둥', tab: 'materials',
-      desc: '일부러 무거운 소금물을 위에, 기름을 아래에 넣었습니다. 밀도 순서대로 층이 나뉘는 과정을 보세요. 밀도 보기와 함께 쓰면 좋습니다.',
+      desc: '일부러 무거운 글리세롤(1260 kg/m³)을 위에, 기름(900)을 아래에 넣었습니다. 밀도 순서대로 층이 나뉘는 과정을 보세요. 밀도 보기와 함께 쓰면 좋습니다. 소금물로 하면 가라앉으면서 물과 섞여 묽어지므로(농도) 층이 흐려집니다.',
       setup(w) {
         air(w);
         const t = tank(w, 'glass', 80, 160, 30, 142);
         w.rect('oil', t.l, 112, t.r, t.b);
         w.rect('water', t.l, 82, t.r, 111);
-        w.rect('brine', t.l, 52, t.r, 81);
+        w.rect('C3H8O3', t.l, 52, t.r, 81);
       },
     },
     {
@@ -4070,6 +4271,8 @@ Og|오가네손|294|noble|7|50|80|1`;
   // check(c): c.has(발견 id), c.any(정규식), c.count(물질 id), c.cells(물질 id, 조건). 발견 기록은 저장되므로 한 번 이루면 끝이다.
   // 사이트에서는 sandlab:challenge 이벤트로 진도·점수와 연결할 수 있다.
   SL.CHALLENGES = [
+    { id: 'titrate', name: '적정으로 당량점 찾기', hint: "'산·염기 적정' 실험에서 밸브를 열어 페놀프탈레인이 분홍색이 될 때까지 염기를 넣어 보세요.", check: (c) => c.has('indicator:phth:base') && c.any(/^neutral:/) },
+    { id: 'dilute', name: '용액 묽히기', hint: '물에 용액을 떨어뜨려 섞어 보세요.', check: (c) => c.has('dilute') },
     { id: 'so2', name: '이산화황으로 색 지우기', hint: '과망가니즈산 칼륨이나 다이크로뮴산 칼륨 용액에 이산화황을 넣어 보세요.', check: (c) => c.has('kmno4_so2') || c.has('dichromate_so2') },
     { id: 'float', name: '물에 뜨는 나무', hint: "'고정'을 끄고 나무를 물 위 공중에 그려 보세요.", check: (c) => c.has('rigid_fall') },
     { id: 'dezinc', name: '황동에서 아연만 녹이기', hint: '황동을 염산에 넣어 보세요.', check: (c) => c.has('dezinc') },
@@ -4260,6 +4463,7 @@ Og|오가네손|294|noble|7|50|80|1`;
         }
       } else {
         const air = W.AIR, defs = W.data.defs, st = W.data.state, w = W.w, gp = this.glowPx;
+        const sol = W.data.solute, cc = W.conc, wc = this.base[W.data.idOf['H2O:l']];
         let glow = 0;
         const lite = this.lite || !this.effects;
         if (this.glowCount) gp.fill(0);
@@ -4281,6 +4485,8 @@ Og|오가네손|294|noble|7|50|80|1`;
           const c = this.base[m];
           const s = shade[i];
           let r = c[0] + s, g = c[1] + s, b = c[2] + s;
+          // 묽은 용액은 물 색에 가깝게(진한 보라 과망가니즈산 용액도 묽히면 연한 분홍)
+          if (sol[m] && cc[i] < 0.97) { const t = 1 - Math.pow(cc[i], 0.4); r += (wc[0] - r) * t; g += (wc[1] - g) * t; b += (wc[2] - b) * t; }
           const flame = defs[m].flame || defs[m].glow; // glow: 열 없이 빛만 내는 물질(화학 발광)
           if (flame) {
             // 불꽃색을 중심으로 밝기만 일렁인다.
@@ -4392,7 +4598,7 @@ Og|오가네손|294|noble|7|50|80|1`;
   .partners:not(:empty) { border-bottom:1px solid var(--sl-line); margin-bottom:6px; }
   .scenes { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
   .scene { display:block; width:100%; text-align:left; padding:6px 9px; font-size:13px; line-height:1.3; }
-  .picked { display:flex; align-items:center; gap:8px; padding:6px 8px; margin:6px 0 8px; background:var(--sl-raised); border-radius:6px; min-height:38px; }
+  .picked { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:6px 8px; margin:6px 0 8px; background:var(--sl-raised); border-radius:6px; min-height:38px; }
   .picked i { width:14px; height:14px; border-radius:3px; flex:none; box-shadow:0 0 0 1px #fff3; }
   .picked .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .picked small { color:var(--sl-muted); margin-left:4px; }
@@ -4524,6 +4730,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.allowed = Array.isArray(opts.materials) ? new Set(opts.materials.map((id) => { const k = this.world.data.idOf[id]; return k == null ? id : this.world.data.defs[k].id; })) : null;
       if (this.allowed && !this.allowed.has(this.tool.id)) { const first = [...this.allowed][0]; this.tool = { kind: 'mat', id: first }; this.matId = first; }
       this.boxMat = 'glass';
+      this.paintConc = 1; // 용액을 그릴 때의 농도
       this.paletteCat = 'element';
       this.query = '';
       this.anchored = false;
@@ -4717,6 +4924,7 @@ Og|오가네손|294|noble|7|50|80|1`;
         const b = e.target.closest('button');
         if (!b) return;
         if (b.classList.contains('more')) { this.setTab('info'); return; }
+        if (b.dataset.conc) { this.paintConc = +b.dataset.conc; this.markSelection(); return; }
         if (b.dataset.mat) { this.tool = { kind: 'mat', id: b.dataset.mat }; this.matId = b.dataset.mat; }
         else if (b.dataset.tool) this.tool = { kind: b.dataset.tool };
         else if (b.dataset.cat) { this.paletteCat = b.dataset.cat; this.query = ''; pane.querySelector('.search').value = ''; this.renderPalette(); }
@@ -4780,7 +4988,9 @@ Og|오가네손|294|noble|7|50|80|1`;
       if (!picked) return;
       if (this.tool.kind === 'mat') {
         const d = this.world.data.defs[this.world.data.idOf[this.tool.id]];
-        picked.innerHTML = `<i style="background:${d.color}"></i><span class="nm"><b>${d.name}</b><small>${d.formula}</small></span><button class="more" title="설명과 함께 떨어뜨려 볼 재료">정보 ›</button>`;
+        const sol = this.world.data.solute[this.world.data.idOf[d.id]];
+        picked.innerHTML = `<i style="background:${d.color}"></i><span class="nm"><b>${d.name}</b><small>${d.formula}</small></span><button class="more" title="설명과 함께 떨어뜨려 볼 재료">정보 ›</button>` +
+          (sol ? `<div class="concs" role="group" aria-label="농도" style="flex-basis:100%;display:flex;gap:4px;align-items:center;margin-top:6px"><small class="hint" style="margin:0">농도</small>${[[1, '기준'], [0.1, '×0.1'], [0.01, '×0.01'], [0.001, '×0.001']].map(([c, n]) => `<button class="chip${this.paintConc === c ? ' on' : ''}" data-conc="${c}" style="min-height:26px">${n}</button>`).join('')}</div>` : '');
       } else {
         const t = TOOLS.find(([k]) => k === this.tool.kind);
         const fillMat = this.tool.kind === 'fill' ? this.world.data.defs[this.world.data.idOf[this.matId]] : null;
@@ -4871,7 +5081,7 @@ Og|오가네손|294|noble|7|50|80|1`;
     panePhysics(pane) {
       const w = this.world;
       pane.innerHTML = `<h3>측정</h3>
-        <div class="chips">${[['v', '수직 속도'], ['h', '높이'], ['E', '역학적 에너지'], ['T', '온도계'], ['P', '압력계']].map(([k, n]) => `<button class="chip${this.graphMode === k ? ' on' : ''}" data-graph="${k}">${n}</button>`).join('')}</div>
+        <div class="chips">${[['v', '수직 속도'], ['h', '높이'], ['E', '역학적 에너지'], ['T', '온도계'], ['P', '압력계'], ['pH', 'pH계']].map(([k, n]) => `<button class="chip${this.graphMode === k ? ' on' : ''}" data-graph="${k}">${n}</button>`).join('')}</div>
         <div class="graph"><canvas class="plot"></canvas></div><div class="legend"></div><div class="stats"></div>
         <div class="chips" style="margin-top:6px"><button class="chip csv" title="지금 그래프의 측정값을 표 파일(CSV)로 저장">CSV로 저장</button><button class="chip clearprobes">온도계 모두 지우기</button></div>
         <h3>중력</h3><div class="chips">${GRAVITY.map(([n, g]) => `<button class="chip${Math.abs(w.g - g) < 0.005 ? ' on' : ''}" data-g="${g}">${n}</button>`).join('')}</div>
@@ -5036,7 +5246,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       if (this.tool.kind === 'fill') {
         this.pointer = null;
         this.remember();
-        const n = this.world.fillLevel(c.x, c.y, this.world.data.idOf[this.matId]);
+        const n = this.world.fillLevel(c.x, c.y, this.world.data.idOf[this.matId], null, this.paintConc);
         this.dirty = true;
         if (!n) { this.history.pop(); this.toast({ name: '채울 수 없음', eq: '벽으로 둘러싸인 그릇 안을 눌러 주세요(너무 넓으면 채우지 않습니다).' }, ''); }
         return;
@@ -5098,7 +5308,7 @@ Og|오가네손|294|noble|7|50|80|1`;
     applyBrush(x, y) {
       this.dirty = true;
       const w = this.world, t = this.tool, r = this.brush - 1;
-      if (t.kind === 'mat') w.paint(x, y, r, w.data.idOf[t.id], true, this.anchored);
+      if (t.kind === 'mat') w.paint(x, y, r, w.data.idOf[t.id], true, this.anchored, this.paintConc);
       else if (t.kind === 'erase') {
         w.paint(x, y, r, w.AIR, false);
         const hit = this.bodyAt({ x, y });
@@ -5201,7 +5411,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       const c = this.hover;
       const info = c && this.world.inspect(c.x, c.y);
       const html = info
-        ? `<b>${info.def.name}</b> ${info.def.formula} · ${fmt(info.T, 1)}°C · ${info.rho >= 10 ? fmt(info.rho, 0) : fmt(info.rho, 2)} kg/m³${Math.abs(info.P - 1) > 0.02 ? ` · <b>${fmt(info.P, 2)}기압</b>` : ''}`
+        ? `<b>${info.def.name}</b> ${info.def.formula} · ${fmt(info.T, 1)}°C · ${info.rho >= 10 ? fmt(info.rho, 0) : fmt(info.rho, 2)} kg/m³${Math.abs(info.P - 1) > 0.02 ? ` · <b>${fmt(info.P, 2)}기압</b>` : ''}${info.pH != null && info.def.state === 'liquid' ? ` · <b>pH ${fmt(info.pH, 1)}</b>` : ''}${info.conc != null && info.conc < 0.995 ? ` · 농도 ×${info.conc < 0.1 ? info.conc.toFixed(3) : info.conc.toFixed(2)}` : ''}`
         : this.touch ? '손가락으로 그리면 고른 재료가 떨어집니다. 관찰 도구로 누르면 그 칸의 정보가 나옵니다.' : '실험 공간 위에 커서를 올리면 그 칸의 물질과 온도가 보입니다. 관찰 도구로 누르면 정보 탭에 자세히 나옵니다.';
       if (html !== this.statusHtml) { el.innerHTML = html; this.statusHtml = html; }
     }
@@ -5258,12 +5468,12 @@ Og|오가네손|294|noble|7|50|80|1`;
     // 그래프 하나, 축 하나. 측정값은 실선, 이론값은 점선으로 구분한다.
     plotData() {
       const w = this.world, m = this.graphMode;
-      if (m === 'T' || m === 'P') {
+      if (m === 'T' || m === 'P' || m === 'pH') {
         const ps = w.probes || [];
         if (!ps.length) return { empty: '온도계 도구로 측정할 곳을 눌러 주세요(최대 3곳). 압력은 밀폐 용기 안의 기체에서 잽니다.' };
         const t0 = Math.min(...ps.map((p) => (p.log.length ? p.log[0].t : Infinity)));
-        const val = (s) => (m === 'P' ? s.P || 1 : s.T);
-        const p = ps[0], unit = m === 'P' ? '기압' : '°C', label = m === 'P' ? '압력' : '온도';
+        const val = (s) => (m === 'P' ? s.P || 1 : m === 'pH' ? (s.pH == null ? null : s.pH) : s.T);
+        const p = ps[0], unit = m === 'P' ? '기압' : m === 'pH' ? 'pH' : '°C', label = m === 'P' ? '압력' : m === 'pH' ? 'pH' : '온도';
         const more = ps.slice(1).map((q, k) => ({ xs: q.log.map((s) => s.t - t0), ys: q.log.map(val), color: PROBE_COLORS[k + 1], label: `${label} ${k + 2}` }));
         return { unit, xs: p.log.map((s) => s.t - (isFinite(t0) ? t0 : 0)), ys: p.log.map(val), label: ps.length > 1 ? label + ' 1' : label, more };
       }
@@ -5303,7 +5513,8 @@ Og|오가네손|294|noble|7|50|80|1`;
       const more = d.more || [];
       const xMax = Math.max(1, d.xs[d.xs.length - 1], ...more.map((q) => q.xs[q.xs.length - 1] || 0));
       const theoryPts = d.theory ? d.xs.map((t) => d.theory(t)) : [];
-      const all = d.ys.concat(theoryPts.filter((v) => v != null), ...more.map((q) => q.ys));
+      const all = d.ys.concat(theoryPts, ...more.map((q) => q.ys)).filter((v) => v != null && isFinite(v));
+      if (!all.length) { ctx.fillStyle = ink; ctx.textAlign = 'center'; ctx.fillText('측정할 액체가 없습니다', W / 2, H / 2); return; }
       let lo = Math.min(...all), hi = Math.max(...all);
       if (hi - lo < 1e-3) { hi += 1; lo -= 1; }
       const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
@@ -5331,7 +5542,8 @@ Og|오가네손|294|noble|7|50|80|1`;
       if (d.theory) path(theoryPts, c2, [6, 4]);
       for (const q of more) {
         ctx.strokeStyle = q.color; ctx.lineWidth = 2; ctx.beginPath();
-        q.ys.forEach((v, i) => { if (i) ctx.lineTo(X(q.xs[i]), Y(v)); else ctx.moveTo(X(q.xs[i]), Y(v)); });
+        let open = false;
+        q.ys.forEach((v, i) => { if (v == null) { open = false; return; } if (open) ctx.lineTo(X(q.xs[i]), Y(v)); else { ctx.moveTo(X(q.xs[i]), Y(v)); open = true; } });
         ctx.stroke();
       }
       // 커서 위치의 값 표시
@@ -5383,7 +5595,13 @@ Og|오가네손|294|noble|7|50|80|1`;
       if (!box) return;
       const stat = (n, v) => `<div class="stat"><small>${n}</small>${v}</div>`;
       let html = '';
-      if (this.graphMode === 'P') {
+      if (this.graphMode === 'pH') {
+        if (w.probe) {
+          const pH = w.pHMeter(w.probe.x, w.probe.y), here = w.inspect(w.probe.x, w.probe.y);
+          html = stat('현재 pH', pH == null ? '액체 없음' : fmt(pH, 2)) + stat('성질', pH == null ? '-' : pH < 6.5 ? '산성' : pH > 7.5 ? '염기성' : '중성') +
+            stat('그 칸', here.def.name + (here.conc != null && here.conc < 0.995 ? ` ×${fmt(here.conc, 3)}` : '')) + stat('도움말', '둘레 액체의 평균 pH');
+        }
+      } else if (this.graphMode === 'P') {
         if (w.probe) {
           const i = w.index(w.probe.x, w.probe.y), P = w.pressureAt(i), T = w.T[i];
           // 게이뤼삭 법칙: 부피가 일정하면 P/T(절대 온도)가 일정하다.
@@ -5426,7 +5644,7 @@ Og|오가네손|294|noble|7|50|80|1`;
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,effects?:boolean,sound?:boolean,materials?:string[],storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.16.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.17.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);

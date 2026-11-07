@@ -317,7 +317,8 @@
       const eProd = e ? formOf(e) : null;
       const pace = 0.3 * Math.max(0.3, A.acid.strength || 0.9);
       if (a === 'OH' && eProd) {
-        out.push(R('neutral:' + A.fx + ':' + B.fx, '중화: ' + A.name + '과 ' + B.name, [A.fx, B.fx], [e.fx, 'H2O'], { prob: pace, toA: eProd, toB: 'H2O:l', dT: 45, note: '산과 염기가 만나 염과 물이 되고 열이 납니다.' }));
+        const hA = (SL.ANION[A.acid.a] || { charge: 1 }).charge, ohB = (SL.CATION[c] || { charge: 1 }).charge;
+        out.push(R('neutral:' + A.fx + ':' + B.fx, '중화: ' + A.name + '과 ' + B.name, [A.fx, B.fx], [e.fx, 'H2O'], { prob: pace, toA: eProd, toB: 'H2O:l', dT: 45, neutral: [hA, ohB], note: '산과 염기가 만나 염과 물이 되고 열이 납니다. 산의 H⁺와 염기의 OH⁻ 양이 같아지는 곳(당량점)에서 중성이 됩니다.' }));
       } else if ((a === 'CO3' || a === 'HCO3') && eProd && A.acid.a !== 'CO3') {
         out.push(R('carbonate:' + A.fx + ':' + B.fx, A.name + '과 ' + B.name, [A.fx, B.fx], [e.fx, 'CO2', 'H2O'], { prob: pace * 0.7, toA: eProd, toB: 'CO2', dT: 5, note: '이산화탄소 거품이 발생합니다.' }));
       } else if (a === 'O' && eProd) {
@@ -498,7 +499,7 @@
       if (to !== A.id) {
         const side = B.pH < 7 ? 'acid' : 'base';
         const toDef = SL.MATERIALS.find((d) => d.id === to);
-        out.push(R('indicator:' + A.indicator + ':' + side, `${ind.name}의 색 변화 (${side === 'acid' ? '산성' : '염기성'})`, [], [], { kind: 'physical', eq: `${ind.name} + pH ${B.pH} 용액 → ${toDef.name}`, prob: 0.5, toA: to, note: '지시약은 용액의 pH에 따라 색이 바뀌고, 지시약마다 색이 바뀌는 pH 범위가 다릅니다.' }));
+        out.push(R('indicator:' + A.indicator + ':' + side, `${ind.name}의 색 변화 (${side === 'acid' ? '산성' : '염기성'})`, [], [], { kind: 'physical', indicator: A.indicator, eq: `${ind.name} + pH ${B.pH} 용액 → ${toDef.name}`, prob: 0.5, toA: to, note: '지시약은 용액의 pH에 따라 색이 바뀌고, 지시약마다 색이 바뀌는 pH 범위가 다릅니다.' }));
       }
     }
 
@@ -701,7 +702,7 @@
     return { to, e: ch, key: 'electro:anode:' + el, name: '전기 분해: (+)극의 ' + metalDef.name + '이(가) 녹음', eq: `${el} → ${el}${SUP[ch] || '⁺'} + ${ch}e⁻`, note: '금속을 (+)극으로 쓰면 전극 자체가 이온으로 녹아 들어갑니다. 구리를 순수하게 만드는 정련과 전기 도금에 씁니다.' };
   }
 
-  SL.CHEM = { rulesFor, equation, balance, parseFormula, METALS, SERIES, electrolysis, anodeDissolve, electrolyteIons };
+  SL.CHEM = { rulesFor, equation, balance, parseFormula, METALS, SERIES, electrolysis, anodeDissolve, electrolyteIons, INDICATORS };
 
   // ---- 표로 지정하는 특수 반응 ----
   const WOOD = { id: 'wood_burn', name: '나무의 연소', reactants: ['C6H10O5', 'O2'], products: ['CO2', 'H2O'], note: '공기가 없으면 타지 않습니다.' };
