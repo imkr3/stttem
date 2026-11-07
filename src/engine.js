@@ -4,6 +4,9 @@
   'use strict';
 
   const SOLID = 0, POWDER = 1, LIQUID = 2, GAS = 3;
+  // 용해도 [20°C에서의 한도(기준 농도의 배수), 1°C마다 변하는 비율]. 질산칼륨·황산구리는 온도에 민감하고 소금은 거의 그대로다.
+  // 수산화칼슘처럼 뜨거울수록 덜 녹는 것도 있다(음수).
+  const SOLUBILITY = { KNO3: [1.5, 0.06], CuSO4: [1.5, 0.04], NaCl: [3, 0.002], KCl: [2.5, 0.012], NH4Cl: [2.5, 0.02], 'Ca(OH)2': [1.2, -0.008], Li2CO3: [1.2, -0.006], Na2SO4: [2, 0.03], KMnO4: [1.5, 0.04], 'Pb(NO3)2': [2, 0.02], AgNO3: [4, 0.03], NaHCO3: [1.5, 0.015], Na2CO3: [2, 0.03], KI: [4, 0.01], NaOH: [5, 0.02] };
   const STATES = { solid: SOLID, powder: POWDER, liquid: LIQUID, gas: GAS };
   const EARTH_G = 9.81;
   const MAX_FALL = 8; // 칸/틱. 터널링 방지용 상한
@@ -39,6 +42,7 @@
       return idOf[id];
     };
     const resolve = (to) => (Array.isArray(to) ? to.map(([id, p]) => [need(id), p]) : need(to));
+    const byIdx = (id) => (idOf[id] != null && idOf[id] >= 0 ? idOf[id] : null);
     const compileEdge = (e) => e && { at: e.at, L: e.L, to: resolve(e.to), silent: !!e.silent, cast: !!e.cast, boil: false };
     const c = {
       n, idOf, defs: materials, resolve,
@@ -48,7 +52,7 @@
       up: [], down: [], decay: [], explicit: new Map(), cache: new Map(), reactive: new Uint8Array(n), base: new Uint16Array(n),
       fast: new Float32Array(n), thermal: new Float32Array(n), spont: new Float32Array(n), emitter: new Uint8Array(n),
       moder: new Uint8Array(n), absorb: new Float32Array(n), heat: new Float32Array(n), armor: new Uint8Array(n),
-      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), pump: new Uint8Array(n), pH0: new Float32Array(n).fill(NaN), solute: new Uint8Array(n), weak: new Uint8Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
+      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), pump: new Uint8Array(n), pH0: new Float32Array(n).fill(NaN), solute: new Uint8Array(n), weak: new Uint8Array(n), crystal: new Int16Array(n).fill(-1), sat20: new Float32Array(n), satK: new Float32Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
     };
     materials.forEach((d, i) => {
       c.state[i] = STATES[d.state];
@@ -74,6 +78,12 @@
       // 농도: 물에 녹아 있는 용액(산·염기·염 용액)은 칸마다 농도를 가진다. 1 = 이 물질의 기준 농도.
       if (d.pH != null) c.pH0[i] = d.pH;
       c.solute[i] = d.aq && d.state === 'liquid' && !d.indicator && d.id !== 'H2O:l' && (d.salt || d.acid || d.cat === 'acid' || d.cat === 'base' || d.cat === 'solution') ? 1 : 0;
+      // 용해도: 20°C에서 녹을 수 있는 최대 농도(기준 농도의 배수)와 온도에 따른 변화율. 결정 한 칸 = 기준 농도 용액 두 칸 분량.
+      if (c.solute[i] && d.id.startsWith('A:') && !d.acid && byIdx('S:' + d.id.slice(2)) != null) {
+        c.crystal[i] = byIdx('S:' + d.id.slice(2));
+        const S = SOLUBILITY[d.id.slice(2)] || [3, 0.015];
+        c.sat20[i] = S[0]; c.satK[i] = S[1];
+      }
       c.weak[i] = (d.acid && (d.acid.weak || (d.acid.strength != null && d.acid.strength < 0.5))) || (d.pH != null && Math.abs(d.pH - 7) < 4) ? 1 : 0; // 약산·약염기·가수 분해하는 염: 묽혀도 pH가 덜 변함
       c.conductor[i] = d.electrode || d.wire || (d.metal && d.state !== 'gas') ? 1 : 0; // 전기가 통하는 고체·액체 금속, 도선
       c.load[i] = d.load ? 1 : 0; // 전구처럼 전류가 지나가며 일을 하는 것
@@ -773,13 +783,90 @@
       if (Math.abs(net) < 1e-7) return 7 - Math.sign(net) * 0; // 거의 중성
       return net > 0 ? -Math.log10(net + 1e-7) : 14 + Math.log10(-net + 1e-7);
     }
+    // 용해도(온도에 따라)
+    satAt(i) {
+      const d = this.data, m = this.mat[i];
+      if (d.crystal[m] < 0) return Infinity;
+      return Math.max(0.3, d.sat20[m] * (1 + d.satK[m] * (this.T[i] - 20)));
+    }
+    // 증발: 용액 칸의 물이 날아가면 녹아 있던 것은 이웃한 같은 용액으로 옮겨 가 진해진다. 이웃이 없으면(마지막 한 방울) 결정으로 남는다.
+    evaporate(s, r) {
+      const { w, mat, conc } = this, d = this.data, m = mat[s], x = s % w;
+      const nb = [x > 0 ? s - 1 : -1, x < w - 1 ? s + 1 : -1, s - w, s + w].filter((j) => j >= 0 && j < mat.length && mat[j] === m);
+      const T = this.T[s];
+      // 이웃이 받아 줄 수 있는 만큼(용해도까지)만 넘기고, 넘치는 양은 이 자리에서 결정이 된다(평균적으로 양이 맞도록 확률로).
+      let left = conc[s];
+      if (d.crystal[m] >= 0) for (const k of nb) { const room = Math.max(0, this.satAt(k) - conc[k]); const give = Math.min(room, left); conc[k] += give; left -= give; if (left <= 0) break; }
+      else if (nb.length) { conc[nb[(Math.random() * nb.length) | 0]] += left; left = 0; }
+      if (left > 0 && d.crystal[m] >= 0 && Math.random() < Math.min(1, left / 2)) this.setCell(s, d.crystal[m], T);
+      else { this.setCell(s, this.AIR, T); this.gas[s] = 1; }
+      this.note('evap:water', () => ({ type: 'reaction', id: 'evap:water', name: r.name, eq: '용액 → H₂O(g)↑ + 더 진한 용액 → 결정', kind: 'physical', note: '물이 날아가면 녹아 있던 것은 남은 물에 모여 용액이 진해지고, 녹을 수 있는 한도를 넘거나 다 마르면 결정이 생깁니다(염전).' }));
+    }
+    // 같은 용액에 고체가 더 녹는다: 두 칸이 고르게 나눠 가진 농도가 용해도를 넘지 않을 때만.
+    dissolveInto(solid, sol, r) {
+      const conc = this.conc, c = (conc[sol] + 2) / 2;
+      if (conc[sol] + 1 > this.satAt(sol)) {
+        this.note('saturated', () => ({ type: 'reaction', id: 'saturated', name: '포화 용액', kind: 'physical', eq: '녹을 수 있는 한도에 이름 → 더 녹지 않음', note: '일정한 온도에서 물에 녹을 수 있는 양에는 한도(용해도)가 있습니다. 포화된 용액에 더 넣으면 녹지 않고 가라앉습니다. 대부분의 고체는 데우면 더 많이 녹습니다.' }));
+        return false;
+      }
+      const T = this.T[solid];
+      this.setCell(solid, this.mat[sol], T);
+      conc[solid] = c; conc[sol] = c;
+      this.note(r.id, () => ({ type: 'reaction', id: r.id, name: r.name, eq: r.eq, kind: 'physical', note: r.note }));
+      return true;
+    }
+    // 용해도를 넘은 용액 칸은 결정이 된다(식히거나 증발시켜 진해졌을 때). 모자라는 양은 이웃한 같은 용액에서 가져온다.
+    crystallize(i, j) {
+      const { conc } = this, d = this.data, m = this.mat[i];
+      const take = 2 - conc[i];
+      if (take > 0) {
+        // 둘레(가로세로 2칸 안)의 같은 용액에서 용해도를 넘는 만큼씩 모아 온다. 모자라면 아직 결정이 생기지 않는다.
+        const w = this.w, x = i % w, y = (i / w) | 0, src = [];
+        let avail = 0;
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+          if (!dx && !dy) continue;
+          const xx = x + dx, yy = y + dy;
+          if (!this.inside(xx, yy)) continue;
+          const k = yy * w + xx;
+          if (this.mat[k] !== m) continue;
+          const extra = conc[k] - this.satAt(k);
+          if (extra > 0) { src.push([k, extra]); avail += extra; }
+        }
+        if (avail < take) { if (src.length || Math.random() > conc[i] / 2) return false; } // 외딴 칸은 확률로(평균적으로 양이 맞음)
+        else for (const [k, ex] of src) conc[k] -= take * ex / avail;
+      }
+      else {
+        // 결정 한 칸(2단위)보다 많이 녹아 있던 칸: 남는 양을 둘레의 덜 진한 칸이 받아 줄 수 있을 때만(포화 용액이 연쇄로 굳지 않게)
+        const w = this.w, x = i % w, y = (i / w) | 0, dst = [];
+        let room = 0;
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+          if (!dx && !dy) continue;
+          const xx = x + dx, yy = y + dy;
+          if (!this.inside(xx, yy)) continue;
+          const k = yy * w + xx;
+          if (this.mat[k] !== m) continue;
+          const r = this.satAt(k) - conc[k];
+          if (r > 0) { dst.push([k, r]); room += r; }
+        }
+        if (room < -take) return false;
+        for (const [k, r] of dst) conc[k] += -take * r / room;
+      }
+      const T = this.T[i];
+      this.setCell(i, d.crystal[m], T);
+      const key = 'recrystal:' + d.defs[m].fx;
+      this.note(key, () => ({ type: 'reaction', id: key, name: `결정이 생김(${d.defs[d.crystal[m]].name})`, kind: 'physical', eq: `${d.defs[m].formula} → ${d.defs[d.crystal[m]].formula} (용해도를 넘음)`, note: '녹을 수 있는 한도(용해도)보다 진해지면 결정이 생깁니다. 질산칼륨·황산구리처럼 온도에 따라 용해도가 크게 변하는 물질은 뜨거울 때 진하게 녹였다가 식히면 결정이 많이 생깁니다(재결정).' }));
+      return true;
+    }
+
     // 묽힘: 용액 칸이 순수한 물과 닿으면 용질을 나눠 가진다(용질의 양 Σ농도는 그대로). 같은 용액끼리는 농도가 고르게 퍼진다.
     diffuseSolute(i, j) {
       const { mat, conc } = this, d = this.data, m = mat[i], mj = mat[j];
       if (mj === m) {
+        if (d.crystal[m] >= 0 && conc[i] > this.satAt(i) && Math.random() < 0.05 && this.crystallize(i, j)) return true;
         if (Math.abs(conc[i] - conc[j]) > 0.01) { const a = (conc[i] + conc[j]) / 2; conc[i] = a; conc[j] = a; }
         return true;
       }
+      if (d.crystal[m] >= 0 && conc[i] > this.satAt(i) && Math.random() < 0.05 && this.crystallize(i, j)) return true;
       // 가만히 맞닿은 층은 분자 확산으로 아주 천천히, 흐르거나 저어 섞이는 칸(이번 틱에 움직인 칸)은 빠르게 묽어진다.
       if (mj !== d.idOf['H2O:l']) return false;
       const moving = this.stamp[i] === this.tick || this.stamp[j] === this.tick || this.stamp[i] === this.tick - 1 || this.stamp[j] === this.tick - 1;
@@ -1041,11 +1128,16 @@
         if (r.minT != null && hi < r.minT) continue;
         if (r.maxT != null && hi > r.maxT) continue; // 낮은 온도에서만 일어나는 반응(수화, 부동태)
         if (r.minP != null && Math.max(this.regionP(i), this.regionP(j)) < r.minP) continue; // 높은 압력이 필요한 반응
-        if (Math.random() > r.prob) continue;
+        // 온도: 화학 반응은 10°C 오를 때마다 대략 2배 빨라진다(아레니우스 식의 어림). 시작 온도가 정해진 반응(점화 등)은 제외.
+        let prob = r.prob;
+        if (r.kind !== 'physical' && r.minT == null && !r.explode) prob = Math.min(1, prob * Math.max(0.15, Math.min(6, Math.pow(2, ((T[i] + T[j]) / 2 - 20) / 10))));
+        if (Math.random() > prob) continue;
         if (e.near && !this.hasNear(i, e.near) && !this.hasNear(j, e.near)) continue;
         if (e.far && (this.hasNear(i, e.far) || this.hasNear(j, e.far))) continue; // 이 물질이 옆에 있으면 일어나지 않음
         const d = this.data, conc = this.conc;
         if (r.indicator) { if (this.indicate(i, j, r)) return; continue; }
+        if (r.evapSolute && (d.solute[this.mat[i]] || d.solute[this.mat[j]])) { this.evaporate(d.solute[this.mat[i]] ? i : j, r); return; }
+        if (r.dissolveInto) { if (this.dissolveInto(d.solute[this.mat[i]] ? j : i, d.solute[this.mat[i]] ? i : j, r)) return; continue; }
         if (r.neutral) { this.neutralize(i, j, r, e); return; }
         // 농도: 묽은 용액은 같은 횟수로 반응해도 생기는 기체·앙금·열이 그만큼 적다(나머지는 물로 남는다).
         const ci = d.solute[this.mat[i]] ? conc[i] : 1, cj = d.solute[this.mat[j]] ? conc[j] : 1;

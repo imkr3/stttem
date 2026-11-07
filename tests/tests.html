@@ -122,6 +122,7 @@ test('표로 지정한 특수 반응식의 원자 수가 맞음', () => {
 const SHOULD = [
   ['철+뜨거운 수증기', 'iron', 'steam', 600, 'fe_steam'],
   ['산성비 확인: 묽은 염산+BTB', 'btb', 'hcl', null, 'indicator:btb:acid'],
+  ['소금+덜 진한 소금물', 'salt', 'brine', null, 'dissolve_more:NaCl'],
   // 0.14.0에서 채운 반응
   ['베릴륨+염산', 'Be', 'hcl', null, 'acid:Be:Cl'], ['란타넘+질산', 'La', 'HNO3aq', null, 'hno3:La:NO'], ['타이타늄+플루오린화수소산', 'Ti', 'A:acid:HF', null, 'acid:Ti:F'],
   ['아연+레몬즙', 'Zn', 'A:citric', null, 'citric-metal:Zn'], ['탄산마그네슘+레몬즙', 'S:MgCO3', 'A:citric', null, 'citric-co3:MgCO3'],
@@ -218,7 +219,7 @@ const SHOULD_NOT = [
   ['석회암 저온', 'limestone', 'air'], ['메테인 저온', 'CH4', 'air'], ['마그네슘 저온', 'Mg', 'air'],
   ['BTB+물 (묽히기만 함)', 'btb', 'water'], ['페놀프탈레인+소금물 (중성)', 'phth', 'brine'], ['구리+수산화나트륨 (양쪽성 아님)', 'Cu', 'naoh'], ['철+수산화나트륨', 'Fe', 'naoh'],
   ['마그네슘+이산화탄소 저온', 'Mg', 'co2'], ['숯+수증기 저온', 'C', 'steam'], ['뜨겁지 않은 기름+물', 'oil', 'water'],
-  ['수소+공기 (불씨·촉매 없음)', 'hydrogen', 'air'], ['소금+소금물 (포화)', 'salt', 'brine'], ['백금+염산', 'Pt', 'hcl'], ['베네딕트+포도당 (데우지 않음)', 'benedict', 'A:glucose'], ['녹말+물', 'starch', 'water'],
+  ['수소+공기 (불씨·촉매 없음)', 'hydrogen', 'air'], ['백금+염산', 'Pt', 'hcl'], ['베네딕트+포도당 (데우지 않음)', 'benedict', 'A:glucose'], ['녹말+물', 'starch', 'water'],
 ['사염화탄소+물', 'CCl4', 'water'],
   ['브로민수+메테인 (포화 탄화수소)', 'brominewater', 'CH4'], ['과망가니즈산칼륨+에테인', 'A:KMnO4', 'C2H6'], ['익은 간+과산화수소 (효소 변성)', 'liver:cooked', 'H2O2'], ['흰자+물', 'eggwhite', 'water'], ['구리+염화철(II)', 'Cu', 'A:FeCl2'],
   ['천연 우라늄+물', 'U', 'water'], ['농축 우라늄+공기 (화학 반응 없음)', 'HEU', 'nitrogen'],
@@ -942,6 +943,36 @@ test('농도: 묽은 산은 거품이 적고 묽은 중화는 열이 적음', ()
   const hi = bubbles(1), lo = bubbles(0.05);
   assert(lo < hi * 0.3, `수소 진한 ${hi}, 묽은 ${lo}`);
   return `수소 거품(누적): 기준 농도 ${hi}, ×0.05 ${lo}`;
+});
+test('용해도: 포화되면 더 안 녹고, 식히면 결정, 증발하면 진해짐', () => {
+  const cnt = (w, id) => { const k = w.data.idOf[id]; let n = 0; for (const m of w.mat) if (m === k) n++; return n; };
+  const units = (w, sol, cry) => { let s = 0; for (let i = 0; i < w.mat.length; i++) if (w.mat[i] === w.data.idOf[sol]) s += w.conc[i]; return s + 2 * cnt(w, cry); };
+  // 포화된 소금물에는 소금이 더 녹지 않음
+  const v = fresh(); v.rect('glass', 60, 145, 180, 149, null, true); v.rect('brine', 63, 120, 177, 144); v.setConc(63, 120, 177, 144, 3); v.rect('salt', 100, 110, 140, 119);
+  run(v, 10);
+  assert(cnt(v, 'salt') > 350 && v.discovered.has('saturated'), `포화인데 녹음: 남은 소금 ${cnt(v, 'salt')}`);
+  // 질산칼륨: 20°C에서는 그대로, 3°C로 식히면 결정(양은 보존)
+  const cool = (T) => { const w = fresh(); w.rect('glass', 60, 145, 180, 149, null, true); w.rect('A:KNO3', 63, 120, 177, 144, T); w.setConc(63, 120, 177, 144, 1.4);
+    for (let i = 0; i < 1800; i++) { w.step(); for (let y = 110; y < 145; y++) for (let x = 63; x < 178; x++) { const k = w.index(x, y); if (w.data.state[w.mat[k]] === 2) w.T[k] = T; } } return w; };
+  const warm = cool(20), cold = cool(3);
+  const u0 = 115 * 25 * 1.4, uc = units(cold, 'A:KNO3', 'S:KNO3');
+  assert(cnt(warm, 'S:KNO3') < 200 && cnt(cold, 'S:KNO3') > 1000, `결정 20°C ${cnt(warm, 'S:KNO3')}, 3°C ${cnt(cold, 'S:KNO3')}`);
+  assert(Math.abs(uc - u0) < u0 * 0.03, `녹은 양 ${u0} → ${uc.toFixed(0)}`);
+  // 증발: 남은 소금물이 진해지다가 소금 결정이 생김
+  const e = fresh(); e.rect('stone', 60, 145, 180, 149, null, true); e.rect('brine', 63, 140, 177, 144, 80);
+  for (let i = 0; i < 3000; i++) { e.step(); for (let y = 135; y < 145; y++) for (let x = 63; x < 178; x++) { const k = e.index(x, y); if (e.data.state[e.mat[k]] === 2) e.T[k] = 80; } }
+  let s = 0, n = 0; for (let i = 0; i < e.mat.length; i++) if (e.mat[i] === e.data.idOf.brine) { s += e.conc[i]; n++; }
+  assert(cnt(e, 'salt') > 30 && (!n || s / n > 1.5), `소금 결정 ${cnt(e, 'salt')}, 남은 소금물 평균 농도 ${n ? (s / n).toFixed(2) : '-'}`);
+  return `포화: 소금 ${cnt(v, 'salt')}칸 남음 · 질산칼륨 결정 20°C ${cnt(warm, 'S:KNO3')} / 3°C ${cnt(cold, 'S:KNO3')}칸(양 ${u0.toFixed(0)} → ${uc.toFixed(0)}) · 증발: 결정 ${cnt(e, 'salt')}칸, 남은 소금물 ×${n ? (s / n).toFixed(1) : '-'}`;
+});
+test('온도와 반응 속도: 데운 산에서 더 빨리 녹음', () => {
+  const run1 = (T) => { const w = fresh(); w.rect('glass', 60, 145, 180, 149, null, true); w.rect('hcl', 63, 120, 177, 144, T); w.rect('Fe', 90, 141, 150, 144, T, true);
+    let n = 0; const h = w.data.idOf.hydrogen;
+    for (let i = 0; i < 300; i++) { w.step(); for (let y = 110; y < 145; y++) for (let x = 63; x < 178; x++) { const k = w.index(x, y); if (w.data.state[w.mat[k]] === 2) w.T[k] = T; } for (const m of w.mat) if (m === h) n++; }
+    return n; };
+  const a = run1(20), b = run1(50);
+  assert(b > a * 2, `수소 20°C ${a}, 50°C ${b}`);
+  return `철 + 염산 5초 동안 수소(누적): 20°C ${a}, 50°C ${b} (×${(b / Math.max(1, a)).toFixed(1)}; 산이 먼저 소모되어 이론 ×8보다 작음)`;
 });
 test('성능: 틱당 시간', () => {
   const out = [];

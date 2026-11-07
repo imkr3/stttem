@@ -1023,7 +1023,12 @@ Og|오가네손|294|noble|7|50|80|1`;
       out.push(R('boiloff:' + A.sp, A.name + '의 기화', [], [], { kind: 'physical', eq: `${A.formula} → 기체 (${A.bp}°C)`, prob: 0.04, minT: A.bp, toA: A.sp + ':g', T: A.bp + 2, note: '상온의 공기가 끓는점보다 훨씬 뜨거워서 빠르게 기체가 됩니다.' }));
     }
 
-    // 고체의 용해. 순수한 물뿐 아니라 다른 수용액 속의 물에도 녹는다(같은 물질의 용액에는 더 녹지 않는 것으로 단순화: 포화).
+    // 같은 물질의 용액에는 녹을 수 있는 만큼(용해도)까지만 더 녹는다. 넘으면 포화 용액.
+    if (A.salt && A.state === 'powder' && B.aq && B.state === 'liquid' && B.fx === A.fx && B.salt) {
+      const e = salt(A.salt.c, A.salt.a);
+      if (e && e.aq === B.id) out.push(R('dissolve_more:' + A.fx, A.name + '이 더 녹음', [], [], { kind: 'physical', eq: `${A.formula}(s) + ${A.formula}(aq) → 더 진한 ${A.formula}(aq)`, prob: 0.03, dissolveInto: true, toA: e.aq, note: '용액이 아직 포화되지 않았으면 같은 물질이 더 녹아 진해집니다. 녹을 수 있는 한도(용해도)에 이르면 더 넣어도 녹지 않고 가라앉습니다.' }));
+    }
+    // 고체의 용해. 순수한 물뿐 아니라 다른 수용액 속의 물에도 녹는다.
     if (A.salt && A.state === 'powder' && (isWater(B) || (B.aq && B.state === 'liquid' && B.fx !== A.fx && !B.indicator))) {
       const e = salt(A.salt.c, A.salt.a);
       if (e && e.aq) {
@@ -1044,7 +1049,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       const to = left ? [['air', 0.8], [left, 0.2]] : 'air';
       const what = left ? `${A.formula} → H₂O(g)↑ + 결정` : 'H₂O(l) → H₂O(g)';
       for (const [minT, prob] of [[80, 0.01], [50, 0.003], [undefined, 0.0004]]) {
-        out.push(R('evap:water', '물의 증발', [], [], { kind: 'physical', eq: what, minT, prob, toA: to, dT: -1, note: '끓는점보다 낮아도 물은 표면에서 조금씩 증발합니다. 따뜻할수록 빠르고, 녹아 있던 소금 같은 것은 결정으로 남습니다. 증발할 때 열을 가져가 시원해집니다.' }));
+        out.push(R('evap:water', '물의 증발', [], [], { kind: 'physical', eq: what, minT, prob, toA: to, dT: -1, evapSolute: A.id !== 'H2O:l', note: '끓는점보다 낮아도 물은 표면에서 조금씩 증발합니다. 따뜻할수록 빠르고, 녹아 있던 소금 같은 것은 결정으로 남습니다. 증발할 때 열을 가져가 시원해집니다.' }));
       }
     }
 
@@ -1739,8 +1744,6 @@ Og|오가네손|294|noble|7|50|80|1`;
     { id: 'iodine_sublime', name: '아이오딘의 승화', kind: 'physical', eq: 'I₂(s) → I₂(g)', a: 'I:s', b: 'air', minT: 100, prob: 0.08, toA: 'I:vapor', note: '아이오딘은 녹기 전에도 보라색 증기로 많이 날아갑니다. 데울수록 빠릅니다.' },
     ...['glass', 'stone', 'I:s', 'ice', 'cooler', 'cryoplate'].map((b) => ({ id: 'iodine_deposit', name: '아이오딘 결정 맺힘', kind: 'physical', eq: 'I₂(g) → I₂(s) (차가운 면)', a: 'I:vapor', b, maxT: 45, prob: 0.15, toA: 'I:s', note: '보라색 증기가 차가운 면에 닿으면 액체를 거치지 않고 바로 반짝이는 결정이 됩니다(승화의 반대).' })),
     { id: 'naphthalene', name: '좀약이 작아짐', kind: 'physical', eq: 'C₁₀H₈(s) → C₁₀H₈(g)', a: 'C10H8:s', b: 'air', prob: 0.0004, toA: 'air', note: '나프탈렌은 상온에서도 조금씩 승화해 냄새를 내고 점점 작아집니다.' },
-    ...['glass', 'stone', 'S:KNO3'].map((b) => ({ id: 'recrystal:KNO3', name: '식히면 생기는 결정(질산칼륨)', kind: 'physical', eq: 'KNO₃(aq) → KNO₃(s) (차가워지면 덜 녹음)', a: 'A:KNO3', b, maxT: 12, prob: 0.02, toA: 'S:KNO3', note: '질산칼륨은 뜨거운 물에는 많이 녹지만 차가운 물에는 적게 녹아, 식히면 결정이 생깁니다(재결정).' })),
-    ...['glass', 'stone', 'S:CuSO4·5H2O'].map((b) => ({ id: 'recrystal:CuSO4', name: '식히면 생기는 결정(황산구리)', kind: 'physical', eq: 'CuSO₄(aq) → CuSO₄·5H₂O(s)', a: 'A:CuSO4', b, maxT: 10, prob: 0.01, toA: 'S:CuSO4·5H2O', note: '진한 황산구리 용액을 천천히 식히면 파란 결정이 자랍니다.' })),
     ...['stone', 'basalt', 'concrete', 'marble', 'limestone'].map((b) => ({ id: 'frost', name: '동결 풍화', kind: 'physical', eq: '물이 얼며 부피가 9% 늘어남 → 바위가 갈라짐', a: 'ice', b, prob: 0.0004, toB: 'gravel', note: '틈에 스민 물이 얼면 부피가 커져 바위를 쪼갭니다. 겨울에 도로가 패는 이유입니다.' })),
     { id: 'tin_pest', name: '주석 페스트', kind: 'physical', eq: '흰 주석(β) → 회색 주석(α) (13°C 아래)', a: 'Sn:s', b: 'air', maxT: 13, prob: 0.0003, toA: 'Sn:gray', note: '추운 곳의 주석 그릇·단추가 회색 가루로 부서집니다. 영하 30°C 근처에서 가장 빠릅니다.' },
     { id: 'tin_pest', name: '주석 페스트', kind: 'physical', eq: '흰 주석(β) → 회색 주석(α) (13°C 아래)', a: 'Sn:s', b: 'air', maxT: -20, prob: 0.008, toA: 'Sn:gray', note: '추운 곳의 주석 그릇·단추가 회색 가루로 부서집니다. 영하 30°C 근처에서 가장 빠릅니다.' },
@@ -1889,6 +1892,9 @@ Og|오가네손|294|noble|7|50|80|1`;
   'use strict';
 
   const SOLID = 0, POWDER = 1, LIQUID = 2, GAS = 3;
+  // 용해도 [20°C에서의 한도(기준 농도의 배수), 1°C마다 변하는 비율]. 질산칼륨·황산구리는 온도에 민감하고 소금은 거의 그대로다.
+  // 수산화칼슘처럼 뜨거울수록 덜 녹는 것도 있다(음수).
+  const SOLUBILITY = { KNO3: [1.5, 0.06], CuSO4: [1.5, 0.04], NaCl: [3, 0.002], KCl: [2.5, 0.012], NH4Cl: [2.5, 0.02], 'Ca(OH)2': [1.2, -0.008], Li2CO3: [1.2, -0.006], Na2SO4: [2, 0.03], KMnO4: [1.5, 0.04], 'Pb(NO3)2': [2, 0.02], AgNO3: [4, 0.03], NaHCO3: [1.5, 0.015], Na2CO3: [2, 0.03], KI: [4, 0.01], NaOH: [5, 0.02] };
   const STATES = { solid: SOLID, powder: POWDER, liquid: LIQUID, gas: GAS };
   const EARTH_G = 9.81;
   const MAX_FALL = 8; // 칸/틱. 터널링 방지용 상한
@@ -1924,6 +1930,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       return idOf[id];
     };
     const resolve = (to) => (Array.isArray(to) ? to.map(([id, p]) => [need(id), p]) : need(to));
+    const byIdx = (id) => (idOf[id] != null && idOf[id] >= 0 ? idOf[id] : null);
     const compileEdge = (e) => e && { at: e.at, L: e.L, to: resolve(e.to), silent: !!e.silent, cast: !!e.cast, boil: false };
     const c = {
       n, idOf, defs: materials, resolve,
@@ -1933,7 +1940,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       up: [], down: [], decay: [], explicit: new Map(), cache: new Map(), reactive: new Uint8Array(n), base: new Uint16Array(n),
       fast: new Float32Array(n), thermal: new Float32Array(n), spont: new Float32Array(n), emitter: new Uint8Array(n),
       moder: new Uint8Array(n), absorb: new Float32Array(n), heat: new Float32Array(n), armor: new Uint8Array(n),
-      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), pump: new Uint8Array(n), pH0: new Float32Array(n).fill(NaN), solute: new Uint8Array(n), weak: new Uint8Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
+      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), pump: new Uint8Array(n), pH0: new Float32Array(n).fill(NaN), solute: new Uint8Array(n), weak: new Uint8Array(n), crystal: new Int16Array(n).fill(-1), sat20: new Float32Array(n), satK: new Float32Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
     };
     materials.forEach((d, i) => {
       c.state[i] = STATES[d.state];
@@ -1959,6 +1966,12 @@ Og|오가네손|294|noble|7|50|80|1`;
       // 농도: 물에 녹아 있는 용액(산·염기·염 용액)은 칸마다 농도를 가진다. 1 = 이 물질의 기준 농도.
       if (d.pH != null) c.pH0[i] = d.pH;
       c.solute[i] = d.aq && d.state === 'liquid' && !d.indicator && d.id !== 'H2O:l' && (d.salt || d.acid || d.cat === 'acid' || d.cat === 'base' || d.cat === 'solution') ? 1 : 0;
+      // 용해도: 20°C에서 녹을 수 있는 최대 농도(기준 농도의 배수)와 온도에 따른 변화율. 결정 한 칸 = 기준 농도 용액 두 칸 분량.
+      if (c.solute[i] && d.id.startsWith('A:') && !d.acid && byIdx('S:' + d.id.slice(2)) != null) {
+        c.crystal[i] = byIdx('S:' + d.id.slice(2));
+        const S = SOLUBILITY[d.id.slice(2)] || [3, 0.015];
+        c.sat20[i] = S[0]; c.satK[i] = S[1];
+      }
       c.weak[i] = (d.acid && (d.acid.weak || (d.acid.strength != null && d.acid.strength < 0.5))) || (d.pH != null && Math.abs(d.pH - 7) < 4) ? 1 : 0; // 약산·약염기·가수 분해하는 염: 묽혀도 pH가 덜 변함
       c.conductor[i] = d.electrode || d.wire || (d.metal && d.state !== 'gas') ? 1 : 0; // 전기가 통하는 고체·액체 금속, 도선
       c.load[i] = d.load ? 1 : 0; // 전구처럼 전류가 지나가며 일을 하는 것
@@ -2658,13 +2671,90 @@ Og|오가네손|294|noble|7|50|80|1`;
       if (Math.abs(net) < 1e-7) return 7 - Math.sign(net) * 0; // 거의 중성
       return net > 0 ? -Math.log10(net + 1e-7) : 14 + Math.log10(-net + 1e-7);
     }
+    // 용해도(온도에 따라)
+    satAt(i) {
+      const d = this.data, m = this.mat[i];
+      if (d.crystal[m] < 0) return Infinity;
+      return Math.max(0.3, d.sat20[m] * (1 + d.satK[m] * (this.T[i] - 20)));
+    }
+    // 증발: 용액 칸의 물이 날아가면 녹아 있던 것은 이웃한 같은 용액으로 옮겨 가 진해진다. 이웃이 없으면(마지막 한 방울) 결정으로 남는다.
+    evaporate(s, r) {
+      const { w, mat, conc } = this, d = this.data, m = mat[s], x = s % w;
+      const nb = [x > 0 ? s - 1 : -1, x < w - 1 ? s + 1 : -1, s - w, s + w].filter((j) => j >= 0 && j < mat.length && mat[j] === m);
+      const T = this.T[s];
+      // 이웃이 받아 줄 수 있는 만큼(용해도까지)만 넘기고, 넘치는 양은 이 자리에서 결정이 된다(평균적으로 양이 맞도록 확률로).
+      let left = conc[s];
+      if (d.crystal[m] >= 0) for (const k of nb) { const room = Math.max(0, this.satAt(k) - conc[k]); const give = Math.min(room, left); conc[k] += give; left -= give; if (left <= 0) break; }
+      else if (nb.length) { conc[nb[(Math.random() * nb.length) | 0]] += left; left = 0; }
+      if (left > 0 && d.crystal[m] >= 0 && Math.random() < Math.min(1, left / 2)) this.setCell(s, d.crystal[m], T);
+      else { this.setCell(s, this.AIR, T); this.gas[s] = 1; }
+      this.note('evap:water', () => ({ type: 'reaction', id: 'evap:water', name: r.name, eq: '용액 → H₂O(g)↑ + 더 진한 용액 → 결정', kind: 'physical', note: '물이 날아가면 녹아 있던 것은 남은 물에 모여 용액이 진해지고, 녹을 수 있는 한도를 넘거나 다 마르면 결정이 생깁니다(염전).' }));
+    }
+    // 같은 용액에 고체가 더 녹는다: 두 칸이 고르게 나눠 가진 농도가 용해도를 넘지 않을 때만.
+    dissolveInto(solid, sol, r) {
+      const conc = this.conc, c = (conc[sol] + 2) / 2;
+      if (conc[sol] + 1 > this.satAt(sol)) {
+        this.note('saturated', () => ({ type: 'reaction', id: 'saturated', name: '포화 용액', kind: 'physical', eq: '녹을 수 있는 한도에 이름 → 더 녹지 않음', note: '일정한 온도에서 물에 녹을 수 있는 양에는 한도(용해도)가 있습니다. 포화된 용액에 더 넣으면 녹지 않고 가라앉습니다. 대부분의 고체는 데우면 더 많이 녹습니다.' }));
+        return false;
+      }
+      const T = this.T[solid];
+      this.setCell(solid, this.mat[sol], T);
+      conc[solid] = c; conc[sol] = c;
+      this.note(r.id, () => ({ type: 'reaction', id: r.id, name: r.name, eq: r.eq, kind: 'physical', note: r.note }));
+      return true;
+    }
+    // 용해도를 넘은 용액 칸은 결정이 된다(식히거나 증발시켜 진해졌을 때). 모자라는 양은 이웃한 같은 용액에서 가져온다.
+    crystallize(i, j) {
+      const { conc } = this, d = this.data, m = this.mat[i];
+      const take = 2 - conc[i];
+      if (take > 0) {
+        // 둘레(가로세로 2칸 안)의 같은 용액에서 용해도를 넘는 만큼씩 모아 온다. 모자라면 아직 결정이 생기지 않는다.
+        const w = this.w, x = i % w, y = (i / w) | 0, src = [];
+        let avail = 0;
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+          if (!dx && !dy) continue;
+          const xx = x + dx, yy = y + dy;
+          if (!this.inside(xx, yy)) continue;
+          const k = yy * w + xx;
+          if (this.mat[k] !== m) continue;
+          const extra = conc[k] - this.satAt(k);
+          if (extra > 0) { src.push([k, extra]); avail += extra; }
+        }
+        if (avail < take) { if (src.length || Math.random() > conc[i] / 2) return false; } // 외딴 칸은 확률로(평균적으로 양이 맞음)
+        else for (const [k, ex] of src) conc[k] -= take * ex / avail;
+      }
+      else {
+        // 결정 한 칸(2단위)보다 많이 녹아 있던 칸: 남는 양을 둘레의 덜 진한 칸이 받아 줄 수 있을 때만(포화 용액이 연쇄로 굳지 않게)
+        const w = this.w, x = i % w, y = (i / w) | 0, dst = [];
+        let room = 0;
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+          if (!dx && !dy) continue;
+          const xx = x + dx, yy = y + dy;
+          if (!this.inside(xx, yy)) continue;
+          const k = yy * w + xx;
+          if (this.mat[k] !== m) continue;
+          const r = this.satAt(k) - conc[k];
+          if (r > 0) { dst.push([k, r]); room += r; }
+        }
+        if (room < -take) return false;
+        for (const [k, r] of dst) conc[k] += -take * r / room;
+      }
+      const T = this.T[i];
+      this.setCell(i, d.crystal[m], T);
+      const key = 'recrystal:' + d.defs[m].fx;
+      this.note(key, () => ({ type: 'reaction', id: key, name: `결정이 생김(${d.defs[d.crystal[m]].name})`, kind: 'physical', eq: `${d.defs[m].formula} → ${d.defs[d.crystal[m]].formula} (용해도를 넘음)`, note: '녹을 수 있는 한도(용해도)보다 진해지면 결정이 생깁니다. 질산칼륨·황산구리처럼 온도에 따라 용해도가 크게 변하는 물질은 뜨거울 때 진하게 녹였다가 식히면 결정이 많이 생깁니다(재결정).' }));
+      return true;
+    }
+
     // 묽힘: 용액 칸이 순수한 물과 닿으면 용질을 나눠 가진다(용질의 양 Σ농도는 그대로). 같은 용액끼리는 농도가 고르게 퍼진다.
     diffuseSolute(i, j) {
       const { mat, conc } = this, d = this.data, m = mat[i], mj = mat[j];
       if (mj === m) {
+        if (d.crystal[m] >= 0 && conc[i] > this.satAt(i) && Math.random() < 0.05 && this.crystallize(i, j)) return true;
         if (Math.abs(conc[i] - conc[j]) > 0.01) { const a = (conc[i] + conc[j]) / 2; conc[i] = a; conc[j] = a; }
         return true;
       }
+      if (d.crystal[m] >= 0 && conc[i] > this.satAt(i) && Math.random() < 0.05 && this.crystallize(i, j)) return true;
       // 가만히 맞닿은 층은 분자 확산으로 아주 천천히, 흐르거나 저어 섞이는 칸(이번 틱에 움직인 칸)은 빠르게 묽어진다.
       if (mj !== d.idOf['H2O:l']) return false;
       const moving = this.stamp[i] === this.tick || this.stamp[j] === this.tick || this.stamp[i] === this.tick - 1 || this.stamp[j] === this.tick - 1;
@@ -2926,11 +3016,16 @@ Og|오가네손|294|noble|7|50|80|1`;
         if (r.minT != null && hi < r.minT) continue;
         if (r.maxT != null && hi > r.maxT) continue; // 낮은 온도에서만 일어나는 반응(수화, 부동태)
         if (r.minP != null && Math.max(this.regionP(i), this.regionP(j)) < r.minP) continue; // 높은 압력이 필요한 반응
-        if (Math.random() > r.prob) continue;
+        // 온도: 화학 반응은 10°C 오를 때마다 대략 2배 빨라진다(아레니우스 식의 어림). 시작 온도가 정해진 반응(점화 등)은 제외.
+        let prob = r.prob;
+        if (r.kind !== 'physical' && r.minT == null && !r.explode) prob = Math.min(1, prob * Math.max(0.15, Math.min(6, Math.pow(2, ((T[i] + T[j]) / 2 - 20) / 10))));
+        if (Math.random() > prob) continue;
         if (e.near && !this.hasNear(i, e.near) && !this.hasNear(j, e.near)) continue;
         if (e.far && (this.hasNear(i, e.far) || this.hasNear(j, e.far))) continue; // 이 물질이 옆에 있으면 일어나지 않음
         const d = this.data, conc = this.conc;
         if (r.indicator) { if (this.indicate(i, j, r)) return; continue; }
+        if (r.evapSolute && (d.solute[this.mat[i]] || d.solute[this.mat[j]])) { this.evaporate(d.solute[this.mat[i]] ? i : j, r); return; }
+        if (r.dissolveInto) { if (this.dissolveInto(d.solute[this.mat[i]] ? j : i, d.solute[this.mat[i]] ? i : j, r)) return; continue; }
         if (r.neutral) { this.neutralize(i, j, r, e); return; }
         // 농도: 묽은 용액은 같은 횟수로 반응해도 생기는 기체·앙금·열이 그만큼 적다(나머지는 물로 남는다).
         const ci = d.solute[this.mat[i]] ? conc[i] : 1, cj = d.solute[this.mat[j]] ? conc[j] : 1;
@@ -4270,6 +4365,27 @@ Og|오가네손|294|noble|7|50|80|1`;
   // ---- 도전 과제 ----
   // check(c): c.has(발견 id), c.any(정규식), c.count(물질 id), c.cells(물질 id, 조건). 발견 기록은 저장되므로 한 번 이루면 끝이다.
   // 사이트에서는 sandlab:challenge 이벤트로 진도·점수와 연결할 수 있다.
+  // 예측 → 실험 → 비교. 먼저 결과를 고르게 한 뒤 실험을 자동으로 열어 보여 주고, 정해진 시간 뒤 정답과 설명을 보여 준다.
+  // act(world)는 실험을 연 직후 한 번 실행(꼭지 열기 등), seconds는 결과를 보여 줄 때까지의 시뮬레이션 시간.
+  SL.PREDICTIONS = [
+    { id: 'p_series', scene: 'series', seconds: 6, q: '염산에 마그네슘·아연·철·구리를 넣으면 거품(수소)이 가장 많이 나는 것은?', choices: ['마그네슘', '아연', '철', '구리'], answer: 0,
+      explain: '반응성이 큰 금속일수록 수소 이온에게 전자를 잘 내줍니다(Mg > Zn > Fe > H > Cu). 구리는 수소보다 반응성이 작아 염산에 녹지 않습니다.' },
+    { id: 'p_float', scene: 'floatsink', seconds: 6, q: '나무 덩어리와 돌 덩어리를 물에 떨어뜨리면?', choices: ['둘 다 뜬다', '나무만 뜬다', '돌만 뜬다', '둘 다 가라앉는다'], answer: 1,
+      explain: '물보다 밀도가 작은 나무(약 600 kg/m³)는 밀어낸 물의 무게(부력)가 자기 무게와 같아지는 곳까지만 잠겨 뜨고, 물보다 무거운 돌(2700 kg/m³)은 가라앉습니다.' },
+    { id: 'p_galileo', scene: 'galileo', seconds: 1.5, act: (w) => { w.vacuum = true; }, q: '공기가 없는 곳에서 무거운 쇠공과 가벼운 스티로폼 공을 같은 높이에서 떨어뜨리면?', choices: ['쇠공이 먼저 떨어진다', '동시에 떨어진다', '스티로폼 공이 먼저 떨어진다'], answer: 1,
+      explain: '공기 저항이 없으면 모든 물체는 질량과 상관없이 같은 가속도(g)로 떨어집니다. 공기 중에서는 가벼운 스티로폼 공이 공기 저항 때문에 늦게 떨어집니다.' },
+    { id: 'p_titration', scene: 'titration', seconds: 30, act: (w) => { w.toggleDevice(120, 81); }, q: '염산에 수산화나트륨을 한 방울씩 계속 넣으면 pH는 어떻게 변할까?', choices: ['일정한 빠르기로 조금씩 오른다', '처음엔 거의 그대로이다가 어느 순간 갑자기 크게 오른다', '바로 7이 되고 그대로이다'], answer: 1,
+      explain: 'pH는 수소 이온 농도의 로그 값이라, 산이 대부분 남아 있는 동안은 거의 변하지 않다가 산과 염기의 양이 같아지는 당량점에서 갑자기 크게 뜁니다. 측정 탭의 pH계 그래프를 확인해 보세요.' },
+    { id: 'p_oilfire', scene: 'oilfire', seconds: 15, q: '불붙은 기름 냄비 두 개 중 하나에는 물을 붓고, 하나는 이산화탄소로 덮었다. 불이 꺼지는 쪽은?', choices: ['물을 부은 쪽', '이산화탄소로 덮은 쪽', '둘 다 꺼진다', '둘 다 안 꺼진다'], answer: 1,
+      explain: '물은 기름 밑으로 가라앉아 순식간에 끓으면서 불붙은 기름을 튀겨 불길을 키웁니다. 공기보다 무거운 이산화탄소는 산소를 막아 불을 끕니다.' },
+    { id: 'p_charles', scene: 'charles', seconds: 25, q: '실린더 아래의 기체를 가열판으로 데우면 위에 얹힌 피스톤은?', choices: ['올라간다', '내려간다', '그대로 있다'], answer: 0,
+      explain: '압력이 같을 때 기체의 부피는 절대 온도에 비례합니다(샤를 법칙). 데워진 기체가 팽창하며 피스톤을 밀어 올립니다.' },
+    { id: 'p_freeze', scene: 'freeze', seconds: 20, q: '얼음에 소금을 섞으면 온도는?', choices: ['0°C에 머문다', '0°C보다 내려간다', '0°C보다 올라간다'], answer: 1,
+      explain: '소금물은 0°C보다 낮은 온도에서 언다(어는점 내림). 얼음이 녹으면서 주변의 열을 빼앗아 영하 10~20°C까지 내려갑니다. 아이스크림 기계와 도로의 염화칼슘에 쓰입니다.' },
+    { id: 'p_lemon', scene: 'lemon', seconds: 10, q: '레몬즙(구연산)에 석회석(탄산칼슘)을 넣으면?', choices: ['아무 일도 없다', '거품이 난다', '색이 파랗게 변한다'], answer: 1,
+      explain: '약한 산도 탄산염과 만나면 이산화탄소 거품을 내며 녹입니다. 주전자 물때를 구연산으로 닦는 원리입니다.' },
+  ];
+
   SL.CHALLENGES = [
     { id: 'titrate', name: '적정으로 당량점 찾기', hint: "'산·염기 적정' 실험에서 밸브를 열어 페놀프탈레인이 분홍색이 될 때까지 염기를 넣어 보세요.", check: (c) => c.has('indicator:phth:base') && c.any(/^neutral:/) },
     { id: 'dilute', name: '용액 묽히기', hint: '물에 용액을 떨어뜨려 섞어 보세요.', check: (c) => c.has('dilute') },
@@ -4742,6 +4858,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.graphMode = 'v';
       this.codex = new Map((this.storage.load('codex') || []).map((e) => [e.id, e]));
       this.done = new Set(this.storage.load('challenges') || []);
+      this.predicted = this.storage.load('predictions') || {}; // 예측 문제 결과 {id: {choice, correct}}
       this.pointer = null;
       this.hover = null;
       this.cleanups = [];
@@ -4781,6 +4898,7 @@ Og|오가네손|294|noble|7|50|80|1`;
           <label>보기 <select class="view"><option value="normal">일반</option><option value="heat">온도</option><option value="density">밀도</option><option value="pressure">압력</option></select></label>
           <label title="불티·섬광·빛 번짐 같은 화면 효과 (물리 결과에는 영향 없음)"><input type="checkbox" class="fxon" checked> 효과</label>
           <label title="폭발음·깨지는 소리·발견 알림음"><input type="checkbox" class="sndon"> 소리</label>
+          <label title="화면의 물질 덩어리마다 이름을 붙여 보여 줍니다(색을 구분하기 어려울 때)"><input type="checkbox" class="labelon"> 이름표</label>
           <span class="clock">0.00초</span>
         </div>
         <div class="stage"><div class="frame"><canvas class="grid"></canvas><canvas class="over" aria-label="실험 공간"></canvas></div>
@@ -4813,6 +4931,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.listen(this.$('.view'), 'change', (e) => this.setView(e.target.value));
       this.listen(this.$('.fxon'), 'change', (e) => this.setEffects(e.target.checked));
       this.listen(this.$('.sndon'), 'change', (e) => this.sound.enable(e.target.checked));
+      this.listen(this.$('.labelon'), 'change', (e) => { this.labels = e.target.checked; this.labelCache = null; this.dirty = true; });
       this.listen(this.$('.zoomreset'), 'click', () => this.resetZoom());
       // 데스크톱: Ctrl(⌘)+휠로 확대. 그냥 휠은 페이지 스크롤에 양보한다.
       this.listen(this.$('.over'), 'wheel', (e) => {
@@ -4882,6 +5001,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.world.reset();
       sc.setup(this.world);
       this.history = [];
+      this.prediction = null; // 다른 실험을 열면 진행 중인 예측은 취소
       if (this.$('.undo')) this.$('.undo').disabled = true;
       this.$('.starthint').hidden = sc.id !== 'free';
       this.speed = sc.speed || 1;
@@ -5123,6 +5243,43 @@ Og|오가네손|294|noble|7|50|80|1`;
       plot.onpointerleave = () => { this.plotHover = null; };
     }
 
+    // ---- 예측 → 실험 → 비교 ----
+    predictionsHtml() {
+      const list = SL.PREDICTIONS || [];
+      if (!list.length) return '';
+      const right = list.filter((p) => this.predicted[p.id] && this.predicted[p.id].correct).length;
+      const item = (p) => {
+        const r = this.predicted[p.id], run = this.prediction && this.prediction.id === p.id;
+        const btns = p.choices.map((c, k) => `<button class="chip${r && r.choice === k ? ' on' : ''}" data-pred="${p.id}" data-choice="${k}" ${run ? 'disabled' : ''}>${c}</button>`).join('');
+        const res = run ? '<small class="hint">실험 중… 지켜보세요</small>' : r ? `<small class="hint">${r.correct ? '✓ 맞았습니다.' : '✗ 정답: ' + p.choices[p.answer] + '.'} ${p.explain}</small>` : '';
+        return `<div class="entry" style="margin:8px 0"><b>${p.q}</b><div class="chips" style="margin:4px 0">${btns}</div>${res}</div>`;
+      };
+      return `<details class="predictions"${this.predOpen === false ? '' : ' open'}><summary><h3>예측하고 확인하기 ${right} / ${list.length}</h3></summary><p class="hint">먼저 결과를 골라 보세요. 그러면 실험이 열리고, 잠시 뒤 정답과 이유가 나옵니다.</p>${list.map(item).join('')}</details>`;
+    }
+    startPrediction(id, choice) {
+      const p = (SL.PREDICTIONS || []).find((q) => q.id === id);
+      if (!p) return;
+      this.loadScene(p.scene);
+      if (p.act) p.act(this.world);
+      this.prediction = { id, choice, until: this.world.time + p.seconds };
+      this.predOpen = true;
+      this.toast({ name: '내 예측: ' + p.choices[choice], eq: `${p.seconds}초 동안 실험을 지켜보세요.` }, '');
+      this.renderPane();
+    }
+    checkPrediction() {
+      const pr = this.prediction;
+      if (!pr || this.world.time < pr.until) return;
+      const p = SL.PREDICTIONS.find((q) => q.id === pr.id);
+      this.prediction = null;
+      const correct = pr.choice === p.answer;
+      this.predicted[p.id] = { choice: pr.choice, correct };
+      this.storage.save('predictions', this.predicted);
+      this.toast({ name: correct ? '예측이 맞았습니다' : '정답: ' + p.choices[p.answer], eq: p.explain.length > 60 ? p.explain.slice(0, 58) + '…' : p.explain }, correct ? '✓ ' : '✗ ');
+      this.sound.play(correct ? 'chime2' : 'click2');
+      this.emit('prediction', { id: p.id, choice: pr.choice, correct });
+      if (this.tab === 'codex') this.renderPane();
+    }
+
     // 아직 못 찾은 대표 반응 몇 개를 이름으로만 귀띔한다(무엇과 무엇인지는 직접 찾게).
     codexHints() {
       const named = new Map();
@@ -5141,11 +5298,17 @@ Og|오가네손|294|noble|7|50|80|1`;
       const entries = [...this.codex.values()];
       const found = entries.filter((e) => e.type === 'reaction').length;
       const ch = SL.CHALLENGES || [];
-      pane.innerHTML = `<details class="challenges"${this.challengesOpen === false ? '' : ' open'}><summary><h3>도전 과제 ${this.done.size} / ${ch.length}</h3></summary><ul>${ch.map((c) => `<li class="${this.done.has(c.id) ? 'ok' : ''}" title="${c.hint}"><span>${this.done.has(c.id) ? '✓' : '○'}</span>${c.name}${this.done.has(c.id) ? '' : `<small>${c.hint}</small>`}</li>`).join('')}</ul></details>` +
+      pane.innerHTML = this.predictionsHtml() + `<details class="challenges"${this.challengesOpen ? ' open' : ''}><summary><h3>도전 과제 ${this.done.size} / ${ch.length}</h3></summary><ul>${ch.map((c) => `<li class="${this.done.has(c.id) ? 'ok' : ''}" title="${c.hint}"><span>${this.done.has(c.id) ? '✓' : '○'}</span>${c.name}${this.done.has(c.id) ? '' : `<small>${c.hint}</small>`}</li>`).join('')}</ul></details>` +
         `<h3>발견한 반응 ${found}개, 상태 변화 ${entries.length - found}개</h3>` + this.codexHints() +
         (entries.length ? entries.slice().reverse().map((e) => `<details class="entry"><summary><b>${e.name}</b><code>${e.eq}</code></summary><span>${e.note || ''}</span></details>`).join('')
           : '<p class="hint">아직 발견한 반응이 없습니다. 물질들을 만나게 해 보세요.</p>');
-      pane.onclick = (e) => { if (e.target.closest('.morehint')) { this.hintSeed = (this.hintSeed || 1) + 1; this.renderPane(); } };
+      pane.onclick = (e) => {
+        if (e.target.closest('.morehint')) { this.hintSeed = (this.hintSeed || 1) + 1; this.renderPane(); return; }
+        const b = e.target.closest('[data-pred]');
+        if (b) this.startPrediction(b.dataset.pred, +b.dataset.choice);
+      };
+      const pd = pane.querySelector('.predictions');
+      if (pd) pd.ontoggle = () => { this.predOpen = pd.open; };
       const det = pane.querySelector('.challenges');
       det.ontoggle = () => { this.challengesOpen = det.open; };
     }
@@ -5348,6 +5511,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       // 바뀐 것이 없으면 다시 그리지 않는다(120Hz 화면, 일시정지 중).
       const fxBusy = this.renderer.particles.length || this.renderer.flashes.length || this.renderer.shake;
       if (!n && !this.dirty && !this.pointer && !fxBusy && !this.hoverMoved) return;
+      if (n && this.labels && this.labelCache && this.world.time - this.labelCache.t > 0.5) this.labelCache = null;
       this.dirty = false; this.hoverMoved = false;
       const t1 = performance.now();
       this.renderer.draw();
@@ -5375,6 +5539,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       }
       // 새 발견이 있을 때와 가끔(온도처럼 상태로 판정하는 과제) 도전 과제를 확인한다.
       if (found || this.world.tick % 120 === 0) this.checkChallenges();
+      this.checkPrediction();
     }
 
     checkChallenges() {
@@ -5447,6 +5612,7 @@ Og|오가네손|294|noble|7|50|80|1`;
         for (const i of v.cells) ctx.strokeRect((i % w.w) * cell + 0.5, ((i / w.w) | 0) * cell + 0.5, cell - 1, cell - 1);
         ctx.setLineDash([]);
       }
+      if (this.labels) this.drawLabels(ctx, cell);
       const p = this.pointer;
       if (p && this.tool.kind === 'ball') {
         const sx = (p.start.x + 0.5) * cell, sy = (p.start.y + 0.5) * cell;
@@ -5463,6 +5629,35 @@ Og|오가네손|294|noble|7|50|80|1`;
         if (this.tool.kind === 'stir') ctx.setLineDash([4, 3]);
         ctx.beginPath(); ctx.arc((this.hover.x + 0.5) * cell, (this.hover.y + 0.5) * cell, Math.max(this.brush - 0.5, 0.5) * cell, 0, 7); ctx.stroke(); ctx.setLineDash([]);
       }
+    }
+
+    // 이름표: 12칸 격자마다 가장 많은 물질을 찾아, 같은 물질이 이웃 칸에 이미 이름표가 있으면 건너뛴다(0.5초마다 다시 계산).
+    drawLabels(ctx, cell) {
+      const w = this.world, B = 12;
+      if (!this.labelCache || w.time - this.labelCache.t > 0.5 || this.labelCache.tick > w.tick) {
+        const out = [], nx = Math.ceil(w.w / B), ny = Math.ceil(w.h / B), grid = new Int32Array(nx * ny).fill(-1);
+        for (let by = 0; by < ny; by++) for (let bx = 0; bx < nx; bx++) {
+          const cnt = new Map();
+          for (let y = by * B; y < Math.min(w.h, by * B + B); y += 2) for (let x = bx * B; x < Math.min(w.w, bx * B + B); x += 2) {
+            const m = w.mat[w.index(x, y)];
+            if (m === w.AIR) continue;
+            cnt.set(m, (cnt.get(m) || 0) + 1);
+          }
+          let best = -1, bn = 0;
+          for (const [m, n] of cnt) if (n > bn) { bn = n; best = m; }
+          if (best < 0 || bn < 10) continue;
+          let near = false;
+          for (let dy = -2; dy <= 0 && !near; dy++) for (let dx = -2; dx <= 2; dx++) { const gx = bx + dx, gy = by + dy; if ((dy < 0 || dx < 0) && gx >= 0 && gy >= 0 && gx < nx && grid[gy * nx + gx] === best) { near = true; break; } }
+          grid[by * nx + bx] = best;
+          if (!near) out.push({ x: (bx + 0.5) * B, y: (by + 0.5) * B, name: w.data.defs[best].name.replace(/\s*\(.*\)$/, '') });
+        }
+        this.labelCache = { t: w.time, tick: w.tick, out };
+      }
+      ctx.save();
+      ctx.font = `600 ${Math.max(11, Math.min(15, cell * 3))}px system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 3; ctx.strokeStyle = '#000c'; ctx.fillStyle = '#fff';
+      for (const l of this.labelCache.out) { ctx.strokeText(l.name, l.x * cell, l.y * cell); ctx.fillText(l.name, l.x * cell, l.y * cell); }
+      ctx.restore();
     }
 
     // 그래프 하나, 축 하나. 측정값은 실선, 이론값은 점선으로 구분한다.
@@ -5644,7 +5839,7 @@ Og|오가네손|294|noble|7|50|80|1`;
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,effects?:boolean,sound?:boolean,materials?:string[],storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.17.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.18.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);

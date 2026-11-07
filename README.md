@@ -46,7 +46,7 @@
 |---|---|
 | 메서드 | `loadScene(id)`, `scenes()`, `undo()`, `challenges()`, `pause()`, `resume()`, `setView('normal'｜'heat'｜'density')`, `setEffects(true｜false)`, `setSound(true｜false)`, `exportCode()`·`importCode(code)` (압축된 공유 코드, Promise), `addProbe(x, y)`, `save()`, `restore(data)`, `discoveries()`, `destroy()` |
 | 버전 | `SandLab.version` (저장 데이터나 공개 API가 바뀌면 올림) |
-| 이벤트 | `sandlab:ready`, `sandlab:scenechange`, `sandlab:discover`, `sandlab:challenge`(도전 과제 완료: `id`, `name`, `done`, `total`), `sandlab:export`(CSV 저장) |
+| 이벤트 | `sandlab:ready`, `sandlab:scenechange`, `sandlab:discover`, `sandlab:challenge`(도전 과제 완료: `id`, `name`, `done`, `total`), `sandlab:export`(CSV 저장), `sandlab:prediction`(예측 문제 결과: `id`, `choice`, `correct`) |
 | 농도 | 용액은 칸마다 농도를 가짐(묽힘·pH·적정). 저장 데이터에 함께 저장되며, 예전 저장 데이터는 모두 기준 농도로 읽음. 엔진에서 `lab.world.setConc(x0, y0, x1, y1, c)`, `lab.world.pHAt(i)`, `lab.world.pHMeter(x, y)` |
 | 조작 | 스페이스: 일시정지, `[` `]`: 붓 크기, `0`: 확대 초기화, Ctrl+Z: 되돌리기(실험실을 누른 뒤에만). 휴대폰은 두 손가락으로 확대·이동, 데스크톱은 Ctrl+휠 |
 | 성능 | 느린 기기에서는 화면이 끊기는 대신 시뮬레이션이 조금 느리게 흐르고, 무거운 효과는 자동으로 줄어듦. 화면 밖에 있거나 바뀐 것이 없으면 계산·그리기를 쉼 |

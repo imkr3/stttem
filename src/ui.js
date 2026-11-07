@@ -216,6 +216,7 @@
       this.graphMode = 'v';
       this.codex = new Map((this.storage.load('codex') || []).map((e) => [e.id, e]));
       this.done = new Set(this.storage.load('challenges') || []);
+      this.predicted = this.storage.load('predictions') || {}; // 예측 문제 결과 {id: {choice, correct}}
       this.pointer = null;
       this.hover = null;
       this.cleanups = [];
@@ -255,6 +256,7 @@
           <label>보기 <select class="view"><option value="normal">일반</option><option value="heat">온도</option><option value="density">밀도</option><option value="pressure">압력</option></select></label>
           <label title="불티·섬광·빛 번짐 같은 화면 효과 (물리 결과에는 영향 없음)"><input type="checkbox" class="fxon" checked> 효과</label>
           <label title="폭발음·깨지는 소리·발견 알림음"><input type="checkbox" class="sndon"> 소리</label>
+          <label title="화면의 물질 덩어리마다 이름을 붙여 보여 줍니다(색을 구분하기 어려울 때)"><input type="checkbox" class="labelon"> 이름표</label>
           <span class="clock">0.00초</span>
         </div>
         <div class="stage"><div class="frame"><canvas class="grid"></canvas><canvas class="over" aria-label="실험 공간"></canvas></div>
@@ -287,6 +289,7 @@
       this.listen(this.$('.view'), 'change', (e) => this.setView(e.target.value));
       this.listen(this.$('.fxon'), 'change', (e) => this.setEffects(e.target.checked));
       this.listen(this.$('.sndon'), 'change', (e) => this.sound.enable(e.target.checked));
+      this.listen(this.$('.labelon'), 'change', (e) => { this.labels = e.target.checked; this.labelCache = null; this.dirty = true; });
       this.listen(this.$('.zoomreset'), 'click', () => this.resetZoom());
       // 데스크톱: Ctrl(⌘)+휠로 확대. 그냥 휠은 페이지 스크롤에 양보한다.
       this.listen(this.$('.over'), 'wheel', (e) => {
@@ -356,6 +359,7 @@
       this.world.reset();
       sc.setup(this.world);
       this.history = [];
+      this.prediction = null; // 다른 실험을 열면 진행 중인 예측은 취소
       if (this.$('.undo')) this.$('.undo').disabled = true;
       this.$('.starthint').hidden = sc.id !== 'free';
       this.speed = sc.speed || 1;
@@ -597,6 +601,43 @@
       plot.onpointerleave = () => { this.plotHover = null; };
     }
 
+    // ---- 예측 → 실험 → 비교 ----
+    predictionsHtml() {
+      const list = SL.PREDICTIONS || [];
+      if (!list.length) return '';
+      const right = list.filter((p) => this.predicted[p.id] && this.predicted[p.id].correct).length;
+      const item = (p) => {
+        const r = this.predicted[p.id], run = this.prediction && this.prediction.id === p.id;
+        const btns = p.choices.map((c, k) => `<button class="chip${r && r.choice === k ? ' on' : ''}" data-pred="${p.id}" data-choice="${k}" ${run ? 'disabled' : ''}>${c}</button>`).join('');
+        const res = run ? '<small class="hint">실험 중… 지켜보세요</small>' : r ? `<small class="hint">${r.correct ? '✓ 맞았습니다.' : '✗ 정답: ' + p.choices[p.answer] + '.'} ${p.explain}</small>` : '';
+        return `<div class="entry" style="margin:8px 0"><b>${p.q}</b><div class="chips" style="margin:4px 0">${btns}</div>${res}</div>`;
+      };
+      return `<details class="predictions"${this.predOpen === false ? '' : ' open'}><summary><h3>예측하고 확인하기 ${right} / ${list.length}</h3></summary><p class="hint">먼저 결과를 골라 보세요. 그러면 실험이 열리고, 잠시 뒤 정답과 이유가 나옵니다.</p>${list.map(item).join('')}</details>`;
+    }
+    startPrediction(id, choice) {
+      const p = (SL.PREDICTIONS || []).find((q) => q.id === id);
+      if (!p) return;
+      this.loadScene(p.scene);
+      if (p.act) p.act(this.world);
+      this.prediction = { id, choice, until: this.world.time + p.seconds };
+      this.predOpen = true;
+      this.toast({ name: '내 예측: ' + p.choices[choice], eq: `${p.seconds}초 동안 실험을 지켜보세요.` }, '');
+      this.renderPane();
+    }
+    checkPrediction() {
+      const pr = this.prediction;
+      if (!pr || this.world.time < pr.until) return;
+      const p = SL.PREDICTIONS.find((q) => q.id === pr.id);
+      this.prediction = null;
+      const correct = pr.choice === p.answer;
+      this.predicted[p.id] = { choice: pr.choice, correct };
+      this.storage.save('predictions', this.predicted);
+      this.toast({ name: correct ? '예측이 맞았습니다' : '정답: ' + p.choices[p.answer], eq: p.explain.length > 60 ? p.explain.slice(0, 58) + '…' : p.explain }, correct ? '✓ ' : '✗ ');
+      this.sound.play(correct ? 'chime2' : 'click2');
+      this.emit('prediction', { id: p.id, choice: pr.choice, correct });
+      if (this.tab === 'codex') this.renderPane();
+    }
+
     // 아직 못 찾은 대표 반응 몇 개를 이름으로만 귀띔한다(무엇과 무엇인지는 직접 찾게).
     codexHints() {
       const named = new Map();
@@ -615,11 +656,17 @@
       const entries = [...this.codex.values()];
       const found = entries.filter((e) => e.type === 'reaction').length;
       const ch = SL.CHALLENGES || [];
-      pane.innerHTML = `<details class="challenges"${this.challengesOpen === false ? '' : ' open'}><summary><h3>도전 과제 ${this.done.size} / ${ch.length}</h3></summary><ul>${ch.map((c) => `<li class="${this.done.has(c.id) ? 'ok' : ''}" title="${c.hint}"><span>${this.done.has(c.id) ? '✓' : '○'}</span>${c.name}${this.done.has(c.id) ? '' : `<small>${c.hint}</small>`}</li>`).join('')}</ul></details>` +
+      pane.innerHTML = this.predictionsHtml() + `<details class="challenges"${this.challengesOpen ? ' open' : ''}><summary><h3>도전 과제 ${this.done.size} / ${ch.length}</h3></summary><ul>${ch.map((c) => `<li class="${this.done.has(c.id) ? 'ok' : ''}" title="${c.hint}"><span>${this.done.has(c.id) ? '✓' : '○'}</span>${c.name}${this.done.has(c.id) ? '' : `<small>${c.hint}</small>`}</li>`).join('')}</ul></details>` +
         `<h3>발견한 반응 ${found}개, 상태 변화 ${entries.length - found}개</h3>` + this.codexHints() +
         (entries.length ? entries.slice().reverse().map((e) => `<details class="entry"><summary><b>${e.name}</b><code>${e.eq}</code></summary><span>${e.note || ''}</span></details>`).join('')
           : '<p class="hint">아직 발견한 반응이 없습니다. 물질들을 만나게 해 보세요.</p>');
-      pane.onclick = (e) => { if (e.target.closest('.morehint')) { this.hintSeed = (this.hintSeed || 1) + 1; this.renderPane(); } };
+      pane.onclick = (e) => {
+        if (e.target.closest('.morehint')) { this.hintSeed = (this.hintSeed || 1) + 1; this.renderPane(); return; }
+        const b = e.target.closest('[data-pred]');
+        if (b) this.startPrediction(b.dataset.pred, +b.dataset.choice);
+      };
+      const pd = pane.querySelector('.predictions');
+      if (pd) pd.ontoggle = () => { this.predOpen = pd.open; };
       const det = pane.querySelector('.challenges');
       det.ontoggle = () => { this.challengesOpen = det.open; };
     }
@@ -822,6 +869,7 @@
       // 바뀐 것이 없으면 다시 그리지 않는다(120Hz 화면, 일시정지 중).
       const fxBusy = this.renderer.particles.length || this.renderer.flashes.length || this.renderer.shake;
       if (!n && !this.dirty && !this.pointer && !fxBusy && !this.hoverMoved) return;
+      if (n && this.labels && this.labelCache && this.world.time - this.labelCache.t > 0.5) this.labelCache = null;
       this.dirty = false; this.hoverMoved = false;
       const t1 = performance.now();
       this.renderer.draw();
@@ -849,6 +897,7 @@
       }
       // 새 발견이 있을 때와 가끔(온도처럼 상태로 판정하는 과제) 도전 과제를 확인한다.
       if (found || this.world.tick % 120 === 0) this.checkChallenges();
+      this.checkPrediction();
     }
 
     checkChallenges() {
@@ -921,6 +970,7 @@
         for (const i of v.cells) ctx.strokeRect((i % w.w) * cell + 0.5, ((i / w.w) | 0) * cell + 0.5, cell - 1, cell - 1);
         ctx.setLineDash([]);
       }
+      if (this.labels) this.drawLabels(ctx, cell);
       const p = this.pointer;
       if (p && this.tool.kind === 'ball') {
         const sx = (p.start.x + 0.5) * cell, sy = (p.start.y + 0.5) * cell;
@@ -937,6 +987,35 @@
         if (this.tool.kind === 'stir') ctx.setLineDash([4, 3]);
         ctx.beginPath(); ctx.arc((this.hover.x + 0.5) * cell, (this.hover.y + 0.5) * cell, Math.max(this.brush - 0.5, 0.5) * cell, 0, 7); ctx.stroke(); ctx.setLineDash([]);
       }
+    }
+
+    // 이름표: 12칸 격자마다 가장 많은 물질을 찾아, 같은 물질이 이웃 칸에 이미 이름표가 있으면 건너뛴다(0.5초마다 다시 계산).
+    drawLabels(ctx, cell) {
+      const w = this.world, B = 12;
+      if (!this.labelCache || w.time - this.labelCache.t > 0.5 || this.labelCache.tick > w.tick) {
+        const out = [], nx = Math.ceil(w.w / B), ny = Math.ceil(w.h / B), grid = new Int32Array(nx * ny).fill(-1);
+        for (let by = 0; by < ny; by++) for (let bx = 0; bx < nx; bx++) {
+          const cnt = new Map();
+          for (let y = by * B; y < Math.min(w.h, by * B + B); y += 2) for (let x = bx * B; x < Math.min(w.w, bx * B + B); x += 2) {
+            const m = w.mat[w.index(x, y)];
+            if (m === w.AIR) continue;
+            cnt.set(m, (cnt.get(m) || 0) + 1);
+          }
+          let best = -1, bn = 0;
+          for (const [m, n] of cnt) if (n > bn) { bn = n; best = m; }
+          if (best < 0 || bn < 10) continue;
+          let near = false;
+          for (let dy = -2; dy <= 0 && !near; dy++) for (let dx = -2; dx <= 2; dx++) { const gx = bx + dx, gy = by + dy; if ((dy < 0 || dx < 0) && gx >= 0 && gy >= 0 && gx < nx && grid[gy * nx + gx] === best) { near = true; break; } }
+          grid[by * nx + bx] = best;
+          if (!near) out.push({ x: (bx + 0.5) * B, y: (by + 0.5) * B, name: w.data.defs[best].name.replace(/\s*\(.*\)$/, '') });
+        }
+        this.labelCache = { t: w.time, tick: w.tick, out };
+      }
+      ctx.save();
+      ctx.font = `600 ${Math.max(11, Math.min(15, cell * 3))}px system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 3; ctx.strokeStyle = '#000c'; ctx.fillStyle = '#fff';
+      for (const l of this.labelCache.out) { ctx.strokeText(l.name, l.x * cell, l.y * cell); ctx.fillText(l.name, l.x * cell, l.y * cell); }
+      ctx.restore();
     }
 
     // 그래프 하나, 축 하나. 측정값은 실선, 이론값은 점선으로 구분한다.
@@ -1118,7 +1197,7 @@
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,effects?:boolean,sound?:boolean,materials?:string[],storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.17.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.18.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);

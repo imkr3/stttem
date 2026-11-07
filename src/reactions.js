@@ -229,7 +229,12 @@
       out.push(R('boiloff:' + A.sp, A.name + '의 기화', [], [], { kind: 'physical', eq: `${A.formula} → 기체 (${A.bp}°C)`, prob: 0.04, minT: A.bp, toA: A.sp + ':g', T: A.bp + 2, note: '상온의 공기가 끓는점보다 훨씬 뜨거워서 빠르게 기체가 됩니다.' }));
     }
 
-    // 고체의 용해. 순수한 물뿐 아니라 다른 수용액 속의 물에도 녹는다(같은 물질의 용액에는 더 녹지 않는 것으로 단순화: 포화).
+    // 같은 물질의 용액에는 녹을 수 있는 만큼(용해도)까지만 더 녹는다. 넘으면 포화 용액.
+    if (A.salt && A.state === 'powder' && B.aq && B.state === 'liquid' && B.fx === A.fx && B.salt) {
+      const e = salt(A.salt.c, A.salt.a);
+      if (e && e.aq === B.id) out.push(R('dissolve_more:' + A.fx, A.name + '이 더 녹음', [], [], { kind: 'physical', eq: `${A.formula}(s) + ${A.formula}(aq) → 더 진한 ${A.formula}(aq)`, prob: 0.03, dissolveInto: true, toA: e.aq, note: '용액이 아직 포화되지 않았으면 같은 물질이 더 녹아 진해집니다. 녹을 수 있는 한도(용해도)에 이르면 더 넣어도 녹지 않고 가라앉습니다.' }));
+    }
+    // 고체의 용해. 순수한 물뿐 아니라 다른 수용액 속의 물에도 녹는다.
     if (A.salt && A.state === 'powder' && (isWater(B) || (B.aq && B.state === 'liquid' && B.fx !== A.fx && !B.indicator))) {
       const e = salt(A.salt.c, A.salt.a);
       if (e && e.aq) {
@@ -250,7 +255,7 @@
       const to = left ? [['air', 0.8], [left, 0.2]] : 'air';
       const what = left ? `${A.formula} → H₂O(g)↑ + 결정` : 'H₂O(l) → H₂O(g)';
       for (const [minT, prob] of [[80, 0.01], [50, 0.003], [undefined, 0.0004]]) {
-        out.push(R('evap:water', '물의 증발', [], [], { kind: 'physical', eq: what, minT, prob, toA: to, dT: -1, note: '끓는점보다 낮아도 물은 표면에서 조금씩 증발합니다. 따뜻할수록 빠르고, 녹아 있던 소금 같은 것은 결정으로 남습니다. 증발할 때 열을 가져가 시원해집니다.' }));
+        out.push(R('evap:water', '물의 증발', [], [], { kind: 'physical', eq: what, minT, prob, toA: to, dT: -1, evapSolute: A.id !== 'H2O:l', note: '끓는점보다 낮아도 물은 표면에서 조금씩 증발합니다. 따뜻할수록 빠르고, 녹아 있던 소금 같은 것은 결정으로 남습니다. 증발할 때 열을 가져가 시원해집니다.' }));
       }
     }
 
@@ -945,8 +950,6 @@
     { id: 'iodine_sublime', name: '아이오딘의 승화', kind: 'physical', eq: 'I₂(s) → I₂(g)', a: 'I:s', b: 'air', minT: 100, prob: 0.08, toA: 'I:vapor', note: '아이오딘은 녹기 전에도 보라색 증기로 많이 날아갑니다. 데울수록 빠릅니다.' },
     ...['glass', 'stone', 'I:s', 'ice', 'cooler', 'cryoplate'].map((b) => ({ id: 'iodine_deposit', name: '아이오딘 결정 맺힘', kind: 'physical', eq: 'I₂(g) → I₂(s) (차가운 면)', a: 'I:vapor', b, maxT: 45, prob: 0.15, toA: 'I:s', note: '보라색 증기가 차가운 면에 닿으면 액체를 거치지 않고 바로 반짝이는 결정이 됩니다(승화의 반대).' })),
     { id: 'naphthalene', name: '좀약이 작아짐', kind: 'physical', eq: 'C₁₀H₈(s) → C₁₀H₈(g)', a: 'C10H8:s', b: 'air', prob: 0.0004, toA: 'air', note: '나프탈렌은 상온에서도 조금씩 승화해 냄새를 내고 점점 작아집니다.' },
-    ...['glass', 'stone', 'S:KNO3'].map((b) => ({ id: 'recrystal:KNO3', name: '식히면 생기는 결정(질산칼륨)', kind: 'physical', eq: 'KNO₃(aq) → KNO₃(s) (차가워지면 덜 녹음)', a: 'A:KNO3', b, maxT: 12, prob: 0.02, toA: 'S:KNO3', note: '질산칼륨은 뜨거운 물에는 많이 녹지만 차가운 물에는 적게 녹아, 식히면 결정이 생깁니다(재결정).' })),
-    ...['glass', 'stone', 'S:CuSO4·5H2O'].map((b) => ({ id: 'recrystal:CuSO4', name: '식히면 생기는 결정(황산구리)', kind: 'physical', eq: 'CuSO₄(aq) → CuSO₄·5H₂O(s)', a: 'A:CuSO4', b, maxT: 10, prob: 0.01, toA: 'S:CuSO4·5H2O', note: '진한 황산구리 용액을 천천히 식히면 파란 결정이 자랍니다.' })),
     ...['stone', 'basalt', 'concrete', 'marble', 'limestone'].map((b) => ({ id: 'frost', name: '동결 풍화', kind: 'physical', eq: '물이 얼며 부피가 9% 늘어남 → 바위가 갈라짐', a: 'ice', b, prob: 0.0004, toB: 'gravel', note: '틈에 스민 물이 얼면 부피가 커져 바위를 쪼갭니다. 겨울에 도로가 패는 이유입니다.' })),
     { id: 'tin_pest', name: '주석 페스트', kind: 'physical', eq: '흰 주석(β) → 회색 주석(α) (13°C 아래)', a: 'Sn:s', b: 'air', maxT: 13, prob: 0.0003, toA: 'Sn:gray', note: '추운 곳의 주석 그릇·단추가 회색 가루로 부서집니다. 영하 30°C 근처에서 가장 빠릅니다.' },
     { id: 'tin_pest', name: '주석 페스트', kind: 'physical', eq: '흰 주석(β) → 회색 주석(α) (13°C 아래)', a: 'Sn:s', b: 'air', maxT: -20, prob: 0.008, toA: 'Sn:gray', note: '추운 곳의 주석 그릇·단추가 회색 가루로 부서집니다. 영하 30°C 근처에서 가장 빠릅니다.' },
