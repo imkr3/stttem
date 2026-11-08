@@ -124,6 +124,17 @@ const SHOULD = [
   ['철+뜨거운 수증기', 'iron', 'steam', 600, 'fe_steam'],
   ['산성비 확인: 묽은 염산+BTB', 'btb', 'hcl', null, 'indicator:btb:acid'],
   ['소금+덜 진한 소금물', 'salt', 'brine', null, 'dissolve_more:NaCl'],
+  // 0.20.0에서 채운 반응
+  ['질산칼륨+숯(+황)', 'S:KNO3', 'C:s', null, 'gunpowder_mix', 'S:s'], ['흑색 화약+불', 'gunpowder', 'fire', null, 'gunpowder_fire'], ['글리세롤+진한 질산(+황산)', 'C3H8O3', 'HNO3', null, 'nitration_glycerol', 'H2SO4'],
+  ['니트로글리세린 가열', 'nitroglycerin', 'air', 200, 'ng_heat'], ['니트로글리세린+모래', 'nitroglycerin', 'sand', null, 'dynamite'], ['아이오딘+암모니아수', 'I', 'NH4OH:aq', null, 'ni3_make'],
+  ['톱밥+진한 질산(+황산)', 'sawdust', 'HNO3', null, 'guncotton_make', 'H2SO4'], ['면화약+불', 'guncotton', 'fire', null, 'guncotton_fire'], ['염소산칼륨+설탕(+황산)', 'S:KClO3', 'sugar', null, 'kclo3_sugar', 'H2SO4'],
+  ['질산칼륨+숯(가열)', 'S:KNO3', 'C:s', 400, 'pyro:NO3:C:s'], ['과망가니즈산칼륨+마그네슘(가열)', 'S:KMnO4', 'Mg', 300, 'pyro:MnO4:Mg:s'], ['일산화탄소+염소(+활성탄)', 'CO:g', 'Cl:g', null, 'phosgene', 'C:s'],
+  ['포스겐+물', 'COCl2:g', 'water', null, 'phosgene_water'], ['니켈+일산화탄소(50°C)', 'Ni', 'CO:g', 50, 'mond'], ['니켈 카보닐 가열', 'NiCO4:g', 'air', 200, 'mond2'],
+  ['질산은+아세틸렌(+암모니아수)', 'A:AgNO3', 'C2H2:g', null, 'ag_acetylide', 'NH4OH:aq'], ['아세틸렌+염소', 'C2H2:g', 'Cl:g', null, 'c2h2_cl2'], ['우라늄+플루오린', 'U', 'F:g', null, 'uf6'],
+  ['육플루오린화 우라늄+물', 'UF6:g', 'water', null, 'uf6_water'], ['칼슘+질소(가열)', 'Ca', 'nitrogen', 500, 'ca_n2'], ['질화칼슘+물', 'S:Ca3N2', 'water', null, 'ca3n2_water'],
+  ['에틸렌+염소', 'C2H4:g', 'Cl:g', null, 'c2h4_cl2'], ['베릴륨+수산화나트륨', 'Be', 'naoh', null, 'be_naoh'], ['주석+뜨거운 수산화나트륨', 'Sn', 'naoh', 80, 'sn_naoh'], ['석회석+모래(가열)', 'limestone', 'sand', 1100, 'slag'],
+  ['하이포+아이오딘 용액', 'A:Na2S2O3', 'A:KI3', null, 'hypo_iodine'], ['하이포+염산', 'A:Na2S2O3', 'hcl', null, 'hypo_acid'], ['하이포+브로민화은', 'A:Na2S2O3', 'S:AgBr', null, 'hypo_fix'],
+  ['노란 혈염+염화철(III)', 'A:K4Fe(CN)6', 'A:FeCl3', null, 'prussian_blue'], ['노란 혈염+황산구리', 'A:K4Fe(CN)6', 'A:CuSO4', null, 'cu_ferrocyanide'],
   // 0.19.0에서 채운 반응
   ['황산철(II)+공기', 'A:FeSO4', 'air', null, 'fe2_air'], ['염화은+자외선', 'S:AgCl', 'uvlamp', null, 'photo_ag'], ['녹말+염산(가열)', 'starch', 'hcl', 90, 'starch_hydrolysis'],
   ['점토 굽기', 'clay', 'air', 1000, 'clay_fire'], ['나트륨+수은', 'Hg', 'Na', null, 'na_amalgam'], ['알루미늄+갈륨', 'Al', 'Ga:l', 40, 'ga_al'], ['질소+산소(고온)', 'nitrogen', 'oxygen', 2000, 'n2_o2'],
@@ -984,6 +995,14 @@ test('온도와 반응 속도: 데운 산에서 더 빨리 녹음', () => {
   const a = run1(20), b = run1(50);
   assert(b > a * 2, `수소 20°C ${a}, 50°C ${b}`);
   return `철 + 염산 5초 동안 수소(누적): 20°C ${a}, 50°C ${b} (×${(b / Math.max(1, a)).toFixed(1)}; 산이 먼저 소모되어 이론 ×8보다 작음)`;
+});
+test('충격에 민감한 물질: 떨어뜨리면 터지고 모래에 흡수시키면(다이너마이트) 안 터짐', () => {
+  const drop = (id) => { const w = fresh(); w.rect('stone', 0, 140, 239, 149, null, true); w.rect(id, 115, 20, 125, 25); run(w, 3); return w.discovered.has('shock_boom'); };
+  assert(drop('nitroglycerin'), '니트로글리세린이 안 터짐');
+  assert(!drop('dynamite'), '다이너마이트가 터짐');
+  const w = fresh(); w.rect('stone', 0, 140, 239, 149, null, true); w.rect('nitroglycerin', 115, 136, 125, 139); run(w, 3);
+  assert(!w.discovered.has('shock_boom'), '바닥에 가만히 둔 것이 터짐');
+  return '높이 떨어진 니트로글리세린만 폭발';
 });
 test('성능: 틱당 시간', () => {
   const out = [];

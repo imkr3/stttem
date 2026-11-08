@@ -627,6 +627,27 @@ Og|오가네손|294|noble|7|50|80|1`;
     { id: 'silicagel', name: '실리카겔', formula: 'SiO₂·nH₂O', fx: 'SiO2', state: 'powder', cat: null, color: '#e8eef0', density: 700, c: 900, k: 0.2, desc: '구멍이 많은 이산화규소. 습기를 빨아들이는 제습제입니다.' },
     { id: 'S:(NH4)2Cr2O7', name: '다이크로뮴산암모늄', formula: '(NH₄)₂Cr₂O₇', fx: '(NH4)2Cr2O7', state: 'powder', cat: 'salt', color: '#e86018', density: 2150, c: 1000, k: 0.5, desc: '주황 결정. 불을 붙이면 불꽃을 튀기며 부피가 큰 초록색 산화크로뮴이 솟는 "화산" 반응을 합니다. 독성이 있습니다.' },
     { id: 'snake', name: '탄소 뱀', formula: 'C (거품 구조)', fx: 'C', state: 'powder', color: '#1c1c1c', density: 150, c: 700, k: 0.05, desc: '설탕이 타며 나온 탄소가 이산화탄소 거품에 부풀어 오른 가벼운 덩어리.' },
+    // ---- 0.20: 위험 물질(현상만 보여 주는 모의 실험. 실제로 만들거나 다루지 마세요) ----
+    { id: 'gunpowder', name: '흑색 화약', formula: 'KNO₃ + C + S', fx: 'KNO3', state: 'powder', cat: 'chem', color: '#2e2e2e', density: 1000, c: 900, k: 0.2, desc: '질산칼륨(산화제)·숯·황을 섞은 가장 오래된 화약. 불이 닿으면 순식간에 타며 많은 연기와 기체를 냅니다. 갇혀 있으면 폭발합니다. 모의 실험으로만 보세요.' },
+    { id: 'nitroglycerin', name: '니트로글리세린', formula: 'C₃H₅N₃O₉', fx: 'C3H5N3O9', state: 'liquid', cat: 'chem', color: '#e8e2b0', density: 1600, c: 1300, k: 0.15, flow: 3, shock: 3.5, desc: '충격이나 열에 아주 민감한 액체 폭약. 높은 곳에서 떨어뜨리거나 가열하면 폭발합니다. 노벨은 이것을 규조토에 흡수시켜 안전한 다이너마이트를 만들었습니다.' },
+    { id: 'dynamite', name: '다이너마이트', formula: '니트로글리세린 + 규조토', fx: 'C3H5N3O9', state: 'powder', cat: 'chem', color: '#b0806a', density: 1300, c: 1000, k: 0.15, desc: '니트로글리세린을 흙에 흡수시켜 충격에 둔하게 만든 폭약. 불이 닿아야 폭발합니다.' },
+    { id: 'S:NI3', name: '아이오딘화 질소', formula: 'NI₃·NH₃', fx: 'NI3', state: 'powder', cat: 'chem', color: '#3a2a3a', density: 3500, c: 400, k: 0.2, shock: 1.5, desc: '젖어 있을 때는 안정하지만 마르면 깃털만 닿아도 보라색 아이오딘 연기를 내며 터지는 물질. 너무 불안정해 쓸모는 없습니다.' },
+    { id: 'guncotton', name: '면화약(나이트로셀룰로스)', formula: '[C₆H₇(NO₂)₃O₅]ₙ', fx: 'C6H7N3O11', state: 'powder', cat: 'chem', color: '#f0ece0', density: 1500, c: 1300, k: 0.1, desc: '섬유소를 질산으로 처리한 물질. 불이 닿으면 재도 연기도 거의 없이 순식간에 타 버립니다(마술의 불꽃 종이).' },
+    { id: 'S:Ag2C2', name: '아세틸렌화은', formula: 'Ag₂C₂', fx: 'Ag2C2', state: 'powder', cat: null, color: '#d8d0c0', density: 4500, c: 400, k: 0.5, shock: 1.5, desc: '아세틸렌을 암모니아성 질산은에 통과시키면 생기는 흰 앙금. 마르면 충격이나 열에 터집니다. 그래서 아세틸렌 배관에 구리·은을 쓰지 않습니다.' },
+    { id: 'COCl2:g', name: '포스겐', formula: 'COCl₂', fx: 'COCl2', state: 'gas', cat: 'gas', color: '#2c3028', density: 4.25, c: 600, k: 0.01, desc: '일산화탄소와 염소가 만나면 생기는 매우 독한 기체(풀 냄새). 1차 세계 대전에 독가스로 쓰였고, 지금은 플라스틱(폴리카보네이트) 원료로 엄격히 관리합니다. 물을 만나면 염산이 되어 폐를 상하게 합니다.' },
+    { id: 'NiCO4:g', name: '니켈 카보닐', formula: 'Ni(CO)₄', fx: 'NiC4O4', state: 'gas', cat: 'gas', color: '#2a2c26', density: 7, c: 700, k: 0.01, desc: '니켈과 일산화탄소가 50°C 근처에서 만든 휘발성 화합물. 매우 독합니다. 180°C 이상에서 다시 순수한 니켈로 분해되어 니켈 정련(몬드 공정)에 씁니다.' },
+    { id: 'UF6:g', name: '육플루오린화 우라늄', formula: 'UF₆', fx: 'UF6', state: 'gas', cat: 'nuclear', color: '#3a3a30', density: 15, c: 400, k: 0.01, desc: '우라늄을 기체로 만든 것(56°C에서 승화). 무게 차이를 이용한 원심 분리로 우라늄-235를 농축할 때 씁니다. 물과 만나면 독한 플루오린화수소가 나옵니다.' },
+    { id: 'S:UO2F2', name: '플루오린화 우라닐', formula: 'UO₂F₂', fx: 'UO2F2', state: 'powder', cat: null, color: '#e8e070', density: 6400, c: 300, k: 0.5, desc: '육플루오린화 우라늄이 물과 만나 생긴 노란 가루.' },
+    { id: 'S:Ca3N2', name: '질화칼슘', formula: 'Ca₃N₂', fx: 'Ca3N2', state: 'powder', cat: null, color: '#9a8a70', density: 2600, c: 800, k: 1, desc: '뜨거운 칼슘이 질소와 결합한 갈색 가루. 물과 만나면 암모니아가 나옵니다.' },
+    { id: 'C2H4Cl2', name: '1,2-다이클로로에테인', formula: 'C₂H₄Cl₂', fx: 'C2H4Cl2', state: 'liquid', cat: 'organic', color: '#d8e0d0', density: 1250, c: 1300, k: 0.14, flow: 4, up: { at: 84, to: 'air', L: 3.2e5 }, desc: '에틸렌에 염소가 첨가된 액체. PVC(염화비닐) 원료입니다.' },
+    { id: 'A:Na2Be(OH)4', name: '베릴륨산 나트륨 용액', formula: 'Na₂[Be(OH)₄](aq)', fx: 'Na2BeO2', state: 'liquid', cat: 'solution', color: '#d8e4ea', density: 1080, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 12, desc: '양쪽성 금속인 베릴륨이 강염기에 녹아 생긴 용액.' },
+    { id: 'A:Na2Sn(OH)4', name: '주석산 나트륨 용액', formula: 'Na₂[Sn(OH)₄](aq)', fx: 'Na2SnO2', state: 'liquid', cat: 'solution', color: '#dce4e6', density: 1100, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 12, desc: '양쪽성 금속인 주석이 뜨거운 강염기에 녹아 생긴 용액.' },
+    { id: 'A:Na2S2O3', name: '싸이오황산나트륨 용액', formula: 'Na₂S₂O₃(aq)', fx: 'Na2S2O3', state: 'liquid', cat: 'solution', color: '#dfe8ec', density: 1100, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 7.5, desc: '하이포. 아이오딘의 색을 지우고(아이오딘 적정), 사진의 브로민화은을 녹여 내며(정착), 산을 넣으면 황이 생겨 뿌옇게 흐려집니다(반응 속도 실험).' },
+    { id: 'S:Na2S2O3', name: '싸이오황산나트륨(하이포)', formula: 'Na₂S₂O₃·5H₂O', fx: 'Na2S2O3', state: 'powder', cat: 'salt', color: '#f2f4f4', density: 1690, c: 1500, k: 0.5, desc: '사진 정착액으로 쓰는 투명한 결정. 물에 녹으면 차가워집니다.' },
+    { id: 'A:K4Fe(CN)6', name: '헥사사이아노철(II)산 칼륨 용액(노란 혈염)', formula: 'K₄[Fe(CN)₆](aq)', fx: 'K4FeC6N6', state: 'liquid', cat: 'solution', color: '#e8d860', density: 1100, c: 3900, k: 0.6, flow: 5, aq: true, misc: true, pH: 8, desc: '철(III) 이온을 만나면 짙은 파란 프러시안 블루 앙금, 구리 이온을 만나면 적갈색 앙금이 생깁니다. 철 이온 검출에 씁니다. 사이안화물이지만 철과 단단히 묶여 있어 독성은 낮습니다.' },
+    { id: 'S:prussianblue', name: '프러시안 블루', formula: 'Fe₄[Fe(CN)₆]₃', fx: 'Fe7C18N18', state: 'powder', cat: null, color: '#1c3a8a', density: 1800, c: 800, k: 0.3, desc: '짙은 파란 안료. 철(III) 이온 검출 반응의 결과이자 청사진의 색입니다.' },
+    { id: 'S:Cu2Fe(CN)6', name: '헥사사이아노철(II)산 구리', formula: 'Cu₂[Fe(CN)₆]', fx: 'Cu2FeC6N6', state: 'powder', cat: null, color: '#7a3020', density: 2000, c: 800, k: 0.3, desc: '구리 이온을 검출할 때 생기는 적갈색 앙금.' },
+    { id: 'S:CaSiO3', name: '슬래그(규산칼슘)', formula: 'CaSiO₃', fx: 'CaSiO3', state: 'powder', cat: 'rock', color: '#8a8478', density: 2900, c: 800, k: 1, desc: '용광로에서 석회석이 모래(불순물)와 녹아 생긴 찌꺼기. 쇳물 위에 떠서 걷어 냅니다. 시멘트 원료로 씁니다.' },
     { id: 'NH2Cl', name: '클로라민', formula: 'NH₂Cl', fx: 'NH2Cl', state: 'gas', color: '#2a3226', density: 2.14, c: 900, k: 0.03, desc: '표백제와 암모니아를 섞으면 생기는 유독한 기체. 기침과 폐 손상을 일으킵니다. 절대 섞지 마세요.' },
     ...[['Cu', '#2a70c8'], ['Co', '#4a3aa8'], ['Ni', '#3aa060'], ['Fe3', '#a85a20'], ['Fe2', '#4a6a40'], ['Mn', '#d8a0b8'], ['Ca', '#ecece4'], ['Zn', '#dce8e8']].flatMap(([k, color]) => [
       { id: 'garden:' + k, name: '화학 정원의 관', formula: '금속 규산염', fx: 'SiO2', state: 'solid', color, density: 2000, c: 900, k: 0.5, desc: '금속 이온과 규산 이온이 만나 생긴 얇은 막. 안쪽 용액이 위로 솟으며 관이 자랍니다.' },
@@ -1274,7 +1295,14 @@ Og|오가네손|294|noble|7|50|80|1`;
       out.push(R('co-reduce:' + B.fx, '일산화탄소로 ' + B.name + ' 환원', ['CO', B.fx], [el, 'CO2'], { minT: CO_REDUCE[B.salt.c], prob: 0.08, toA: 'CO2', toB: el + ':s', note: '용광로 안에서 철광석을 실제로 환원하는 것은 숯이 불완전 연소해 생긴 일산화탄소입니다.' }));
     }
 
-    // 황화물 광석 굽기(배소): 금속 황화물을 공기 중에서 가열하면 산화물과 이산화황이 된다. 제련의 첫 단계.
+    // 산화제 염 + 연료 가루: 데우거나 불이 닿으면 산소 없이도 격렬하게 탄다(불꽃놀이·화약의 원리).
+    const OXI = { NO3: 330, ClO3: 200, MnO4: 240 };
+    if (A.salt && OXI[A.salt.a] && A.state === 'powder' && (B.id === 'C:s' || B.id === 'S:s' || B.id === 'sugar' || B.id === 'glucose' || B.id === 'flour' || B.id === 'sawdust' || B.id === 'Mg:s' || B.id === 'Al:s' || B.id === 'wood')) {
+      const metal = B.id === 'Mg:s' || B.id === 'Al:s';
+      out.push(R('pyro:' + A.salt.a + ':' + B.id, A.name + '과 ' + B.name + '의 연소', [], [], { kind: 'chemical', eq: `${A.formula}(산화제) + ${B.formula}(연료) → 산화물 + 기체 + 열과 빛`, minT: OXI[A.salt.a], prob: 0.3, toA: metal ? 'fire:Mg' : 'fire', toB: [['smoke:white', 0.5], ['fire', 0.5]], T: metal ? 2500 : 1600, explode: A.salt.a === 'ClO3' ? 1.5 : null, explodeP: 0.05, note: '산화제 속의 산소로 연료가 타기 때문에 공기가 없어도 격렬하게 탑니다. 불꽃놀이와 화약의 원리입니다. 실제로 섞으면 매우 위험합니다.' }));
+    }
+
+    // 황화물 광석 굽기(배소)    // 황화물 광석 굽기(배소): 금속 황화물을 공기 중에서 가열하면 산화물과 이산화황이 된다. 제련의 첫 단계.
     if (A.salt && A.salt.a === 'S' && A.state === 'powder' && isOx(B)) {
       const ox = salt(A.salt.c, 'O');
       if (ox && ox.solid) out.push(R('roast:' + A.fx, A.name + ' 굽기(배소)', [A.fx, 'O2'], [ox.fx, 'SO2'], { minT: 600, prob: 0.05, toA: ox.solid, toB: 'SO2', dT: 50, note: '황화물 광석을 공기 중에서 구우면 산화물이 되고 이산화황이 나옵니다. 이 산화물을 탄소로 환원해 금속을 얻습니다. 제련소의 이산화황은 황산 원료로 씁니다.' }));
@@ -1802,6 +1830,46 @@ Og|오가네손|294|noble|7|50|80|1`;
     // 철 + 뜨거운 수증기 → 사산화삼철(검은 녹) + 수소. 철은 산화수 +2와 +3이 섞인 산화물이 된다.
     { id: 'fe_steam', name: '철과 뜨거운 수증기', reactants: ['Fe', 'H2O'], products: ['Fe3O4', 'H2'], a: 'Fe:s', b: 'steam', minT: 500, prob: 0.05, toA: 'S:Fe3O4', toB: 'hydrogen', dT: 30, note: '빨갛게 달군 철은 수증기에서 산소를 빼앗아 검은 사산화삼철(Fe₃O₄, 자철석 성분)이 되고 수소가 나옵니다. 라부아지에가 물이 원소가 아님을 보인 실험입니다.' },
     { id: 'fe_steam', name: '철과 뜨거운 수증기', reactants: ['Fe', 'H2O'], products: ['Fe3O4', 'H2'], a: 'steel:s', b: 'steam', minT: 500, prob: 0.04, toA: 'S:Fe3O4', toB: 'hydrogen', dT: 30, note: '빨갛게 달군 철은 수증기에서 산소를 빼앗아 검은 사산화삼철이 되고 수소가 나옵니다.' },
+    // ---- 0.20: 위험한 반응(현상만 보여 줌) ----
+    ...[['S:KNO3', 'C:s', 'S:s']].map(([a, b, n]) => ({ id: 'gunpowder_mix', name: '흑색 화약(섞기)', kind: 'physical', eq: 'KNO₃ + C + S (섞임)', a, b, near: [n], prob: 0.02, toA: 'gunpowder', toB: 'gunpowder', note: '질산칼륨·숯·황을 고르게 섞으면 흑색 화약이 됩니다. 섞기만 해서는 반응하지 않고 불이 닿아야 탑니다.' })),
+    { id: 'gunpowder_fire', name: '흑색 화약의 연소', eq: '2KNO₃ + S + 3C → K₂S + N₂ + 3CO₂', a: 'gunpowder', b: 'fire', prob: 0.8, toA: [['fire:K', 0.4], ['smoke:white', 0.6]], T: 1800, explode: 1.5, explodeP: 0.04, note: '산화제가 섞여 있어 공기 없이도 순식간에 타며, 고체 2부피가 기체 수백 부피가 됩니다. 갇혀 있으면 폭발하고, 총과 불꽃놀이에 쓰였습니다.' },
+    { id: 'gunpowder_fire', name: '흑색 화약의 연소', eq: '2KNO₃ + S + 3C → K₂S + N₂ + 3CO₂', a: 'gunpowder', b: 'air', minT: 300, prob: 0.5, toA: [['fire:K', 0.4], ['smoke:white', 0.6]], T: 1800, note: '약 300°C에서 불이 붙습니다.' },
+    { id: 'nitration_glycerol', name: '니트로글리세린이 생김', eq: 'C₃H₅(OH)₃ + 3HNO₃ → C₃H₅(ONO₂)₃ + 3H₂O (진한 황산 속)', a: 'C3H8O3', b: 'HNO3', near: ['H2SO4'], prob: 0.03, toA: 'nitroglycerin', toB: 'water', dT: 40, note: '글리세롤이 진한 질산·황산과 만나 니트로글리세린이 됩니다. 반응열로 뜨거워지면 그대로 폭발할 수 있어, 실제로는 절대 해서는 안 되는 반응입니다.' },
+    { id: 'ng_heat', name: '니트로글리세린 폭발', eq: '4C₃H₅N₃O₉ → 12CO₂ + 10H₂O + 6N₂ + O₂', a: 'nitroglycerin', b: 'air', minT: 150, prob: 0.5, toA: 'fire:clean', T: 3000, explode: 4, note: '열이나 충격을 받으면 분자 하나가 순식간에 많은 기체로 쪼개집니다. 산소가 분자 안에 있어 공기가 필요 없습니다.' },
+    { id: 'ng_heat', name: '니트로글리세린 폭발', eq: '4C₃H₅N₃O₉ → 12CO₂ + 10H₂O + 6N₂ + O₂', a: 'nitroglycerin', b: 'fire', prob: 0.8, toA: 'fire:clean', T: 3000, explode: 4, note: '불이 닿으면 폭발합니다.' },
+    { id: 'dynamite', name: '다이너마이트 만들기(노벨)', kind: 'physical', eq: '니트로글리세린 + 규조토(흙) → 다이너마이트', a: 'nitroglycerin', b: 'sand', prob: 0.05, toA: 'dynamite', toB: 'dynamite', note: '노벨은 니트로글리세린을 흙에 흡수시키면 충격에 둔해져 안전하게 옮길 수 있다는 것을 알아냈습니다(1867).' },
+    { id: 'dynamite_fire', name: '다이너마이트 폭발', eq: 'C₃H₅N₃O₉ → CO₂ + H₂O + N₂ (흙은 남음)', a: 'dynamite', b: 'fire', prob: 0.3, toA: 'fire:clean', T: 3000, explode: 5, note: '충격에는 둔하지만 불(뇌관)이 닿으면 폭발합니다.' },
+    { id: 'ni3_make', name: '아이오딘화 질소가 생김', eq: '3I₂ + 5NH₃ → NI₃·NH₃ + 3NH₄I', a: 'I:s', b: 'NH4OH:aq', prob: 0.02, toA: 'S:NI3', toB: 'A:NH4I', note: '아이오딘을 진한 암모니아수에 넣으면 검은 아이오딘화 질소가 생깁니다. 젖어 있는 동안은 비교적 안정합니다.' },
+    { id: 'ni3_dry', name: '마른 아이오딘화 질소가 터짐', eq: '2NI₃ → N₂ + 3I₂ (보라색 연기)', a: 'S:NI3', b: 'air', farFrom: ['water', 'NH4OH:aq'], prob: 0.004, toA: 'I:vapor', explode: 1.5, note: '마르면 깃털만 닿아도 날카로운 소리와 함께 보라색 아이오딘 연기를 내며 터집니다. 질소 하나에 큰 아이오딘 세 개가 매달린 불안정한 구조이기 때문입니다.' },
+    ...['sawdust', 'wood', 'leaf'].map((a) => ({ id: 'guncotton_make', name: '면화약이 생김', eq: '섬유소 + HNO₃ → 나이트로셀룰로스 + H₂O (진한 황산 속)', a, b: 'HNO3', near: ['H2SO4'], prob: 0.03, toA: 'guncotton', toB: 'water', note: '섬유소(셀룰로스)가 진한 질산·황산과 만나 면화약이 됩니다. 마르면 매우 잘 타는 위험물입니다.' })),
+    { id: 'guncotton_fire', name: '면화약의 연소', eq: '나이트로셀룰로스 → CO₂ + CO + H₂O + N₂', a: 'guncotton', b: 'fire', prob: 0.9, toA: 'fire:clean', T: 1500, note: '분자 안의 산소로 타서 재도 연기도 거의 남기지 않고 한순간에 사라집니다. 마술의 불꽃 종이, 무연 화약의 원료입니다.' },
+    { id: 'guncotton_fire', name: '면화약의 연소', eq: '나이트로셀룰로스 → CO₂ + CO + H₂O + N₂', a: 'guncotton', b: 'air', minT: 170, prob: 0.6, toA: 'fire:clean', T: 1500, note: '약 170°C에서 저절로 불이 붙습니다.' },
+    { id: 'kclo3_sugar', name: '염소산칼륨 + 설탕 + 황산 한 방울', eq: '8KClO₃ + C₁₂H₂₂O₁₁ → 8KCl + 12CO₂ + 11H₂O (황산이 시작시킴)', a: 'S:KClO3', b: 'sugar', near: ['H2SO4'], prob: 0.5, toA: 'fire:K', toB: [['fire', 0.5], ['smoke:white', 0.5]], T: 1800, note: '진한 황산 한 방울이 염소산을 만들어 불을 붙이면 보라색 불꽃(칼륨)과 함께 격렬하게 탑니다. 옛날 화학 성냥의 원리입니다.' },
+    { id: 'phosgene', name: '포스겐이 생김', reactants: ['CO', 'Cl2'], products: ['COCl2'], a: 'CO:g', b: 'Cl:g', near: ['C:s', 'uvlamp'], prob: 0.1, toA: 'COCl2:g', toB: 'air', dT: 30, note: '일산화탄소와 염소가 활성탄이나 빛을 만나 포스겐이 됩니다. 매우 독한 기체입니다.' },
+    { id: 'phosgene_water', name: '포스겐의 가수 분해', reactants: ['COCl2', 'H2O'], products: ['CO2', 'HCl'], a: 'COCl2:g', b: 'water', prob: 0.2, toA: 'CO2', toB: 'hcl', note: '물을 만나면 이산화탄소와 염산이 됩니다. 폐 속의 수분과 이렇게 반응해 폐를 상하게 합니다.' },
+    { id: 'mond', name: '니켈 카보닐(몬드 공정 1)', reactants: ['Ni', 'CO'], products: ['NiC4O4'], a: 'Ni:s', b: 'CO:g', minT: 40, maxT: 100, prob: 0.02, toA: [['Ni:s', 0.8], ['NiCO4:g', 0.2]], toB: 'air', note: '50°C 근처에서 니켈만 일산화탄소와 결합해 기체가 됩니다. 다른 금속 불순물은 남습니다.' },
+    { id: 'mond2', name: '니켈 카보닐 분해(몬드 공정 2)', reactants: ['NiC4O4'], products: ['Ni', 'CO'], a: 'NiCO4:g', b: 'air', minT: 180, prob: 0.2, toA: 'Ni:s', note: '180°C 이상에서 다시 순수한 니켈과 일산화탄소로 나뉩니다. 99.99% 니켈을 얻는 방법입니다.' },
+    { id: 'ag_acetylide', name: '아세틸렌화은이 생김', eq: 'C₂H₂ + 2[Ag(NH₃)₂]⁺ → Ag₂C₂↓ + 2NH₄⁺ + 2NH₃', a: 'A:AgNO3', b: 'C2H2:g', near: ['NH4OH:aq'], prob: 0.1, toA: 'S:Ag2C2', toB: 'air', note: '아세틸렌을 확인하는 반응이지만 생긴 앙금은 마르면 터지는 위험물입니다.' },
+    { id: 'ag_acetylide_heat', name: '아세틸렌화은 폭발', eq: 'Ag₂C₂ → 2Ag + 2C', a: 'S:Ag2C2', b: 'air', minT: 120, prob: 0.5, toA: 'Ag:s', explode: 1.5, note: '열이나 충격을 받으면 은과 탄소로 쪼개지며 터집니다.' },
+    { id: 'c2h2_cl2', name: '아세틸렌과 염소(폭발)', eq: 'C₂H₂ + Cl₂ → 2C + 2HCl', a: 'C2H2:g', b: 'Cl:g', prob: 0.2, toA: 'C:s', toB: 'HClg:g', T: 1200, explode: 2, explodeP: 0.3, note: '아세틸렌과 염소는 섞기만 해도(특히 빛을 받으면) 폭발하며 검은 그을음(탄소)을 남깁니다.' },
+    // ---- 0.20: 생성물이 없어 못 넣었던 반응 ----
+    { id: 'uf6', name: '육플루오린화 우라늄 만들기', reactants: ['U', 'F2'], products: ['UF6'], a: 'U:s', b: 'F:g', prob: 0.1, toA: [['U:s', 0.7], ['UF6:g', 0.3]], toB: 'UF6:g', dT: 300, note: '우라늄을 플루오린과 반응시켜 기체로 만들면, 무게가 약간 다른 우라늄-235와 238을 원심 분리기로 나눌 수 있습니다(농축).' },
+    { id: 'uf6_water', name: '육플루오린화 우라늄과 물', reactants: ['UF6', 'H2O'], products: ['UO2F2', 'HF'], a: 'UF6:g', b: 'water', prob: 0.3, toA: 'S:UO2F2', toB: 'HFg:g', note: '물과 만나면 노란 플루오린화 우라닐과 독한 플루오린화수소가 생깁니다.' },
+    { id: 'ca_n2', name: '칼슘과 질소', reactants: ['Ca', 'N2'], products: ['Ca3N2'], a: 'Ca:s', b: 'nitrogen', minT: 450, prob: 0.03, toA: 'S:Ca3N2', toB: 'air', dT: 100, note: '뜨거운 칼슘은 질소와도 결합합니다.' },
+    { id: 'ca3n2_water', name: '질화칼슘과 물', reactants: ['Ca3N2', 'H2O'], products: ['Ca(OH)2', 'NH3'], a: 'S:Ca3N2', b: 'water', prob: 0.1, toA: 'A:Ca(OH)2', toB: 'NH3', dT: 30, note: '물과 만나 암모니아 냄새가 납니다.' },
+    { id: 'c2h4_cl2', name: '에틸렌과 염소(첨가)', reactants: ['C2H4', 'Cl2'], products: ['C2H4Cl2'], a: 'C2H4:g', b: 'Cl:g', prob: 0.15, toA: 'C2H4Cl2', toB: 'air', dT: 40, note: '이중 결합에 염소가 붙어 1,2-다이클로로에테인이 됩니다. 이것을 분해해 PVC 원료(염화비닐)를 만듭니다.' },
+    { id: 'be_naoh', name: '베릴륨과 수산화나트륨(양쪽성)', reactants: ['Be', 'NaOH'], products: ['Na2BeO2', 'H2'], a: 'Be:s', b: 'naoh', prob: 0.02, toA: [['Be:s', 0.8], ['A:Na2Be(OH)4', 0.2]], toB: [['A:Na2Be(OH)4', 0.5], ['hydrogen', 0.5]], note: '베릴륨도 알루미늄처럼 산과 염기 모두에 녹습니다.' },
+    { id: 'sn_naoh', name: '주석과 뜨거운 수산화나트륨(양쪽성)', reactants: ['Sn', 'NaOH'], products: ['Na2SnO2', 'H2'], a: 'Sn:s', b: 'naoh', minT: 60, prob: 0.02, toA: [['Sn:s', 0.8], ['A:Na2Sn(OH)4', 0.2]], toB: [['A:Na2Sn(OH)4', 0.5], ['hydrogen', 0.5]], note: '주석은 뜨거운 강염기에 녹아 수소를 냅니다.' },
+    { id: 'slag', name: '슬래그 생성(용광로)', reactants: ['CaCO3', 'SiO2'], products: ['CaSiO3', 'CO2'], a: 'limestone', b: 'sand', minT: 1000, prob: 0.05, toA: 'CO2', toB: 'S:CaSiO3', note: '용광로에 넣은 석회석이 철광석 속의 모래(불순물)와 결합해 슬래그가 됩니다. 가벼워서 쇳물 위에 뜹니다.' },
+    { id: 'slag', name: '슬래그 생성(용광로)', reactants: ['CaO', 'SiO2'], products: ['CaSiO3'], a: 'S:CaO', b: 'sand', minT: 1000, prob: 0.05, toA: 'S:CaSiO3', toB: 'S:CaSiO3', note: '생석회가 모래와 결합해 슬래그가 됩니다.' },
+    // ---- 0.20: 싸이오황산나트륨(하이포) ----
+    { id: 'hypo_dissolve', name: '하이포의 용해(흡열)', kind: 'physical', eq: 'Na₂S₂O₃·5H₂O(s) → Na₂S₂O₃(aq)', a: 'S:Na2S2O3', b: 'water', prob: 0.05, toA: 'A:Na2S2O3', toB: 'A:Na2S2O3', dT: -12, note: '녹으면서 열을 흡수해 차가워집니다.' },
+    ...[['A:KI3', 'A:KI'], ['tincture', 'C2H5OH'], ['starch:blue', 'starch'], ['I:s', 'A:KI']].map(([b, to]) => ({ id: 'hypo_iodine', name: '싸이오황산 이온과 아이오딘(아이오딘 적정)', eq: '2S₂O₃²⁻ + I₂ → S₄O₆²⁻ + 2I⁻', a: 'A:Na2S2O3', b, prob: 0.3, toA: [['A:Na2S2O3', 0.5], ['water', 0.5]], toB: to, note: '갈색(녹말과 함께면 청람색) 아이오딘의 색이 사라집니다. 색이 사라질 때까지 넣은 양으로 아이오딘의 양을 잽니다(아이오딘 적정).' })),
+    ...['hcl', 'A:acid:H2SO4aq', 'vinegar'].map((b) => ({ id: 'hypo_acid', name: '싸이오황산 이온과 산(흐려지는 X)', eq: 'Na₂S₂O₃ + 2HCl → 2NaCl + S↓ + SO₂ + H₂O', a: 'A:Na2S2O3', b, prob: b === 'vinegar' ? 0.01 : 0.04, toA: [['S:s', 0.5], ['A:NaCl', 0.5]], toB: [['SO2', 0.3], ['A:NaCl', 0.7]], note: '산을 넣으면 잠시 뒤 황이 생겨 뿌옇게 흐려집니다. 진할수록, 뜨거울수록 빨리 흐려져 반응 속도 실험(밑에 그린 X가 안 보일 때까지의 시간)에 씁니다.' })),
+    ...['S:AgBr', 'S:AgCl'].map((b) => ({ id: 'hypo_fix', name: '사진 정착(할로젠화은을 녹임)', eq: 'AgBr + 2Na₂S₂O₃ → Na₃[Ag(S₂O₃)₂] + NaBr', a: 'A:Na2S2O3', b, prob: 0.1, toB: b === 'S:AgBr' ? 'A:NaBr' : 'A:NaCl', note: '빛을 받지 않은 할로젠화은을 녹여 내어 사진이 더는 검어지지 않게 고정합니다(정착).' })),
+    // ---- 0.20: 노란 혈염(철·구리 이온 검출) ----
+    ...['A:FeCl3', 'A:Fe2(SO4)3', 'A:Fe(NO3)3'].map((b) => ({ id: 'prussian_blue', name: '프러시안 블루(철(III) 이온 검출)', eq: '4Fe³⁺ + 3[Fe(CN)₆]⁴⁻ → Fe₄[Fe(CN)₆]₃↓', a: 'A:K4Fe(CN)6', b, prob: 0.3, toA: 'S:prussianblue', toB: 'S:prussianblue', note: '철(III) 이온이 있으면 짙은 파란 앙금이 생깁니다. 아주 적은 철도 찾아낼 수 있고, 청사진과 물감의 색입니다.' })),
+    ...['A:CuSO4', 'A:CuCl2', 'A:Cu(NO3)2'].map((b) => ({ id: 'cu_ferrocyanide', name: '헥사사이아노철(II)산 구리(구리 이온 검출)', eq: '2Cu²⁺ + [Fe(CN)₆]⁴⁻ → Cu₂[Fe(CN)₆]↓', a: 'A:K4Fe(CN)6', b, prob: 0.3, toA: 'S:Cu2Fe(CN)6', toB: 'S:Cu2Fe(CN)6', note: '구리 이온이 있으면 적갈색 앙금이 생깁니다.' })),
     // ---- 0.19에서 채운 반응 ----
     { id: 'fe2_air', name: '철(II) 이온의 공기 산화', eq: '4Fe²⁺ + O₂ + 4H⁺ → 4Fe³⁺ + 2H₂O', a: 'A:FeSO4', b: 'air', prob: 0.0008, toA: 'A:Fe2(SO4)3', note: '연두색 철(II) 용액은 공기 중에 두면 천천히 노란 갈색 철(III) 용액이 됩니다. 그래서 철(II) 용액은 만들어서 바로 씁니다.' },
     { id: 'fe2_air', name: '철(II) 이온의 공기 산화', eq: '4Fe²⁺ + O₂ + 4H⁺ → 4Fe³⁺ + 2H₂O', a: 'A:FeCl2', b: 'air', prob: 0.0008, toA: 'A:FeCl3', note: '연두색 철(II) 용액은 공기 중에 두면 천천히 노란 갈색 철(III) 용액이 됩니다.' },
@@ -1986,7 +2054,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       up: [], down: [], decay: [], explicit: new Map(), cache: new Map(), reactive: new Uint8Array(n), base: new Uint16Array(n),
       fast: new Float32Array(n), thermal: new Float32Array(n), spont: new Float32Array(n), emitter: new Uint8Array(n),
       moder: new Uint8Array(n), absorb: new Float32Array(n), heat: new Float32Array(n), armor: new Uint8Array(n),
-      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), pump: new Uint8Array(n), pH0: new Float32Array(n).fill(NaN), solute: new Uint8Array(n), weak: new Uint8Array(n), crystal: new Int16Array(n).fill(-1), sat20: new Float32Array(n), satK: new Float32Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
+      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), pump: new Uint8Array(n), pH0: new Float32Array(n).fill(NaN), solute: new Uint8Array(n), weak: new Uint8Array(n), crystal: new Int16Array(n).fill(-1), shock: new Float32Array(n), sat20: new Float32Array(n), satK: new Float32Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
     };
     materials.forEach((d, i) => {
       c.state[i] = STATES[d.state];
@@ -2005,6 +2073,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       c.armor[i] = d.fixed || d.armor ? 1 : 0; // 폭발에도 부서지지 않는 벽
       c.electrode[i] = d.electrode || 0;
       if (d.shatter) c.shatter[i] = need(d.shatter); // 폭발에 부서지면 되는 물질
+      c.shock[i] = d.shock || 0; // 충격에 터지는 물질: 폭발 반지름
       // 칸마다 밝기를 조금씩 달리하는 정도(질감): 액체는 매끈하게, 금속은 고르게, 가루와 바위는 거칠게.
       c.grain[i] = d.grain != null ? d.grain : d.state === 'liquid' ? 5 : d.state === 'gas' ? 7 : d.metal ? 7 : d.state === 'solid' ? 16 : 13;
       if (d.electrode) c.anyElectrode = true;
@@ -2300,6 +2369,8 @@ Og|오가네손|294|noble|7|50|80|1`;
         }
         cur = below; cy++;
       }
+      // 충격에 민감한 물질(니트로글리세린 등)은 빠르게 떨어져 부딪히면 터진다.
+      if (blocked && v >= 3 && this.data.shock[this.mat[cur]]) { this.shockBoom(cur); return; }
       // 높은 곳에서 떨어진 액체는 바닥에 부딪혀 튄다.
       if (blocked && s === LIQUID && v >= 3.5 && Math.random() < 0.3) {
         this.launch(cur, (Math.random() < 0.5 ? -1 : 1) * v * (0.2 + Math.random() * 0.3), -v * (0.2 + Math.random() * 0.2));
@@ -2561,6 +2632,7 @@ Og|오가네손|294|noble|7|50|80|1`;
         const at = last >= 0 ? last : (f.y | 0) * w + (f.x | 0);
         if (st[mat[at]] !== GAS) { f.vx = 0; f.vy = 0; f.y -= 1; if (f.y >= 0) keep.push(f); continue; } // 자리가 찼으면 한 칸 위에서 다시
         this.setCell(at, f.m, f.T);
+        if (this.data.shock[f.m] && Math.hypot(f.vx, f.vy) >= 2) { this.shockBoom(at); continue; } // 날아가다 떨어진 충격 민감 물질
         this.store[at] = f.store; this.shade[at] = f.shade; this.conc[at] = f.conc == null ? 1 : f.conc; this.vy[at] = Math.max(0, Math.min(2, f.vy));
         this.stamp[at] = this.tick;
       }
@@ -3139,6 +3211,12 @@ Og|오가네손|294|noble|7|50|80|1`;
         this.setCell(b, water, Tb);
       }
       if (!r.silent) this.note(r.id, () => ({ type: 'reaction', id: r.id, name: r.name, eq: SL.CHEM ? SL.CHEM.equation(r) : r.eq, kind: r.kind || 'chemical', note: r.note }));
+    }
+
+    shockBoom(i) {
+      const d = this.data, m = this.mat[i], r = d.shock[m];
+      this.explode(i, r, 2500);
+      this.note('shock_boom', () => ({ type: 'reaction', id: 'shock_boom', name: '충격으로 터짐', kind: 'chemical', eq: `${d.defs[m].name} + 충격 → 폭발`, note: '분자 속에 산화제와 연료가 함께 들어 있는 불안정한 물질은 작은 충격의 에너지만으로도 분해가 시작되어 순식간에 퍼집니다. 이런 물질은 실제로 다루지 마세요.' }));
     }
 
     // ---- 폭발 ----
@@ -5885,7 +5963,7 @@ Og|오가네손|294|noble|7|50|80|1`;
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,effects?:boolean,sound?:boolean,materials?:string[],storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.19.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.20.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);

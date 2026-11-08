@@ -52,7 +52,7 @@
       up: [], down: [], decay: [], explicit: new Map(), cache: new Map(), reactive: new Uint8Array(n), base: new Uint16Array(n),
       fast: new Float32Array(n), thermal: new Float32Array(n), spont: new Float32Array(n), emitter: new Uint8Array(n),
       moder: new Uint8Array(n), absorb: new Float32Array(n), heat: new Float32Array(n), armor: new Uint8Array(n),
-      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), pump: new Uint8Array(n), pH0: new Float32Array(n).fill(NaN), solute: new Uint8Array(n), weak: new Uint8Array(n), crystal: new Int16Array(n).fill(-1), sat20: new Float32Array(n), satK: new Float32Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
+      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), pump: new Uint8Array(n), pH0: new Float32Array(n).fill(NaN), solute: new Uint8Array(n), weak: new Uint8Array(n), crystal: new Int16Array(n).fill(-1), shock: new Float32Array(n), sat20: new Float32Array(n), satK: new Float32Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
     };
     materials.forEach((d, i) => {
       c.state[i] = STATES[d.state];
@@ -71,6 +71,7 @@
       c.armor[i] = d.fixed || d.armor ? 1 : 0; // 폭발에도 부서지지 않는 벽
       c.electrode[i] = d.electrode || 0;
       if (d.shatter) c.shatter[i] = need(d.shatter); // 폭발에 부서지면 되는 물질
+      c.shock[i] = d.shock || 0; // 충격에 터지는 물질: 폭발 반지름
       // 칸마다 밝기를 조금씩 달리하는 정도(질감): 액체는 매끈하게, 금속은 고르게, 가루와 바위는 거칠게.
       c.grain[i] = d.grain != null ? d.grain : d.state === 'liquid' ? 5 : d.state === 'gas' ? 7 : d.metal ? 7 : d.state === 'solid' ? 16 : 13;
       if (d.electrode) c.anyElectrode = true;
@@ -366,6 +367,8 @@
         }
         cur = below; cy++;
       }
+      // 충격에 민감한 물질(니트로글리세린 등)은 빠르게 떨어져 부딪히면 터진다.
+      if (blocked && v >= 3 && this.data.shock[this.mat[cur]]) { this.shockBoom(cur); return; }
       // 높은 곳에서 떨어진 액체는 바닥에 부딪혀 튄다.
       if (blocked && s === LIQUID && v >= 3.5 && Math.random() < 0.3) {
         this.launch(cur, (Math.random() < 0.5 ? -1 : 1) * v * (0.2 + Math.random() * 0.3), -v * (0.2 + Math.random() * 0.2));
@@ -627,6 +630,7 @@
         const at = last >= 0 ? last : (f.y | 0) * w + (f.x | 0);
         if (st[mat[at]] !== GAS) { f.vx = 0; f.vy = 0; f.y -= 1; if (f.y >= 0) keep.push(f); continue; } // 자리가 찼으면 한 칸 위에서 다시
         this.setCell(at, f.m, f.T);
+        if (this.data.shock[f.m] && Math.hypot(f.vx, f.vy) >= 2) { this.shockBoom(at); continue; } // 날아가다 떨어진 충격 민감 물질
         this.store[at] = f.store; this.shade[at] = f.shade; this.conc[at] = f.conc == null ? 1 : f.conc; this.vy[at] = Math.max(0, Math.min(2, f.vy));
         this.stamp[at] = this.tick;
       }
@@ -1205,6 +1209,12 @@
         this.setCell(b, water, Tb);
       }
       if (!r.silent) this.note(r.id, () => ({ type: 'reaction', id: r.id, name: r.name, eq: SL.CHEM ? SL.CHEM.equation(r) : r.eq, kind: r.kind || 'chemical', note: r.note }));
+    }
+
+    shockBoom(i) {
+      const d = this.data, m = this.mat[i], r = d.shock[m];
+      this.explode(i, r, 2500);
+      this.note('shock_boom', () => ({ type: 'reaction', id: 'shock_boom', name: '충격으로 터짐', kind: 'chemical', eq: `${d.defs[m].name} + 충격 → 폭발`, note: '분자 속에 산화제와 연료가 함께 들어 있는 불안정한 물질은 작은 충격의 에너지만으로도 분해가 시작되어 순식간에 퍼집니다. 이런 물질은 실제로 다루지 마세요.' }));
     }
 
     // ---- 폭발 ----
