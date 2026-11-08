@@ -479,10 +479,16 @@
       out.push(R('co-reduce:' + B.fx, '일산화탄소로 ' + B.name + ' 환원', ['CO', B.fx], [el, 'CO2'], { minT: CO_REDUCE[B.salt.c], prob: 0.08, toA: 'CO2', toB: el + ':s', note: '용광로 안에서 철광석을 실제로 환원하는 것은 숯이 불완전 연소해 생긴 일산화탄소입니다.' }));
     }
 
+    // 황화물 광석 굽기(배소): 금속 황화물을 공기 중에서 가열하면 산화물과 이산화황이 된다. 제련의 첫 단계.
+    if (A.salt && A.salt.a === 'S' && A.state === 'powder' && isOx(B)) {
+      const ox = salt(A.salt.c, 'O');
+      if (ox && ox.solid) out.push(R('roast:' + A.fx, A.name + ' 굽기(배소)', [A.fx, 'O2'], [ox.fx, 'SO2'], { minT: 600, prob: 0.05, toA: ox.solid, toB: 'SO2', dT: 50, note: '황화물 광석을 공기 중에서 구우면 산화물이 되고 이산화황이 나옵니다. 이 산화물을 탄소로 환원해 금속을 얻습니다. 제련소의 이산화황은 황산 원료로 씁니다.' }));
+    }
+
     // 테르밋: 활성이 큰 금속이 산화물의 금속을 환원
     if ((elA === 'Al' || elA === 'Mg') && A.state !== 'gas' && B.salt && B.salt.a === 'O' && SL.CATION[B.salt.c].el) {
       const el = SL.CATION[B.salt.c].el;
-      if (rank(el) > rank('Cr') && el !== 'Au') {
+      if (rank(el) > rank(elA) && el !== 'Au') { // 환원하는 금속보다 덜 활발한 금속의 산화물이면 된다(크로뮴·망가니즈 테르밋 포함)
         const own = salt(elA, 'O');
         out.push(R('thermite:' + elA + ':' + B.fx, B.name + '의 테르밋 반응', [elA, B.fx], [own.fx, el], { minT: 900, prob: 0.4, toA: own.solid, toB: el + ':s', T: 2500, note: '시작하려면 고온이 필요하지만, 일단 시작되면 쇳물이 나올 만큼 뜨거워집니다.' }));
       }
@@ -1001,6 +1007,45 @@
     // 철 + 뜨거운 수증기 → 사산화삼철(검은 녹) + 수소. 철은 산화수 +2와 +3이 섞인 산화물이 된다.
     { id: 'fe_steam', name: '철과 뜨거운 수증기', reactants: ['Fe', 'H2O'], products: ['Fe3O4', 'H2'], a: 'Fe:s', b: 'steam', minT: 500, prob: 0.05, toA: 'S:Fe3O4', toB: 'hydrogen', dT: 30, note: '빨갛게 달군 철은 수증기에서 산소를 빼앗아 검은 사산화삼철(Fe₃O₄, 자철석 성분)이 되고 수소가 나옵니다. 라부아지에가 물이 원소가 아님을 보인 실험입니다.' },
     { id: 'fe_steam', name: '철과 뜨거운 수증기', reactants: ['Fe', 'H2O'], products: ['Fe3O4', 'H2'], a: 'steel:s', b: 'steam', minT: 500, prob: 0.04, toA: 'S:Fe3O4', toB: 'hydrogen', dT: 30, note: '빨갛게 달군 철은 수증기에서 산소를 빼앗아 검은 사산화삼철이 되고 수소가 나옵니다.' },
+    // ---- 0.19에서 채운 반응 ----
+    { id: 'fe2_air', name: '철(II) 이온의 공기 산화', eq: '4Fe²⁺ + O₂ + 4H⁺ → 4Fe³⁺ + 2H₂O', a: 'A:FeSO4', b: 'air', prob: 0.0008, toA: 'A:Fe2(SO4)3', note: '연두색 철(II) 용액은 공기 중에 두면 천천히 노란 갈색 철(III) 용액이 됩니다. 그래서 철(II) 용액은 만들어서 바로 씁니다.' },
+    { id: 'fe2_air', name: '철(II) 이온의 공기 산화', eq: '4Fe²⁺ + O₂ + 4H⁺ → 4Fe³⁺ + 2H₂O', a: 'A:FeCl2', b: 'air', prob: 0.0008, toA: 'A:FeCl3', note: '연두색 철(II) 용액은 공기 중에 두면 천천히 노란 갈색 철(III) 용액이 됩니다.' },
+    ...[['uvlamp', 0.03], ['lamp', 0.004]].flatMap(([b, p]) => [['S:AgCl', 'Cl:g', 'AgCl', 'Cl₂'], ['S:AgBr', 'Br:g', 'AgBr', 'Br₂']].map(([a, gas, f, g2]) => ({ id: 'photo_ag', name: '빛에 의한 할로젠화은 분해(사진의 원리)', eq: `2${f} → 2Ag + ${g2} (빛)`, a, b, prob: p, toA: 'Ag:s', note: '흰 할로젠화은은 빛을 받으면 분해되어 검은 은 알갱이가 됩니다. 필름 사진은 이 반응으로 상을 기록합니다. 질산은 병이 갈색인 이유이기도 합니다.' }))),
+    ...['hcl', 'A:acid:H2SO4aq'].map((b) => ({ id: 'starch_hydrolysis', name: '녹말의 가수 분해', eq: '(C₆H₁₀O₅)ₙ + nH₂O → nC₆H₁₂O₆ (산, 가열)', a: 'starch', b, minT: 70, prob: 0.03, toA: 'A:glucose', note: '산과 함께 끓이면 녹말이 잘게 끊어져 포도당이 됩니다. 아이오딘 반응(청람색)은 사라지고 베네딕트 반응이 나타납니다. 침 속 아밀레이스도 같은 일을 합니다.' })),
+    { id: 'clay_fire', name: '점토 굽기(도자기)', kind: 'chemical', eq: '점토 → (약 900°C 이상) → 도자기', a: 'clay', b: 'air', minT: 900, prob: 0.05, toA: 'ceramic', note: '점토를 높은 온도로 구우면 물이 빠지고 광물이 서로 녹아 붙어 단단한 도자기가 됩니다. 다시 물에 넣어도 풀어지지 않습니다.' },
+    { id: 'na_amalgam', name: '나트륨 아말감', kind: 'physical', eq: 'Na + Hg → Na(Hg)', a: 'Hg:l', b: 'Na:s', prob: 0.08, toA: 'amalgam', toB: 'amalgam', dT: 150, note: '나트륨은 수은에 녹으면서 열과 빛을 내기도 합니다. 나트륨 아말감은 물과 천천히 반응해 순한 환원제로 씁니다.' },
+    { id: 'ga_al', name: '갈륨이 알루미늄을 부숨', kind: 'physical', eq: 'Al(s) + Ga(l) → Al-Ga 합금(부서짐)', a: 'Al:s', b: 'Ga:l', prob: 0.01, toA: 'Ga:l', note: '액체 갈륨은 알루미늄 결정 사이로 스며들어 알루미늄을 종이처럼 약하게 만듭니다(액체 금속 취화). 그래서 비행기에는 갈륨을 실을 수 없습니다.' },
+    { id: 'n2_o2', name: '아주 높은 온도에서 질소의 산화', reactants: ['N2', 'O2'], products: ['NO'], a: 'N:g', b: 'O:g', minT: 1800, prob: 0.05, toA: 'NO:g', toB: 'NO:g', dT: -20, note: '번개나 자동차 엔진처럼 아주 뜨거운 곳에서는 공기 속 질소도 산소와 결합해 일산화질소가 됩니다. 대기 오염(질소 산화물)과 번개가 땅에 질소 비료를 주는 원리입니다.' },
+    { id: 'n2_o2', name: '아주 높은 온도에서 질소의 산화', reactants: ['N2', 'O2'], products: ['NO'], a: 'air', b: 'fireball', prob: 0.02, toA: 'NO:g', note: '아주 뜨거운 곳에서는 공기 속 질소도 산소와 결합해 일산화질소가 됩니다.' },
+    ...[['A:acid:H2SO4aq', 'A:CuSO4', 'CuSO₄', 'H₂SO₄'], ['hcl', 'A:CuCl2', 'CuCl₂', '2HCl']].map(([acid, prod, pf, af]) => ({ id: 'cu_h2o2', name: '과산화수소로 구리 녹이기(회로 기판 식각)', eq: `Cu + H₂O₂ + ${af} → ${pf} + 2H₂O`, a: 'Cu:s', b: 'H2O2', near: [acid], prob: 0.04, toA: [['Cu:s', 0.8], [prod, 0.2]], toB: prod, dT: 20, note: '수소보다 반응성이 작은 구리도 산 속에서 과산화수소가 산화시키면 녹습니다. 인쇄 회로 기판의 구리를 깎아 낼 때 쓰는 방법입니다.' })),
+    { id: 'patina', name: '구리의 녹청(초록 녹)', eq: '2Cu + O₂ + H₂O + CO₂ → Cu₂(OH)₂CO₃', a: 'Cu:s', b: 'water', near: ['air', 'CO2'], prob: 0.0006, toA: 'S:Cu2(OH)2CO3', note: '구리는 물·산소·이산화탄소와 오래 만나면 초록빛 녹청이 생깁니다. 자유의 여신상이 초록색인 이유입니다. 녹청은 속의 구리를 보호합니다.' },
+    { id: 'solvay', name: '솔베이 공정(탄산수소나트륨 만들기)', eq: 'NaCl + NH₃ + CO₂ + H₂O → NaHCO₃↓ + NH₄Cl', a: 'brine', b: 'NH4OH:aq', near: ['CO2'], prob: 0.1, toA: 'S:NaHCO3', toB: 'A:NH4Cl', note: '암모니아를 녹인 소금물에 이산화탄소를 불어 넣으면 잘 녹지 않는 탄산수소나트륨이 가라앉습니다. 이것을 가열하면 탄산나트륨(유리·세제 원료)이 됩니다.' },
+    ...['glucose', 'A:glucose'].map((b) => ({ id: 'silver_mirror', name: '은거울 반응(톨렌스 시험)', eq: 'RCHO + 2[Ag(NH₃)₂]⁺ + 3OH⁻ → RCOO⁻ + 2Ag↓ + 4NH₃ + 2H₂O', a: 'A:AgNO3', b, near: ['NH4OH:aq'], minT: 40, prob: 0.05, toA: 'Ag:s', note: '암모니아성 질산은 용액에 포도당 같은 환원당을 넣고 데우면 은이 석출되어 유리 벽이 거울처럼 됩니다. 알데하이드를 확인하는 시험이자 옛날 거울 만드는 방법입니다.' })),
+    { id: 'ethylene_hydration', name: '에틸렌의 수화(에탄올 만들기)', reactants: ['C2H4', 'H2O'], products: ['C2H5OH'], a: 'C2H4:g', b: 'steam', near: ['A:acid:H3PO4'], minT: 250, prob: 0.05, toA: 'C2H5OH:g', toB: 'air', note: '인산 촉매 위에서 에틸렌에 수증기가 첨가되어 에탄올이 됩니다. 공업용 에탄올은 대부분 이렇게 만듭니다.' },
+    { id: 'nh3_cuo', name: '암모니아로 산화구리 환원', reactants: ['NH3', 'CuO'], products: ['Cu', 'N2', 'H2O'], a: 'NH3', b: 'S:CuO', minT: 300, prob: 0.05, toA: 'nitrogen', toB: 'Cu:s', note: '뜨거운 검은 산화구리 위로 암모니아를 흘리면 붉은 구리가 되고 질소가 나옵니다. 암모니아가 질소와 수소로 이루어져 있다는 증거입니다.' },
+    { id: 'si_naoh', name: '규소와 수산화나트륨', reactants: ['Si', 'NaOH', 'H2O'], products: ['Na2SiO3', 'H2'], a: 'Si:s', b: 'naoh', minT: 40, prob: 0.02, toA: [['Si:s', 0.8], ['A:Na2SiO3', 0.2]], toB: [['A:Na2SiO3', 0.5], ['hydrogen', 0.5]], dT: 20, note: '산에는 녹지 않는 규소도 진한 염기에는 녹아 물유리가 되고 수소가 나옵니다.' },
+    { id: 'fe_fe3', name: '철이 철(III) 이온을 철(II)로 바꿈', reactants: ['Fe', 'FeCl3'], products: ['FeCl2'], a: 'Fe:s', b: 'A:FeCl3', prob: 0.03, toA: [['Fe:s', 0.85], ['A:FeCl2', 0.15]], toB: 'A:FeCl2', note: '노란 갈색 철(III) 용액에 철을 넣으면 연두색 철(II) 용액이 됩니다. 철(II) 용액에 철 못을 넣어 두면 공기 산화를 막을 수 있습니다.' },
+    { id: 'silicon_smelt', name: '규소 제련', reactants: ['SiO2', 'C'], products: ['Si', 'CO'], a: 'sand', b: 'C:s', minT: 1700, prob: 0.05, toA: 'Si:l', toB: 'CO:g', note: '모래(이산화규소)를 탄소와 함께 전기로에서 아주 뜨겁게 하면 규소가 됩니다. 반도체·태양 전지의 출발 물질입니다.' },
+    { id: 'w_reduce', name: '수소로 텅스텐 만들기', reactants: ['WO3', 'H2'], products: ['W', 'H2O'], a: 'S:WO3', b: 'hydrogen', minT: 700, prob: 0.05, toA: 'W:s', toB: 'steam', note: '산화텅스텐을 수소로 환원해 전구 필라멘트용 텅스텐 가루를 얻습니다. 탄소로 환원하면 탄화텅스텐이 섞이기 때문입니다.' },
+    { id: 'verdigris', name: '구리와 식초(초록빛 녹)', eq: '2Cu + O₂ + 4CH₃COOH → 2Cu(CH₃COO)₂ + 2H₂O', a: 'Cu:s', b: 'vinegar', near: ['air', 'O:g'], prob: 0.003, toA: [['Cu:s', 0.9], ['A:Cu(CH3COO)2', 0.1]], toB: 'A:Cu(CH3COO)2', note: '식초만으로는 구리가 녹지 않지만 공기 중 산소가 함께 있으면 천천히 녹아 청록색 아세트산구리가 됩니다. 옛날 초록 물감(녹청)을 이렇게 만들었습니다.' },
+    { id: 'mg_brine', name: '마그네슘과 소금물(발열팩)', reactants: ['Mg', 'H2O'], products: ['Mg(OH)2', 'H2'], a: 'Mg:s', b: 'brine', prob: 0.03, toA: [['Mg:s', 0.8], ['S:Mg(OH)2', 0.2]], toB: [['brine', 0.6], ['hydrogen', 0.4]], dT: 60, note: '찬물과는 거의 반응하지 않는 마그네슘도 소금물에서는 빠르게 반응해 열을 냅니다. 군용 비상식량의 불 없는 발열팩 원리입니다.' },
+    { id: 'methane_prep', name: '메테인 만들기(탈카복실화)', reactants: ['CH3COONa', 'NaOH'], products: ['CH4', 'Na2CO3'], a: 'S:NaCH3COO', b: 'S:NaOH', minT: 300, prob: 0.05, toA: 'CH4:g', toB: 'S:Na2CO3', note: '아세트산나트륨과 수산화나트륨(소다석회)을 섞어 가열하면 메테인이 나옵니다. 실험실에서 메테인을 얻는 방법입니다.' },
+    { id: 'br2_naoh', name: '브로민과 수산화나트륨', eq: '3Br₂ + 6NaOH → 5NaBr + NaBrO₃ + 3H₂O', a: 'Br:l', b: 'naoh', prob: 0.2, toA: 'A:NaBr', toB: 'A:NaBr', dT: 20, note: '적갈색 브로민이 염기에 흡수되어 색이 사라집니다. 쏟은 브로민을 처리하는 방법입니다.' },
+    { id: 'fe3_h2o2', name: '철(III) 이온 촉매와 과산화수소', reactants: ['H2O2'], products: ['H2O', 'O2'], a: 'H2O2', b: 'A:FeCl3', prob: 0.15, toA: [['water', 0.6], ['oxygen', 0.4]], dT: 10, note: '철 이온도 과산화수소의 분해를 빠르게 하는 촉매입니다. 혈액(헤모글로빈의 철)에 과산화수소를 떨어뜨리면 거품이 나는 것과 비슷합니다.' },
+    ...[['litmus:blue', 'litmus:red'], ['litmus', 'litmus:red'], ['cabbage', 'cabbage:red'], ['leaf', 'leaf:dead']].map(([a, to]) => ({ id: 'so2_dye', name: '이산화황과 색소', kind: 'chemical', eq: 'SO₂ + H₂O → H₂SO₃ (산성, 색소를 환원·표백)', a, b: 'SO2:g', prob: 0.05, toA: to, note: '이산화황은 물에 녹아 산성을 띠고, 식물 색소를 환원시켜 탈색합니다. 산성비가 잎을 상하게 하고, 말린 과일을 하얗게 하는 데 쓰이는 이유입니다.' })),
+    { id: 'silicagel_co2', name: '물유리와 이산화탄소', eq: 'Na₂SiO₃ + CO₂ + H₂O → SiO₂·nH₂O(실리카겔) + Na₂CO₃', a: 'A:Na2SiO3', b: 'CO2', prob: 0.05, toA: 'silicagel', toB: 'A:Na2CO3', note: '물유리에 이산화탄소(탄산)를 넣으면 규산이 엉겨 실리카겔이 됩니다. 주물 모래를 굳히는 데도 씁니다.' },
+    ...[['S:Al2O3', 'A:NaAl(OH)4', 'Al₂O₃ + 2NaOH + 3H₂O → 2Na[Al(OH)₄]'], ['S:ZnO', 'A:Na2Zn(OH)4', 'ZnO + 2NaOH + H₂O → Na₂[Zn(OH)₄]']].map(([a, to, eq]) => ({ id: 'amph_oxide', name: '양쪽성 산화물과 염기', eq, a, b: 'naoh', prob: 0.05, toA: to, toB: to, note: '알루미늄·아연의 산화물은 산에도 염기에도 녹습니다(양쪽성). 보크사이트에서 알루미나를 뽑아내는 바이어 공정의 원리입니다.' })),
+    { id: 'steam_reform', name: '메테인의 수증기 개질(수소 만들기)', reactants: ['CH4', 'H2O'], products: ['CO', 'H2'], a: 'CH4:g', b: 'steam', near: ['Ni:s'], minT: 700, prob: 0.1, toA: 'CO:g', toB: 'hydrogen', dT: -60, note: '니켈 촉매 위에서 메테인과 수증기가 일산화탄소와 수소가 됩니다(열을 흡수). 오늘날 수소의 대부분을 이렇게 만듭니다.' },
+    { id: 'water_gas_shift', name: '수성 가스 전환', reactants: ['CO', 'H2O'], products: ['CO2', 'H2'], a: 'CO:g', b: 'steam', near: ['Fe:s', 'S:Fe3O4', 'S:Fe2O3'], minT: 350, prob: 0.1, toA: 'CO2', toB: 'hydrogen', dT: 20, note: '일산화탄소를 수증기와 반응시켜 수소를 더 얻고 이산화탄소로 바꿉니다. 철 산화물이 촉매입니다.' },
+    { id: 'methanol_synth', name: '메탄올 합성', reactants: ['CO', 'H2'], products: ['CH3OH'], a: 'CO:g', b: 'hydrogen', near: ['S:ZnO', 'Cu:s'], minT: 220, minP: 2, prob: 0.1, toA: 'CH3OH:g', toB: 'air', dT: 40, note: '구리·산화아연 촉매와 높은 압력에서 일산화탄소와 수소가 메탄올이 됩니다. 밀폐 용기에서 압력을 높여야 일어납니다.' },
+    { id: 'au_cl2', name: '금과 염소', reactants: ['Au', 'Cl2'], products: ['AuCl3'], a: 'Au:s', b: 'Cl:g', minT: 200, prob: 0.02, toA: 'S:AuCl3', toB: 'air', note: '산소·산에는 끄떡없는 금도 뜨거운 염소와는 반응합니다. 금을 정련하는 밀러 공정의 원리입니다.' },
+    { id: 'iodine_number', name: '기름의 아이오딘 흡수(불포화도)', eq: '불포화 지방 + I₂ → 아이오딘이 붙은 지방(갈색이 사라짐)', a: 'oil', b: 'tincture', prob: 0.02, toB: 'C2H5OH', note: '식물성 기름처럼 이중 결합이 많은 지방은 아이오딘을 많이 흡수해 갈색을 지웁니다. 흡수한 양(아이오딘 값)으로 기름의 불포화도를 잽니다.' },
+    // ---- 비타민 C(아스코르브산): 대표적인 환원제 ----
+    ...['A:KI3', 'tincture', 'starch:blue'].map((b) => ({ id: 'vitc_iodine', name: '비타민 C와 아이오딘', eq: 'C₆H₈O₆ + I₂ → C₆H₆O₆ + 2HI', a: 'vitc', b, prob: 0.3, toA: [['vitc', 0.6], ['water', 0.4]], toB: b === 'starch:blue' ? 'starch' : b === 'tincture' ? 'C2H5OH' : 'A:KI', note: '비타민 C는 아이오딘을 환원시켜 갈색(녹말과 함께면 청람색)을 없앱니다. 색이 사라질 때까지 넣은 양으로 과일 속 비타민 C를 잽니다.' })),
+    { id: 'vitc_kmno4', name: '비타민 C와 과망가니즈산 이온', eq: 'MnO₄⁻ + 비타민 C → Mn²⁺ (무색)', a: 'vitc', b: 'A:KMnO4', prob: 0.2, toA: [['vitc', 0.6], ['water', 0.4]], toB: 'A:MnSO4', note: '보라색이 사라집니다. 비타민 C는 산화되기 쉬운 물질(항산화제)입니다.' },
+    { id: 'vitc_fe3', name: '비타민 C와 철(III) 이온', eq: '2Fe³⁺ + C₆H₈O₆ → 2Fe²⁺ + C₆H₆O₆ + 2H⁺', a: 'vitc', b: 'A:FeCl3', prob: 0.15, toA: [['vitc', 0.6], ['water', 0.4]], toB: 'A:FeCl2', note: '비타민 C는 철(III)을 몸이 흡수하기 쉬운 철(II)로 바꿉니다. 철분제를 오렌지 주스와 함께 먹으라는 이유입니다.' },
+    { id: 'vitc_air', name: '비타민 C의 산화', eq: '비타민 C + O₂ → 다이하이드로아스코르브산', a: 'vitc', b: 'air', prob: 0.0004, toA: 'water', note: '비타민 C는 공기와 열에 약해 천천히 산화되어 없어집니다. 데우면 더 빨리 파괴됩니다.' },
+    { id: 'vitc_heat', name: '비타민 C의 열 파괴', eq: '비타민 C → 분해 (가열)', a: 'vitc', b: 'air', minT: 70, prob: 0.01, toA: 'water', note: '채소를 오래 끓이면 비타민 C가 많이 파괴됩니다.' },
     // ---- 산화제 + 환원제 ----
     { id: 'h2o2_h2s', name: '과산화수소와 황화수소', eq: 'H₂O₂ + H₂S → S↓ + 2H₂O', a: 'H2O2', b: 'H2S:g', prob: 0.2, toA: 'water', toB: 'S:s', dT: 20, note: '과산화수소가 황화 이온을 산화시켜 노란 황이 생깁니다. 하수 냄새를 없애는 원리입니다.' },
     { id: 'h2o2_so2', name: '과산화수소와 이산화황', eq: 'H₂O₂ + SO₂ → H₂SO₄', a: 'H2O2', b: 'SO2:g', prob: 0.25, toA: 'A:acid:H2SO4aq', toB: 'A:acid:H2SO4aq', dT: 15, note: '이산화황이 황산이 됩니다. 공기 중 이산화황 농도를 재는 방법이자, 산성비가 생기는 한 경로입니다.' },

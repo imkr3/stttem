@@ -29,10 +29,11 @@ const fresh = () => new SandLab.World();
 const scene = (w, id) => SandLab.SCENES.find((s) => s.id === id).setup(w);
 
 // 두 물질을 맞붙여 놓고, 일어난 반응과 생긴 물질을 돌려준다.
-function mix(a, b, T, ticks, want) {
+function mix(a, b, T, ticks, want, near) {
   const w = new SandLab.World({ width: 40, height: 20 });
   w.rect(a, 0, 0, 19, 19, T);
   w.rect(b, 20, 0, 39, 19, T);
+  if (near) for (let y = 0; y < 20; y += 3) w.rect(near, 19, y, 20, y, T); // 촉매·조건 물질을 경계에 띄엄띄엄
   for (let i = 0; i < (ticks || 800) && !w.discovered.has(want); i++) w.stepCells();
   const events = w.drainEvents();
   return { w, ids: events.map((e) => e.id), eq: events.map((e) => e.eq).join(' / '), names: events.map((e) => e.name) };
@@ -123,6 +124,16 @@ const SHOULD = [
   ['철+뜨거운 수증기', 'iron', 'steam', 600, 'fe_steam'],
   ['산성비 확인: 묽은 염산+BTB', 'btb', 'hcl', null, 'indicator:btb:acid'],
   ['소금+덜 진한 소금물', 'salt', 'brine', null, 'dissolve_more:NaCl'],
+  // 0.19.0에서 채운 반응
+  ['황산철(II)+공기', 'A:FeSO4', 'air', null, 'fe2_air'], ['염화은+자외선', 'S:AgCl', 'uvlamp', null, 'photo_ag'], ['녹말+염산(가열)', 'starch', 'hcl', 90, 'starch_hydrolysis'],
+  ['점토 굽기', 'clay', 'air', 1000, 'clay_fire'], ['나트륨+수은', 'Hg', 'Na', null, 'na_amalgam'], ['알루미늄+갈륨', 'Al', 'Ga:l', 40, 'ga_al'], ['질소+산소(고온)', 'nitrogen', 'oxygen', 2000, 'n2_o2'],
+  ['구리+과산화수소(산성)', 'Cu', 'H2O2', null, 'cu_h2o2', 'A:acid:H2SO4aq'], ['솔베이', 'brine', 'NH4OH:aq', null, 'solvay', 'CO2'], ['은거울', 'A:AgNO3', 'A:glucose', 60, 'silver_mirror', 'NH4OH:aq'],
+  ['암모니아+산화구리(가열)', 'NH3', 'S:CuO', 400, 'nh3_cuo'], ['규소+수산화나트륨', 'Si', 'naoh', 60, 'si_naoh'], ['철+염화철(III)', 'Fe', 'A:FeCl3', null, 'fe_fe3'],
+  ['황화아연 굽기', 'S:ZnS', 'air', 700, 'roast:ZnS'], ['크로뮴 테르밋', 'Al', 'S:Cr2O3', 1000, 'thermite:Al:Cr2O3'], ['아세트산나트륨+수산화나트륨(가열)', 'S:NaCH3COO', 'S:NaOH', 400, 'methane_prep'],
+  ['마그네슘+소금물', 'Mg', 'brine', null, 'mg_brine'], ['브로민+수산화나트륨', 'Br', 'naoh', null, 'br2_naoh'], ['과산화수소+염화철(III)', 'H2O2', 'A:FeCl3', null, 'fe3_h2o2'],
+  ['이산화황+리트머스', 'litmus', 'SO2:g', null, 'so2_dye'], ['물유리+이산화탄소', 'A:Na2SiO3', 'CO2', null, 'silicagel_co2'], ['산화알루미늄+수산화나트륨', 'S:Al2O3', 'naoh', null, 'amph_oxide'],
+  ['금+염소(가열)', 'Au', 'Cl:g', 300, 'au_cl2'], ['비타민 C+아이오딘 용액', 'vitc', 'A:KI3', null, 'vitc_iodine'], ['비타민 C+과망가니즈산', 'vitc', 'A:KMnO4', null, 'vitc_kmno4'],
+  ['기름+아이오딘 팅크', 'oil', 'tincture', null, 'iodine_number'], ['구리+식초(공기)', 'Cu', 'vinegar', null, 'verdigris', 'air'],
   // 0.14.0에서 채운 반응
   ['베릴륨+염산', 'Be', 'hcl', null, 'acid:Be:Cl'], ['란타넘+질산', 'La', 'HNO3aq', null, 'hno3:La:NO'], ['타이타늄+플루오린화수소산', 'Ti', 'A:acid:HF', null, 'acid:Ti:F'],
   ['아연+레몬즙', 'Zn', 'A:citric', null, 'citric-metal:Zn'], ['탄산마그네슘+레몬즙', 'S:MgCO3', 'A:citric', null, 'citric-co3:MgCO3'],
@@ -202,8 +213,8 @@ const SHOULD = [
 test(`반응이 일어나야 하는 ${SHOULD.length}쌍`, () => {
   const fails = [];
   const samples = [];
-  for (const [name, a, b, T, want] of SHOULD) {
-    const r = mix(a, b, T, 3000, want);
+  for (const [name, a, b, T, want, near] of SHOULD) {
+    const r = mix(a, b, T, 3000, want, near);
     if (!r.ids.includes(want)) fails.push(`${name}: ${r.ids.join()||'반응 없음'}`);
     else samples.push(r.eq);
   }
