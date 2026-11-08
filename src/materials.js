@@ -75,6 +75,7 @@
   // ---- 원소 ----
   // 원소의 실제 색(금속은 은회색 계열에서 조금씩 다르게).
   const ELEMENT_COLORS = {
+    V: '#8a96a4', As: '#6a6e72', Se: '#5a3a3a', Zr: '#c4c8cc', Mo: '#9aa0a8', Xe: '#a8b4d8',
     H: '#d9c9f5', He: '#f4e3b0', Li: '#c8ccd0', Be: '#a6abb0', B: '#3c3530', C: '#26262a', N: '#9fb4d8', O: '#9fd3ff', F: '#d6e38a', Ne: '#ff8a70', Na: '#d8dcd6', Mg: '#c4c9ce', Al: '#d2d7dc', Si: '#5a6472', P: '#f0e8c8', S: '#e8d22c',
     Cl: '#a8cc4e', Ar: '#c79be0', K: '#cfd3c8', Ca: '#e2e0d8', Ti: '#8a9098', Cr: '#c4ced8', Mn: '#a8a49e', Fe: '#8a9098', Co: '#8c96a6', Ni: '#c2baa6', Cu: '#c9784a', Zn: '#a8b6c2', Ga: '#c8ccd2',
     Br: '#8a2a10', Rb: '#ccc8c0', Sr: '#e0dac6', Pd: '#c6c6c2', Ag: '#e6e9ec', Cd: '#b4bcc4', Sn: '#d0d4d8', Sb: '#a2a6ae', I: '#3e2e58', Cs: '#dcc888', Ba: '#cac8ba', La: '#c8c8c0', Ce: '#c6c2b2', Gd: '#c0c0bc',
@@ -89,7 +90,7 @@
 
   // 반응이 사실상 없거나(희귀 귀금속·비활성), 측정값이 거의 없는(초중원소) 원소는 물질로 만들지 않는다.
   // 주기율표에는 회색으로 남겨 두어 위치는 볼 수 있게 한다.
-  SL.ELEMENT_SKIP = new Set(('Sc V Ge As Se Kr Y Zr Nb Mo Tc Ru Rh In Te Xe Pr Nd Pm Sm Eu Tb Dy Ho Er Tm Yb Lu Hf Ta Re Os Ir Tl At Rn Fr Ac Th Pa Np Am Cm Bk ' +
+  SL.ELEMENT_SKIP = new Set(('Sc Ge Kr Y Nb Tc Ru Rh In Te Pr Nd Pm Sm Eu Tb Dy Ho Er Tm Yb Lu Hf Ta Re Os Ir Tl At Rn Fr Ac Th Pa Np Am Cm Bk ' +
     'Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og').split(' '));
   for (const e of SL.ELEMENTS) {
     if (SL.ELEMENT_SKIP.has(e.sym)) continue;
@@ -170,7 +171,7 @@
     ['Al', '알루미늄', 3, 'Al'], ['Cr3', '크로뮴(III)', 3, 'Cr'], ['Mn2', '망가니즈(II)', 2, 'Mn'], ['Fe2', '철(II)', 2, 'Fe'], ['Fe3', '철(III)', 3, 'Fe'], ['Co2', '코발트(II)', 2, 'Co'], ['Ni2', '니켈(II)', 2, 'Ni'],
     ['Cu2', '구리(II)', 2, 'Cu'], ['Zn', '아연', 2, 'Zn'], ['Ag', '은', 1, 'Ag'], ['Cd', '카드뮴', 2, 'Cd'], ['Sn2', '주석(II)', 2, 'Sn'], ['Pb2', '납(II)', 2, 'Pb'], ['Hg2', '수은(II)', 2, 'Hg'],
     ['Au3', '금(III)', 3, 'Au', OXCL], ['Pd2', '팔라듐(II)', 2, 'Pd', ['O', 'Cl', 'NO3']], ['Mn4', '망가니즈(IV)', 4, 'Mn', ['O']], ['Ti4', '타이타늄(IV)', 4, 'Ti', ['O', 'Cl', 'F']],
-    ['W6', '텅스텐(VI)', 6, 'W', ['O']],
+    ['W6', '텅스텐(VI)', 6, 'W', ['O']], ['V5', '바나듐(V)', 5, 'V', ['O']], ['Mo6', '몰리브데넘(VI)', 6, 'Mo', ['O']], ['Zr4', '지르코늄(IV)', 4, 'Zr', ['O']],
     ['Sb3', '안티모니(III)', 3, 'Sb', ['O', 'Cl']], ['Bi3', '비스무트(III)', 3, 'Bi', ['O', 'NO3']], ['Ga3', '갈륨(III)', 3, 'Ga', BE_GA],
     ['U6', '우라늄(VI)', 6, 'U', ['O']], ['Pu4', '플루토늄(IV)', 4, 'Pu', ['O']],
   ];
@@ -496,6 +497,24 @@
     { id: 'S:prussianblue', name: '프러시안 블루', formula: 'Fe₄[Fe(CN)₆]₃', fx: 'Fe7C18N18', state: 'powder', cat: null, color: '#1c3a8a', density: 1800, c: 800, k: 0.3, desc: '짙은 파란 안료. 철(III) 이온 검출 반응의 결과이자 청사진의 색입니다.' },
     { id: 'S:Cu2Fe(CN)6', name: '헥사사이아노철(II)산 구리', formula: 'Cu₂[Fe(CN)₆]', fx: 'Cu2FeC6N6', state: 'powder', cat: null, color: '#7a3020', density: 2000, c: 800, k: 0.3, desc: '구리 이온을 검출할 때 생기는 적갈색 앙금.' },
     { id: 'S:CaSiO3', name: '슬래그(규산칼슘)', formula: 'CaSiO₃', fx: 'CaSiO3', state: 'powder', cat: 'rock', color: '#8a8478', density: 2900, c: 800, k: 1, desc: '용광로에서 석회석이 모래(불순물)와 녹아 생긴 찌꺼기. 쇳물 위에 떠서 걷어 냅니다. 시멘트 원료로 씁니다.' },
+    // ---- 0.21: 새 원소의 화합물 ----
+    { id: 'S:As2O3', name: '삼산화이비소(비상)', formula: 'As₂O₃', fx: 'As2O3', state: 'powder', cat: 'chem', color: '#f2f2ee', density: 3740, c: 500, k: 0.5, desc: '비소가 타서 생기는 흰 가루. 옛날 독살에 쓰인 맹독(비상)입니다. 마시 시험으로 아주 적은 양도 찾아냅니다.' },
+    { id: 'AsH3:g', name: '아르신', formula: 'AsH₃', fx: 'AsH3', state: 'gas', cat: null, color: '#262a24', density: 3.2, c: 500, k: 0.01, desc: '마늘 냄새가 나는 맹독성 기체. 뜨거운 유리관을 지나면 분해되어 검은 비소 거울을 남깁니다(마시 시험).' },
+    { id: 'S:SeO2', name: '이산화셀레늄', formula: 'SeO₂', fx: 'SeO2', state: 'powder', cat: null, color: '#f4f0f0', density: 3950, c: 500, k: 0.5, desc: '셀레늄이 파란 불꽃을 내며 타서 생기는 흰 결정. 썩은 무 냄새가 납니다.' },
+    { id: 'S:XeF2', name: '이플루오린화 제논', formula: 'XeF₂', fx: 'XeF2', state: 'powder', cat: 'chem', color: '#f4f6fa', density: 4320, c: 400, k: 0.3, desc: '1962년 이전에는 반응하지 않는다고 여겨진 비활성 기체가 만든 화합물. 강한 플루오린화제이며 물과 만나면 제논·산소·플루오린화수소로 분해됩니다.' },
+    // ---- 0.21: 착이온 ----
+    { id: 'A:CoCl4', name: '테트라클로로코발트산 이온 용액', formula: '[CoCl₄]²⁻(aq)', fx: 'CoCl2', state: 'liquid', cat: null, color: '#2a4ab0', density: 1150, c: 3800, k: 0.6, flow: 5, aq: true, misc: true, pH: 4, desc: '분홍색 코발트 용액을 데우거나 진한 염산을 넣으면 파란 [CoCl₄]²⁻가 됩니다. 식히거나 물을 넣으면 다시 분홍색으로 돌아가는 평형(르샤틀리에 원리) 실험에 씁니다.' },
+    { id: 'A:CuCl4', name: '테트라클로로구리산 이온 용액', formula: '[CuCl₄]²⁻(aq)', fx: 'CuCl2', state: 'liquid', cat: null, color: '#7aa83a', density: 1150, c: 3800, k: 0.6, flow: 5, aq: true, misc: true, pH: 2, desc: '파란 구리 용액에 진한 염산을 넣으면 생기는 황록색 착이온. 물로 묽히면 다시 파랗게 됩니다.' },
+    { id: 'dmg', name: '다이메틸글리옥심 용액', formula: 'C₄H₈N₂O₂(에탄올)', fx: 'C4H8N2O2', state: 'liquid', cat: 'indicator', color: '#eceae0', density: 900, c: 2500, k: 0.2, flow: 5, misc: true, desc: '니켈 이온을 만나면 딸기색 앙금을 만드는 검출 시약.' },
+    { id: 'S:Ni(dmg)2', name: '니켈 다이메틸글리옥심', formula: 'Ni(C₄H₇N₂O₂)₂', fx: 'NiC8H14N4O4', state: 'powder', cat: null, color: '#d82a5a', density: 1700, c: 1000, k: 0.2, desc: '니켈 이온 검출 반응에서 생기는 딸기색 앙금.' },
+    // ---- 0.21: 유기 ----
+    { id: 'HCHO:g', name: '폼알데하이드', formula: 'HCHO', fx: 'CH2O', state: 'gas', cat: 'organic', color: '#22262a', density: 1.25, c: 1200, k: 0.02, desc: '메탄올이 산화되어 생기는 가장 간단한 알데하이드. 자극적인 냄새, 단백질을 굳혀 표본 보존(포르말린)에 씁니다. 새집 증후군의 원인 물질입니다.' },
+    { id: 'CH3CHO:g', name: '아세트알데하이드', formula: 'CH₃CHO', fx: 'C2H4O', state: 'gas', cat: 'organic', color: '#22262a', density: 1.8, c: 1400, k: 0.02, desc: '에탄올이 산화되어 생기는 알데하이드(끓는점 20°C). 술 마신 뒤 숙취의 원인이며, 더 산화되면 아세트산이 됩니다.' },
+    { id: 'CHCl3', name: '클로로폼', formula: 'CHCl₃', fx: 'CHCl3', state: 'liquid', cat: 'organic', color: '#e4e8ec', density: 1480, c: 960, k: 0.12, flow: 4, up: { at: 61, to: 'air', L: 2.5e5 }, desc: '달콤한 냄새의 무거운 액체. 옛날 마취제였지만 간을 해칩니다. 빛과 공기를 만나면 포스겐이 생겨 갈색 병에 보관합니다. 표백제와 아세톤·알코올을 섞으면 생깁니다.' },
+    { id: 'C2H3Cl:g', name: '염화비닐', formula: 'CH₂=CHCl', fx: 'C2H3Cl', state: 'gas', cat: 'organic', color: '#22262a', density: 2.6, c: 900, k: 0.02, desc: 'PVC의 원료 기체. 발암 물질입니다.' },
+    { id: 'pvc', name: 'PVC(폴리염화비닐)', formula: '(C₂H₃Cl)ₙ', fx: 'C2H3Cl', state: 'solid', cat: 'organic', color: '#c8ccd0', density: 1400, c: 1000, k: 0.17, desc: '수도관·전선 피복에 쓰는 플라스틱. 타면 염화수소와 그을음이 나오고, 낮은 온도로 태우면 다이옥신이 생길 수 있습니다.' },
+    { id: 'C6H5NO2', name: '나이트로벤젠', formula: 'C₆H₅NO₂', fx: 'C6H5NO2', state: 'liquid', cat: 'organic', color: '#e8d070', density: 1200, c: 1500, k: 0.15, flow: 3, desc: '아몬드 냄새가 나는 노란 기름. 벤젠의 수소 하나가 나이트로기로 바뀐 것(치환 반응)으로, 아닐린·염료의 원료입니다. 독성이 있습니다.' },
+    { id: 'C6H5Br', name: '브로모벤젠', formula: 'C₆H₅Br', fx: 'C6H5Br', state: 'liquid', cat: 'organic', color: '#e4e2d8', density: 1500, c: 1000, k: 0.12, flow: 4, desc: '벤젠에 철 촉매로 브로민을 치환시킨 액체. 벤젠은 에틸렌과 달리 브로민을 첨가하지 않고 치환만 합니다(방향족성).' },
     { id: 'NH2Cl', name: '클로라민', formula: 'NH₂Cl', fx: 'NH2Cl', state: 'gas', color: '#2a3226', density: 2.14, c: 900, k: 0.03, desc: '표백제와 암모니아를 섞으면 생기는 유독한 기체. 기침과 폐 손상을 일으킵니다. 절대 섞지 마세요.' },
     ...[['Cu', '#2a70c8'], ['Co', '#4a3aa8'], ['Ni', '#3aa060'], ['Fe3', '#a85a20'], ['Fe2', '#4a6a40'], ['Mn', '#d8a0b8'], ['Ca', '#ecece4'], ['Zn', '#dce8e8']].flatMap(([k, color]) => [
       { id: 'garden:' + k, name: '화학 정원의 관', formula: '금속 규산염', fx: 'SiO2', state: 'solid', color, density: 2000, c: 900, k: 0.5, desc: '금속 이온과 규산 이온이 만나 생긴 얇은 막. 안쪽 용액이 위로 솟으며 관이 자랍니다.' },
@@ -634,6 +653,8 @@
   add(Object.assign({}, sl, { id: 'S:l:dark', name: '진하게 끈적한 황', color: '#7a2414', flow: 1, T0: 200, cat: null, desc: '160°C 넘게 가열한 황. 분자가 긴 사슬로 이어져 진한 적갈색이 되고 잘 흐르지 않습니다. 찬물에 부으면 고무상 황이 됩니다.', down: { at: 160, to: 'S:l', L: 1e4 } }));
   sl.up = { at: 160, to: 'S:l:dark', L: 1e4 };
   // 갇힌 기체의 압력을 견디는 정도(기압, 1cm 두께 기준의 대략값). 정하지 않은 고체는 12, 금속은 40, 가루는 3.
+  // 코발트 착이온 평형: 데우면 파랑([CoCl₄]²⁻), 식히면 분홍([Co(H₂O)₆]²⁺). 칸마다 온도로 바뀐다(흡열 반응이라 온도에 따라 평형이 이동).
+  if (byId('A:CoCl2') && byId('A:CoCl4')) { byId('A:CoCl2').up = { at: 70, to: 'A:CoCl4', L: 0 }; byId('A:CoCl4').down = { at: 50, to: 'A:CoCl2', L: 0 }; }
   const STRENGTH = { glass: 6, glassshards: 2, quartz: 15, stone: 20, basalt: 25, marble: 18, concrete: 20, ceramic: 12, gypsum: 6, wood: 8, ember: 3, 'H2O:s': 4, ice: 4 };
   for (const [id, v] of Object.entries(STRENGTH)) { const m = byId(id); if (m) m.strength = v; }
 

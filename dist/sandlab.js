@@ -227,6 +227,7 @@ Og|오가네손|294|noble|7|50|80|1`;
   // ---- 원소 ----
   // 원소의 실제 색(금속은 은회색 계열에서 조금씩 다르게).
   const ELEMENT_COLORS = {
+    V: '#8a96a4', As: '#6a6e72', Se: '#5a3a3a', Zr: '#c4c8cc', Mo: '#9aa0a8', Xe: '#a8b4d8',
     H: '#d9c9f5', He: '#f4e3b0', Li: '#c8ccd0', Be: '#a6abb0', B: '#3c3530', C: '#26262a', N: '#9fb4d8', O: '#9fd3ff', F: '#d6e38a', Ne: '#ff8a70', Na: '#d8dcd6', Mg: '#c4c9ce', Al: '#d2d7dc', Si: '#5a6472', P: '#f0e8c8', S: '#e8d22c',
     Cl: '#a8cc4e', Ar: '#c79be0', K: '#cfd3c8', Ca: '#e2e0d8', Ti: '#8a9098', Cr: '#c4ced8', Mn: '#a8a49e', Fe: '#8a9098', Co: '#8c96a6', Ni: '#c2baa6', Cu: '#c9784a', Zn: '#a8b6c2', Ga: '#c8ccd2',
     Br: '#8a2a10', Rb: '#ccc8c0', Sr: '#e0dac6', Pd: '#c6c6c2', Ag: '#e6e9ec', Cd: '#b4bcc4', Sn: '#d0d4d8', Sb: '#a2a6ae', I: '#3e2e58', Cs: '#dcc888', Ba: '#cac8ba', La: '#c8c8c0', Ce: '#c6c2b2', Gd: '#c0c0bc',
@@ -241,7 +242,7 @@ Og|오가네손|294|noble|7|50|80|1`;
 
   // 반응이 사실상 없거나(희귀 귀금속·비활성), 측정값이 거의 없는(초중원소) 원소는 물질로 만들지 않는다.
   // 주기율표에는 회색으로 남겨 두어 위치는 볼 수 있게 한다.
-  SL.ELEMENT_SKIP = new Set(('Sc V Ge As Se Kr Y Zr Nb Mo Tc Ru Rh In Te Xe Pr Nd Pm Sm Eu Tb Dy Ho Er Tm Yb Lu Hf Ta Re Os Ir Tl At Rn Fr Ac Th Pa Np Am Cm Bk ' +
+  SL.ELEMENT_SKIP = new Set(('Sc Ge Kr Y Nb Tc Ru Rh In Te Pr Nd Pm Sm Eu Tb Dy Ho Er Tm Yb Lu Hf Ta Re Os Ir Tl At Rn Fr Ac Th Pa Np Am Cm Bk ' +
     'Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og').split(' '));
   for (const e of SL.ELEMENTS) {
     if (SL.ELEMENT_SKIP.has(e.sym)) continue;
@@ -322,7 +323,7 @@ Og|오가네손|294|noble|7|50|80|1`;
     ['Al', '알루미늄', 3, 'Al'], ['Cr3', '크로뮴(III)', 3, 'Cr'], ['Mn2', '망가니즈(II)', 2, 'Mn'], ['Fe2', '철(II)', 2, 'Fe'], ['Fe3', '철(III)', 3, 'Fe'], ['Co2', '코발트(II)', 2, 'Co'], ['Ni2', '니켈(II)', 2, 'Ni'],
     ['Cu2', '구리(II)', 2, 'Cu'], ['Zn', '아연', 2, 'Zn'], ['Ag', '은', 1, 'Ag'], ['Cd', '카드뮴', 2, 'Cd'], ['Sn2', '주석(II)', 2, 'Sn'], ['Pb2', '납(II)', 2, 'Pb'], ['Hg2', '수은(II)', 2, 'Hg'],
     ['Au3', '금(III)', 3, 'Au', OXCL], ['Pd2', '팔라듐(II)', 2, 'Pd', ['O', 'Cl', 'NO3']], ['Mn4', '망가니즈(IV)', 4, 'Mn', ['O']], ['Ti4', '타이타늄(IV)', 4, 'Ti', ['O', 'Cl', 'F']],
-    ['W6', '텅스텐(VI)', 6, 'W', ['O']],
+    ['W6', '텅스텐(VI)', 6, 'W', ['O']], ['V5', '바나듐(V)', 5, 'V', ['O']], ['Mo6', '몰리브데넘(VI)', 6, 'Mo', ['O']], ['Zr4', '지르코늄(IV)', 4, 'Zr', ['O']],
     ['Sb3', '안티모니(III)', 3, 'Sb', ['O', 'Cl']], ['Bi3', '비스무트(III)', 3, 'Bi', ['O', 'NO3']], ['Ga3', '갈륨(III)', 3, 'Ga', BE_GA],
     ['U6', '우라늄(VI)', 6, 'U', ['O']], ['Pu4', '플루토늄(IV)', 4, 'Pu', ['O']],
   ];
@@ -648,6 +649,24 @@ Og|오가네손|294|noble|7|50|80|1`;
     { id: 'S:prussianblue', name: '프러시안 블루', formula: 'Fe₄[Fe(CN)₆]₃', fx: 'Fe7C18N18', state: 'powder', cat: null, color: '#1c3a8a', density: 1800, c: 800, k: 0.3, desc: '짙은 파란 안료. 철(III) 이온 검출 반응의 결과이자 청사진의 색입니다.' },
     { id: 'S:Cu2Fe(CN)6', name: '헥사사이아노철(II)산 구리', formula: 'Cu₂[Fe(CN)₆]', fx: 'Cu2FeC6N6', state: 'powder', cat: null, color: '#7a3020', density: 2000, c: 800, k: 0.3, desc: '구리 이온을 검출할 때 생기는 적갈색 앙금.' },
     { id: 'S:CaSiO3', name: '슬래그(규산칼슘)', formula: 'CaSiO₃', fx: 'CaSiO3', state: 'powder', cat: 'rock', color: '#8a8478', density: 2900, c: 800, k: 1, desc: '용광로에서 석회석이 모래(불순물)와 녹아 생긴 찌꺼기. 쇳물 위에 떠서 걷어 냅니다. 시멘트 원료로 씁니다.' },
+    // ---- 0.21: 새 원소의 화합물 ----
+    { id: 'S:As2O3', name: '삼산화이비소(비상)', formula: 'As₂O₃', fx: 'As2O3', state: 'powder', cat: 'chem', color: '#f2f2ee', density: 3740, c: 500, k: 0.5, desc: '비소가 타서 생기는 흰 가루. 옛날 독살에 쓰인 맹독(비상)입니다. 마시 시험으로 아주 적은 양도 찾아냅니다.' },
+    { id: 'AsH3:g', name: '아르신', formula: 'AsH₃', fx: 'AsH3', state: 'gas', cat: null, color: '#262a24', density: 3.2, c: 500, k: 0.01, desc: '마늘 냄새가 나는 맹독성 기체. 뜨거운 유리관을 지나면 분해되어 검은 비소 거울을 남깁니다(마시 시험).' },
+    { id: 'S:SeO2', name: '이산화셀레늄', formula: 'SeO₂', fx: 'SeO2', state: 'powder', cat: null, color: '#f4f0f0', density: 3950, c: 500, k: 0.5, desc: '셀레늄이 파란 불꽃을 내며 타서 생기는 흰 결정. 썩은 무 냄새가 납니다.' },
+    { id: 'S:XeF2', name: '이플루오린화 제논', formula: 'XeF₂', fx: 'XeF2', state: 'powder', cat: 'chem', color: '#f4f6fa', density: 4320, c: 400, k: 0.3, desc: '1962년 이전에는 반응하지 않는다고 여겨진 비활성 기체가 만든 화합물. 강한 플루오린화제이며 물과 만나면 제논·산소·플루오린화수소로 분해됩니다.' },
+    // ---- 0.21: 착이온 ----
+    { id: 'A:CoCl4', name: '테트라클로로코발트산 이온 용액', formula: '[CoCl₄]²⁻(aq)', fx: 'CoCl2', state: 'liquid', cat: null, color: '#2a4ab0', density: 1150, c: 3800, k: 0.6, flow: 5, aq: true, misc: true, pH: 4, desc: '분홍색 코발트 용액을 데우거나 진한 염산을 넣으면 파란 [CoCl₄]²⁻가 됩니다. 식히거나 물을 넣으면 다시 분홍색으로 돌아가는 평형(르샤틀리에 원리) 실험에 씁니다.' },
+    { id: 'A:CuCl4', name: '테트라클로로구리산 이온 용액', formula: '[CuCl₄]²⁻(aq)', fx: 'CuCl2', state: 'liquid', cat: null, color: '#7aa83a', density: 1150, c: 3800, k: 0.6, flow: 5, aq: true, misc: true, pH: 2, desc: '파란 구리 용액에 진한 염산을 넣으면 생기는 황록색 착이온. 물로 묽히면 다시 파랗게 됩니다.' },
+    { id: 'dmg', name: '다이메틸글리옥심 용액', formula: 'C₄H₈N₂O₂(에탄올)', fx: 'C4H8N2O2', state: 'liquid', cat: 'indicator', color: '#eceae0', density: 900, c: 2500, k: 0.2, flow: 5, misc: true, desc: '니켈 이온을 만나면 딸기색 앙금을 만드는 검출 시약.' },
+    { id: 'S:Ni(dmg)2', name: '니켈 다이메틸글리옥심', formula: 'Ni(C₄H₇N₂O₂)₂', fx: 'NiC8H14N4O4', state: 'powder', cat: null, color: '#d82a5a', density: 1700, c: 1000, k: 0.2, desc: '니켈 이온 검출 반응에서 생기는 딸기색 앙금.' },
+    // ---- 0.21: 유기 ----
+    { id: 'HCHO:g', name: '폼알데하이드', formula: 'HCHO', fx: 'CH2O', state: 'gas', cat: 'organic', color: '#22262a', density: 1.25, c: 1200, k: 0.02, desc: '메탄올이 산화되어 생기는 가장 간단한 알데하이드. 자극적인 냄새, 단백질을 굳혀 표본 보존(포르말린)에 씁니다. 새집 증후군의 원인 물질입니다.' },
+    { id: 'CH3CHO:g', name: '아세트알데하이드', formula: 'CH₃CHO', fx: 'C2H4O', state: 'gas', cat: 'organic', color: '#22262a', density: 1.8, c: 1400, k: 0.02, desc: '에탄올이 산화되어 생기는 알데하이드(끓는점 20°C). 술 마신 뒤 숙취의 원인이며, 더 산화되면 아세트산이 됩니다.' },
+    { id: 'CHCl3', name: '클로로폼', formula: 'CHCl₃', fx: 'CHCl3', state: 'liquid', cat: 'organic', color: '#e4e8ec', density: 1480, c: 960, k: 0.12, flow: 4, up: { at: 61, to: 'air', L: 2.5e5 }, desc: '달콤한 냄새의 무거운 액체. 옛날 마취제였지만 간을 해칩니다. 빛과 공기를 만나면 포스겐이 생겨 갈색 병에 보관합니다. 표백제와 아세톤·알코올을 섞으면 생깁니다.' },
+    { id: 'C2H3Cl:g', name: '염화비닐', formula: 'CH₂=CHCl', fx: 'C2H3Cl', state: 'gas', cat: 'organic', color: '#22262a', density: 2.6, c: 900, k: 0.02, desc: 'PVC의 원료 기체. 발암 물질입니다.' },
+    { id: 'pvc', name: 'PVC(폴리염화비닐)', formula: '(C₂H₃Cl)ₙ', fx: 'C2H3Cl', state: 'solid', cat: 'organic', color: '#c8ccd0', density: 1400, c: 1000, k: 0.17, desc: '수도관·전선 피복에 쓰는 플라스틱. 타면 염화수소와 그을음이 나오고, 낮은 온도로 태우면 다이옥신이 생길 수 있습니다.' },
+    { id: 'C6H5NO2', name: '나이트로벤젠', formula: 'C₆H₅NO₂', fx: 'C6H5NO2', state: 'liquid', cat: 'organic', color: '#e8d070', density: 1200, c: 1500, k: 0.15, flow: 3, desc: '아몬드 냄새가 나는 노란 기름. 벤젠의 수소 하나가 나이트로기로 바뀐 것(치환 반응)으로, 아닐린·염료의 원료입니다. 독성이 있습니다.' },
+    { id: 'C6H5Br', name: '브로모벤젠', formula: 'C₆H₅Br', fx: 'C6H5Br', state: 'liquid', cat: 'organic', color: '#e4e2d8', density: 1500, c: 1000, k: 0.12, flow: 4, desc: '벤젠에 철 촉매로 브로민을 치환시킨 액체. 벤젠은 에틸렌과 달리 브로민을 첨가하지 않고 치환만 합니다(방향족성).' },
     { id: 'NH2Cl', name: '클로라민', formula: 'NH₂Cl', fx: 'NH2Cl', state: 'gas', color: '#2a3226', density: 2.14, c: 900, k: 0.03, desc: '표백제와 암모니아를 섞으면 생기는 유독한 기체. 기침과 폐 손상을 일으킵니다. 절대 섞지 마세요.' },
     ...[['Cu', '#2a70c8'], ['Co', '#4a3aa8'], ['Ni', '#3aa060'], ['Fe3', '#a85a20'], ['Fe2', '#4a6a40'], ['Mn', '#d8a0b8'], ['Ca', '#ecece4'], ['Zn', '#dce8e8']].flatMap(([k, color]) => [
       { id: 'garden:' + k, name: '화학 정원의 관', formula: '금속 규산염', fx: 'SiO2', state: 'solid', color, density: 2000, c: 900, k: 0.5, desc: '금속 이온과 규산 이온이 만나 생긴 얇은 막. 안쪽 용액이 위로 솟으며 관이 자랍니다.' },
@@ -786,6 +805,8 @@ Og|오가네손|294|noble|7|50|80|1`;
   add(Object.assign({}, sl, { id: 'S:l:dark', name: '진하게 끈적한 황', color: '#7a2414', flow: 1, T0: 200, cat: null, desc: '160°C 넘게 가열한 황. 분자가 긴 사슬로 이어져 진한 적갈색이 되고 잘 흐르지 않습니다. 찬물에 부으면 고무상 황이 됩니다.', down: { at: 160, to: 'S:l', L: 1e4 } }));
   sl.up = { at: 160, to: 'S:l:dark', L: 1e4 };
   // 갇힌 기체의 압력을 견디는 정도(기압, 1cm 두께 기준의 대략값). 정하지 않은 고체는 12, 금속은 40, 가루는 3.
+  // 코발트 착이온 평형: 데우면 파랑([CoCl₄]²⁻), 식히면 분홍([Co(H₂O)₆]²⁺). 칸마다 온도로 바뀐다(흡열 반응이라 온도에 따라 평형이 이동).
+  if (byId('A:CoCl2') && byId('A:CoCl4')) { byId('A:CoCl2').up = { at: 70, to: 'A:CoCl4', L: 0 }; byId('A:CoCl4').down = { at: 50, to: 'A:CoCl2', L: 0 }; }
   const STRENGTH = { glass: 6, glassshards: 2, quartz: 15, stone: 20, basalt: 25, marble: 18, concrete: 20, ceramic: 12, gypsum: 6, wood: 8, ember: 3, 'H2O:s': 4, ice: 4 };
   for (const [id, v] of Object.entries(STRENGTH)) { const m = byId(id); if (m) m.strength = v; }
 
@@ -1807,7 +1828,7 @@ Og|오가네손|294|noble|7|50|80|1`;
     { id: 'cracking', name: '석유의 열분해(크래킹)', eq: 'C₈H₁₈ → C₂H₄ + C₆H₁₄ … (촉매, 고온)', a: 'C8H18:g', b: 'sand', minT: 450, prob: 0.05, toA: [['C2H4', 0.6], ['C2H6', 0.4]], note: '긴 탄화수소를 뜨거운 촉매 위에서 쪼개 에틸렌 같은 작은 분자를 얻습니다. 플라스틱 원료가 이렇게 만들어집니다.' },
     { id: 'cracking', name: '석유의 열분해(크래킹)', eq: 'C₈H₁₈ → C₂H₄ + C₆H₁₄ … (촉매, 고온)', a: 'C8H18:g', b: 'S:Al2O3', minT: 450, prob: 0.08, toA: [['C2H4', 0.6], ['C2H6', 0.4]], note: '긴 탄화수소를 뜨거운 촉매 위에서 쪼개 에틸렌 같은 작은 분자를 얻습니다. 플라스틱 원료가 이렇게 만들어집니다.' },
     ...['air', 'oxygen'].map((b) => ({ id: 'ostwald', name: '오스트발트 공정(질산 원료)', reactants: ['NH3', 'O2'], products: ['NO', 'H2O'], a: 'NH3', b, near: ['Pt:s'], minT: 300, prob: 0.2, toA: 'NO', toB: 'steam', note: '뜨거운 백금 그물 위에서 암모니아가 산화되어 일산화질소가 됩니다. 이것을 다시 산화해 물에 녹이면 질산이 됩니다.' })),
-    ...['air', 'oxygen'].map((b) => ({ id: 'contact', name: '접촉법(황산 원료)', reactants: ['SO2', 'O2'], products: ['SO3'], a: 'SO2', b, near: ['Pt:s'], minT: 400, prob: 0.1, toA: 'SO3', note: '촉매 위에서 이산화황이 삼산화황이 되고, 이것으로 황산을 만듭니다. 세계에서 가장 많이 만드는 화학 물질입니다.' })),
+    ...['air', 'oxygen'].map((b) => ({ id: 'contact', name: '접촉법(황산 원료)', reactants: ['SO2', 'O2'], products: ['SO3'], a: 'SO2', b, near: ['Pt:s', 'S:V2O5'], minT: 400, prob: 0.1, toA: 'SO3', note: '촉매 위에서 이산화황이 삼산화황이 되고, 이것으로 황산을 만듭니다. 세계에서 가장 많이 만드는 화학 물질입니다.' })),
     // ---- 압력·온도로 바뀌는 평형, 고분자, 에스터 ----
     ...['air', 'N:g', 'NO2', 'CO2:g'].filter((b) => b !== 'NO2').map((b) => ({ id: 'n2o4', name: '이산화질소의 이합체(차가우면)', reactants: ['NO2'], products: ['N2O4'], a: 'NO2', b, maxT: 5, prob: 0.1, toA: 'N2O4', note: '적갈색 이산화질소는 차가우면 둘씩 붙어 무색의 사산화이질소가 되고, 데우면 다시 갈라집니다. 온도에 따라 평형이 옮겨 가는 르샤틀리에 원리의 대표 예입니다.' })),
     ...['air', 'N:g'].map((b) => ({ id: 'n2o4_split', name: '사산화이질소의 분해(뜨거우면)', reactants: ['N2O4'], products: ['NO2'], a: 'N2O4', b, minT: 30, prob: 0.1, toA: 'NO2', note: '온도를 올리면 열을 흡수하는 쪽(갈라지는 쪽)으로 평형이 옮겨 가 다시 갈색이 됩니다.' })),
@@ -1830,6 +1851,44 @@ Og|오가네손|294|noble|7|50|80|1`;
     // 철 + 뜨거운 수증기 → 사산화삼철(검은 녹) + 수소. 철은 산화수 +2와 +3이 섞인 산화물이 된다.
     { id: 'fe_steam', name: '철과 뜨거운 수증기', reactants: ['Fe', 'H2O'], products: ['Fe3O4', 'H2'], a: 'Fe:s', b: 'steam', minT: 500, prob: 0.05, toA: 'S:Fe3O4', toB: 'hydrogen', dT: 30, note: '빨갛게 달군 철은 수증기에서 산소를 빼앗아 검은 사산화삼철(Fe₃O₄, 자철석 성분)이 되고 수소가 나옵니다. 라부아지에가 물이 원소가 아님을 보인 실험입니다.' },
     { id: 'fe_steam', name: '철과 뜨거운 수증기', reactants: ['Fe', 'H2O'], products: ['Fe3O4', 'H2'], a: 'steel:s', b: 'steam', minT: 500, prob: 0.04, toA: 'S:Fe3O4', toB: 'hydrogen', dT: 30, note: '빨갛게 달군 철은 수증기에서 산소를 빼앗아 검은 사산화삼철이 되고 수소가 나옵니다.' },
+    // ---- 0.21: 새 원소 ----
+    { id: 'as_burn', name: '비소의 연소', reactants: ['As', 'O2'], products: ['As2O3'], a: 'As:s', b: 'air', minT: 300, prob: 0.1, toA: 'S:As2O3', T: 700, note: '비소는 파르스름한 불꽃과 마늘 냄새를 내며 타서 흰 삼산화이비소(비상)가 됩니다. 맹독입니다.' },
+    { id: 'marsh', name: '마시 시험 1: 아르신 생성', eq: 'As₂O₃ + 6Zn + 12HCl → 2AsH₃ + 6ZnCl₂ + 3H₂O', a: 'S:As2O3', b: 'Zn:s', near: ['hcl', 'A:acid:H2SO4aq'], prob: 0.05, toA: 'AsH3:g', toB: [['Zn:s', 0.8], ['A:ZnCl2', 0.2]], note: '비소가 든 시료를 아연과 산에 넣으면 아르신 기체가 됩니다. 1836년 마시가 만든, 독살 사건의 비소를 찾아내는 시험입니다.' },
+    { id: 'marsh2', name: '마시 시험 2: 비소 거울', reactants: ['AsH3'], products: ['As', 'H2'], a: 'AsH3:g', b: 'glass', minT: 250, prob: 0.3, toA: 'As:s', note: '아르신이 뜨거운 유리를 지나며 분해되어 검은 비소 거울을 남깁니다. 아주 적은 비소도 보입니다.' },
+    { id: 'marsh2', name: '마시 시험 2: 비소 거울', reactants: ['AsH3'], products: ['As', 'H2'], a: 'AsH3:g', b: 'air', minT: 250, prob: 0.2, toA: 'As:s', note: '뜨거워지면 분해되어 검은 비소가 됩니다.' },
+    { id: 'se_burn', name: '셀레늄의 연소', reactants: ['Se', 'O2'], products: ['SeO2'], a: 'Se:s', b: 'air', minT: 250, prob: 0.1, toA: 'fire:clean', toB: 'S:SeO2', T: 800, note: '셀레늄은 파란 불꽃과 썩은 무 냄새를 내며 탑니다. 황과 같은 족이라 비슷하게 행동합니다.' },
+    { id: 'se_burn', name: '셀레늄의 연소', reactants: ['Se', 'O2'], products: ['SeO2'], a: 'Se:l', b: 'air', minT: 250, prob: 0.1, toA: 'fire:clean', toB: 'S:SeO2', T: 800, note: '셀레늄은 파란 불꽃을 내며 탑니다.' },
+    { id: 'xef2', name: '제논 + 플루오린(최초의 비활성 기체 화합물)', reactants: ['Xe', 'F2'], products: ['XeF2'], a: 'Xe:g', b: 'F:g', near: ['uvlamp'], prob: 0.1, toA: 'S:XeF2', toB: 'air', note: '1962년 이전에는 비활성 기체는 화합물을 만들지 않는다고 여겼습니다. 제논은 플루오린과 빛(또는 열)을 받으면 흰 결정을 만듭니다.' },
+    { id: 'xef2', name: '제논 + 플루오린(최초의 비활성 기체 화합물)', reactants: ['Xe', 'F2'], products: ['XeF2'], a: 'Xe:g', b: 'F:g', minT: 400, prob: 0.1, toA: 'S:XeF2', toB: 'air', note: '가열하면 제논이 플루오린과 결합합니다.' },
+    { id: 'xef2_water', name: '이플루오린화 제논과 물', reactants: ['XeF2', 'H2O'], products: ['Xe', 'O2', 'HF'], a: 'S:XeF2', b: 'water', prob: 0.1, toA: 'Xe:g', toB: [['HFg:g', 0.7], ['oxygen', 0.3]], note: '물을 만나면 제논 기체로 돌아가며 산소와 플루오린화수소가 나옵니다.' },
+    { id: 'mo_reduce', name: '수소로 몰리브데넘 만들기', reactants: ['MoO3', 'H2'], products: ['Mo', 'H2O'], a: 'S:MoO3', b: 'hydrogen', minT: 700, prob: 0.05, toA: 'Mo:s', toB: 'steam', note: '몰리브데넘은 녹는점이 아주 높아(2623°C) 산화물을 수소로 환원해 가루로 얻습니다. 강철에 넣어 단단하게 합니다.' },
+    // ---- 0.21: 착이온 색 변화(르샤틀리에) ----
+    { id: 'co_cl4', name: '코발트 착이온: 분홍 → 파랑(염산)', eq: '[Co(H₂O)₆]²⁺(분홍) + 4Cl⁻ ⇌ [CoCl₄]²⁻(파랑) + 6H₂O', a: 'A:CoCl2', b: 'hcl', prob: 0.2, toA: 'A:CoCl4', toB: 'A:CoCl4', note: '염화 이온을 많이 넣으면 평형이 파란 쪽으로 이동합니다(르샤틀리에 원리).' },
+    { id: 'co_cl4_water', name: '코발트 착이온: 물을 넣으면 분홍', eq: '[CoCl₄]²⁻(파랑) + 6H₂O → [Co(H₂O)₆]²⁺(분홍) + 4Cl⁻', a: 'A:CoCl4', b: 'water', maxT: 65, prob: 0.1, toA: 'A:CoCl2', note: '물을 넣으면 평형이 분홍 쪽으로 돌아갑니다.' },
+    { id: 'cu_cl4', name: '구리 착이온: 파랑 → 황록(염산)', eq: '[Cu(H₂O)₆]²⁺(파랑) + 4Cl⁻ ⇌ [CuCl₄]²⁻(황록) + 6H₂O', a: 'A:CuCl2', b: 'hcl', prob: 0.2, toA: 'A:CuCl4', toB: 'A:CuCl4', note: '염화 이온이 많아지면 물 분자 대신 염화 이온이 구리에 붙어 황록색이 됩니다.' },
+    { id: 'cu_cl4_water', name: '구리 착이온: 묽히면 파랑', eq: '[CuCl₄]²⁻ + 6H₂O → [Cu(H₂O)₆]²⁺ + 4Cl⁻', a: 'A:CuCl4', b: 'water', prob: 0.1, toA: 'A:CuCl2', note: '물을 넣으면 다시 파랗게 됩니다.' },
+    ...['A:NiSO4', 'A:NiCl2', 'A:Ni(NO3)2'].map((b) => ({ id: 'ni_dmg', name: '니켈 검출(다이메틸글리옥심)', eq: 'Ni²⁺ + 2C₄H₈N₂O₂ → Ni(C₄H₇N₂O₂)₂↓ + 2H⁺', a: 'dmg', b, prob: 0.3, toA: 'S:Ni(dmg)2', toB: 'S:Ni(dmg)2', note: '니켈 이온이 있으면 딸기색 앙금이 생깁니다. 동전·장신구의 니켈을 찾는 데 씁니다.' })),
+    // ---- 0.21: 알데하이드 ----
+    { id: 'meoh_oxid', name: '메탄올의 산화(뜨거운 구리 촉매)', reactants: ['CH3OH', 'O2'], products: ['CH2O', 'H2O'], a: 'CH3OH:g', b: 'air', near: ['Cu:s'], minT: 300, prob: 0.1, toA: 'HCHO:g', toB: 'steam', dT: 40, note: '뜨거운 구리선을 메탄올 증기에 넣으면 폼알데하이드가 생기고 구리선은 계속 빨갛게 달아 있습니다(촉매).' },
+    { id: 'etoh_cuo', name: '에탄올과 뜨거운 산화구리', reactants: ['C2H5OH', 'CuO'], products: ['C2H4O', 'Cu', 'H2O'], a: 'C2H5OH:g', b: 'S:CuO', minT: 300, prob: 0.1, toA: 'CH3CHO:g', toB: 'Cu:s', note: '검은 산화구리가 붉은 구리로 돌아가고 에탄올은 아세트알데하이드가 됩니다(알코올의 산화).' },
+    { id: 'etoh_cuo', name: '에탄올과 뜨거운 산화구리', reactants: ['C2H5OH', 'CuO'], products: ['C2H4O', 'Cu', 'H2O'], a: 'C2H5OH', b: 'S:CuO', minT: 200, prob: 0.05, toA: 'CH3CHO:g', toB: 'Cu:s', note: '검은 산화구리가 붉은 구리로 돌아가고 에탄올은 아세트알데하이드가 됩니다.' },
+    { id: 'acetaldehyde_air', name: '아세트알데하이드 → 아세트산', reactants: ['C2H4O', 'O2'], products: ['C2H4O2'], a: 'CH3CHO:g', b: 'air', prob: 0.002, toA: 'CH3COOH:g', note: '알데하이드는 쉽게 산화되어 카복실산이 됩니다. 술이 식초가 되는 과정의 중간 단계입니다.' },
+    ...['HCHO:g', 'CH3CHO:g'].flatMap((ald) => [
+      { id: 'tollens_ald', name: '은거울 반응(알데하이드)', eq: 'RCHO + 2[Ag(NH₃)₂]⁺ + 3OH⁻ → RCOO⁻ + 2Ag↓ + 4NH₃ + 2H₂O', a: 'A:AgNO3', b: ald, near: ['NH4OH:aq'], prob: 0.1, toA: 'Ag:s', toB: 'air', note: '알데하이드는 은 이온을 환원시켜 은거울을 만듭니다. 알코올·케톤(아세톤)과 구별하는 시험입니다.' },
+      { id: 'benedict_ald', name: '베네딕트 반응(알데하이드)', eq: 'RCHO + 2Cu²⁺ → RCOOH + Cu₂O↓', a: 'benedict', b: ald, minT: 60, prob: 0.1, toA: 'S:Cu2O', toB: 'air', note: '알데하이드는 파란 구리(II) 용액을 황적색 산화구리(I)로 바꿉니다.' },
+    ]),
+    { id: 'formalin_protein', name: '폼알데하이드가 단백질을 굳힘', eq: '단백질 + HCHO → 가교 결합(굳음)', a: 'eggwhite', b: 'HCHO:g', prob: 0.05, toA: 'eggwhite:cooked', toB: 'air', note: '폼알데하이드는 단백질 사슬을 서로 묶어 굳힙니다. 생물 표본을 포르말린에 보관하는 이유입니다.' },
+    // ---- 0.21: 클로로폼·PVC ----
+    { id: 'haloform', name: '표백제 + 아세톤 → 클로로폼(할로폼 반응)', eq: 'CH₃COCH₃ + 3NaOCl → CHCl₃ + CH₃COONa + 2NaOH', a: 'C3H6O', b: 'A:NaClO', prob: 0.05, toA: 'CHCl3', toB: 'A:NaCH3COO', dT: 30, note: '표백제와 아세톤(매니큐어 제거제)을 섞으면 클로로폼이 생기고 열이 납니다. 집에서 세제를 섞으면 안 되는 이유 중 하나입니다.' },
+    { id: 'haloform', name: '표백제 + 에탄올 → 클로로폼', eq: 'C₂H₅OH + 4NaOCl → CHCl₃ + HCOONa + NaOH + 2NaCl + H₂O', a: 'C2H5OH', b: 'A:NaClO', prob: 0.015, toA: 'CHCl3', toB: 'A:NaCl', dT: 20, note: '표백제와 알코올을 섞어도 천천히 클로로폼이 생깁니다.' },
+    ...['uvlamp', 'lamp'].map((b) => ({ id: 'chcl3_light', name: '클로로폼이 빛을 받으면 포스겐', eq: '2CHCl₃ + O₂ → 2COCl₂ + 2HCl (빛)', a: 'CHCl3', b, near: ['air', 'O:g'], prob: b === 'uvlamp' ? 0.02 : 0.003, toA: [['COCl2:g', 0.5], ['HClg:g', 0.5]], note: '클로로폼은 빛과 공기를 만나면 독한 포스겐이 생겨, 갈색 병에 넣고 에탄올을 조금 섞어 보관합니다.' })),
+    { id: 'ch3cl_cl2', name: '메테인의 연속 염소화', eq: 'CH₃Cl + 2Cl₂ → CHCl₃ + 2HCl (빛)', a: 'CH3Cl', b: 'Cl:g', near: ['uvlamp'], prob: 0.1, toA: 'CHCl3', toB: 'HClg:g', note: '빛을 받으면 염소가 수소를 하나씩 바꿔 클로로메테인 → 다이클로로메테인 → 클로로폼 → 사염화탄소가 됩니다(치환 반응).' },
+    { id: 'vinyl_chloride', name: '염화비닐 만들기(열분해)', reactants: ['C2H4Cl2'], products: ['C2H3Cl', 'HCl'], a: 'C2H4Cl2', b: 'air', minT: 450, prob: 0.05, toA: 'C2H3Cl:g', toB: 'HClg:g', note: '1,2-다이클로로에테인을 뜨겁게 하면 염화수소가 빠져 염화비닐이 됩니다.' },
+    ...['H2O2', 'uvlamp'].map((n) => ({ id: 'pvc_poly', name: 'PVC 중합', eq: 'n CH₂=CHCl → (–CH₂–CHCl–)ₙ', a: 'C2H3Cl:g', b: n, prob: 0.05, toA: 'pvc', note: '과산화물이나 빛이 이중 결합을 열어 염화비닐이 사슬처럼 이어지며 고체 PVC가 됩니다(첨가 중합).' })),
+    ...['fire', 'air'].map((b) => ({ id: 'pvc_burn', name: 'PVC의 연소', eq: '(C₂H₃Cl)ₙ + O₂ → CO₂ + H₂O + HCl + 그을음', a: 'pvc', b, minT: b === 'air' ? 450 : undefined, prob: b === 'air' ? 0.05 : 0.2, toA: [['smoke', 0.5], ['HClg:g', 0.3], ['fire', 0.2]], T: 800, note: 'PVC는 잘 타지 않고, 타면 독한 염화수소와 검은 연기가 나옵니다. 낮은 온도로 태우면 다이옥신이 생길 수 있어 소각을 조심합니다.' })),
+    // ---- 0.21: 벤젠(방향족) ----
+    { id: 'benzene_nitration', name: '벤젠의 나이트로화(치환)', eq: 'C₆H₆ + HNO₃ → C₆H₅NO₂ + H₂O (진한 황산)', a: 'C6H6', b: 'HNO3', near: ['H2SO4'], minT: 30, prob: 0.04, toA: 'C6H5NO2', toB: 'water', dT: 20, note: '진한 황산 속에서 벤젠의 수소 하나가 나이트로기로 바뀌어 노란 나이트로벤젠이 됩니다. 벤젠 고리는 그대로 남습니다.' },
+    { id: 'benzene_bromination', name: '벤젠의 브로민화(철 촉매, 치환)', eq: 'C₆H₆ + Br₂ → C₆H₅Br + HBr (FeBr₃)', a: 'C6H6', b: 'Br:l', near: ['Fe:s', 'A:FeBr3'], prob: 0.05, toA: 'C6H5Br', toB: 'HBrg:g', note: '에틸렌은 브로민과 바로 첨가 반응을 하지만, 벤젠은 철 촉매가 있어야 치환 반응을 합니다. 고리 전체에 퍼진 전자 때문에 안정하기 때문입니다(방향족성).' },
     // ---- 0.20: 위험한 반응(현상만 보여 줌) ----
     ...[['S:KNO3', 'C:s', 'S:s']].map(([a, b, n]) => ({ id: 'gunpowder_mix', name: '흑색 화약(섞기)', kind: 'physical', eq: 'KNO₃ + C + S (섞임)', a, b, near: [n], prob: 0.02, toA: 'gunpowder', toB: 'gunpowder', note: '질산칼륨·숯·황을 고르게 섞으면 흑색 화약이 됩니다. 섞기만 해서는 반응하지 않고 불이 닿아야 탑니다.' })),
     { id: 'gunpowder_fire', name: '흑색 화약의 연소', eq: '2KNO₃ + S + 3C → K₂S + N₂ + 3CO₂', a: 'gunpowder', b: 'fire', prob: 0.8, toA: [['fire:K', 0.4], ['smoke:white', 0.6]], T: 1800, explode: 1.5, explodeP: 0.04, note: '산화제가 섞여 있어 공기 없이도 순식간에 타며, 고체 2부피가 기체 수백 부피가 됩니다. 갇혀 있으면 폭발하고, 총과 불꽃놀이에 쓰였습니다.' },
@@ -4449,6 +4508,19 @@ Og|오가네손|294|noble|7|50|80|1`;
       },
     },
     {
+      id: 'equilibrium', name: '색이 바뀌는 평형(착이온)', tab: 'codex',
+      desc: '왼쪽: 85°C로 데운 분홍색 염화코발트 용액은 파랗게 되었다가 식으면서 다시 분홍으로 돌아갑니다(흡열 평형은 온도가 오르면 정반응 쪽으로 이동, 르샤틀리에 원리). 둘째: 염화코발트 용액에 염산을 넣으면 염화 이온이 많아져 파랗게 됩니다. 셋째: 파란 염화구리 용액에 염산을 넣으면 황록색이 됩니다. 넷째: 니켈 용액에 다이메틸글리옥심을 떨어뜨리면 딸기색 앙금이 생깁니다(니켈 검출).',
+      setup(w) {
+        air(w);
+        beakers(w, [
+          (t) => { w.rect('A:CoCl2', t.l, 110, t.r, t.b, 85); },
+          (t) => { w.rect('A:CoCl2', t.l, 115, t.r, t.b); w.rect('hcl', t.l + 10, 90, t.r - 10, 98); },
+          (t) => { w.rect('A:CuCl2', t.l, 115, t.r, t.b); w.rect('hcl', t.l + 10, 90, t.r - 10, 98); },
+          (t) => { w.rect('A:NiSO4', t.l, 115, t.r, t.b); w.rect('dmg', t.l + 15, 92, t.r - 15, 98); },
+        ]);
+      },
+    },
+    {
       id: 'density', name: '밀도 기둥', tab: 'materials',
       desc: '일부러 무거운 글리세롤(1260 kg/m³)을 위에, 기름(900)을 아래에 넣었습니다. 밀도 순서대로 층이 나뉘는 과정을 보세요. 밀도 보기와 함께 쓰면 좋습니다. 소금물로 하면 가라앉으면서 물과 섞여 묽어지므로(농도) 층이 흐려집니다.',
       setup(w) {
@@ -5963,7 +6035,7 @@ Og|오가네손|294|noble|7|50|80|1`;
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,effects?:boolean,sound?:boolean,materials?:string[],storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.20.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.21.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);

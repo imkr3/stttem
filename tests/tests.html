@@ -124,6 +124,15 @@ const SHOULD = [
   ['철+뜨거운 수증기', 'iron', 'steam', 600, 'fe_steam'],
   ['산성비 확인: 묽은 염산+BTB', 'btb', 'hcl', null, 'indicator:btb:acid'],
   ['소금+덜 진한 소금물', 'salt', 'brine', null, 'dissolve_more:NaCl'],
+  // 0.21.0에서 채운 반응
+  ['비소 연소', 'As:s', 'air', 400, 'as_burn'], ['마시 시험', 'S:As2O3', 'Zn', null, 'marsh', 'hcl'], ['아르신 가열', 'AsH3:g', 'glass', 300, 'marsh2'], ['셀레늄 연소', 'Se:s', 'air', 300, 'se_burn'],
+  ['제논+플루오린(가열)', 'Xe:g', 'F:g', 500, 'xef2'], ['이플루오린화 제논+물', 'S:XeF2', 'water', null, 'xef2_water'], ['지르코늄 연소', 'Zr:s', 'air', 500, 'ox:Zr'], ['바나듐 산화', 'V:s', 'air', 800, 'ox:V'],
+  ['접촉법(오산화바나듐)', 'SO2', 'oxygen', 450, 'contact', 'S:V2O5'], ['산화몰리브데넘+수소', 'S:MoO3', 'hydrogen', 800, 'mo_reduce'],
+  ['코발트 용액+염산', 'A:CoCl2', 'hcl', null, 'co_cl4'], ['파란 코발트+물(60°C)', 'A:CoCl4', 'water', 60, 'co_cl4_water'], ['구리 용액+염산', 'A:CuCl2', 'hcl', null, 'cu_cl4'], ['니켈+다이메틸글리옥심', 'dmg', 'A:NiSO4', null, 'ni_dmg'],
+  ['메탄올+공기(뜨거운 구리)', 'CH3OH:g', 'air', 400, 'meoh_oxid', 'Cu:s'], ['에탄올+산화구리(가열)', 'C2H5OH:g', 'S:CuO', 400, 'etoh_cuo'], ['은거울(폼알데하이드)', 'A:AgNO3', 'HCHO:g', null, 'tollens_ald', 'NH4OH:aq'],
+  ['베네딕트+아세트알데하이드', 'benedict', 'CH3CHO:g', 80, 'benedict_ald'], ['표백제+아세톤', 'C3H6O', 'A:NaClO', null, 'haloform'], ['클로로폼+자외선', 'CHCl3', 'uvlamp', null, 'chcl3_light', 'air'],
+  ['다이클로로에테인 가열', 'C2H4Cl2', 'air', 500, 'vinyl_chloride'], ['염화비닐+과산화수소', 'C2H3Cl:g', 'H2O2', null, 'pvc_poly'], ['PVC+불', 'pvc', 'fire', null, 'pvc_burn'],
+  ['벤젠+진한 질산(+황산)', 'C6H6', 'HNO3', 40, 'benzene_nitration', 'H2SO4'], ['벤젠+브로민(+철)', 'C6H6', 'Br:l', null, 'benzene_bromination', 'Fe:s'],
   // 0.20.0에서 채운 반응
   ['질산칼륨+숯(+황)', 'S:KNO3', 'C:s', null, 'gunpowder_mix', 'S:s'], ['흑색 화약+불', 'gunpowder', 'fire', null, 'gunpowder_fire'], ['글리세롤+진한 질산(+황산)', 'C3H8O3', 'HNO3', null, 'nitration_glycerol', 'H2SO4'],
   ['니트로글리세린 가열', 'nitroglycerin', 'air', 200, 'ng_heat'], ['니트로글리세린+모래', 'nitroglycerin', 'sand', null, 'dynamite'], ['아이오딘+암모니아수', 'I', 'NH4OH:aq', null, 'ni3_make'],
@@ -235,6 +244,7 @@ test(`반응이 일어나야 하는 ${SHOULD.length}쌍`, () => {
 
 // ---- 반응이 일어나지 않아야 하는 경우 ----
 const SHOULD_NOT = [
+  ['벤젠+브로민 (촉매 없음, 방향족)', 'C6H6', 'Br:l'], ['아세톤+은거울 시약 (케톤은 안 됨)', 'C3H6O', 'A:AgNO3'],
   ['타이타늄+찬 염산 (산화막)', 'Ti', 'hcl'], ['타이타늄+진한 질산', 'Ti', 'HNO3'], ['베네딕트+설탕 (환원당 아님)', 'benedict', 'sugar'],
   ['구리+염산 (수소보다 약함)', 'Cu', 'hcl'], ['은+염산', 'Ag', 'hcl'], ['금+진한 질산', 'Au', 'HNO3'], ['금+물', 'Au', 'water'], ['백금+염산', 'Pt', 'hcl'], ['헬륨+나트륨', 'He', 'Na'], ['아르곤+마그네슘', 'Ar', 'Mg'],
   ['구리+황산철 (철이 더 활발)', 'Cu', 'A:FeSO4'], ['철+염화아연', 'Fe', 'A:ZnCl2'], ['질산칼륨+소금물 (앙금 없음)', 'A:KNO3', 'brine'], ['황산바륨+물 (불용성)', 'S:BaSO4', 'water'], ['염화은+물', 'S:AgCl', 'water'], ['기름+물', 'oil', 'water'], ['브로민+염화칼륨 (염소가 더 강함)', 'Br', 'A:KCl'], ['철+차가운 물(산소 차단)', 'iron', 'water'],
