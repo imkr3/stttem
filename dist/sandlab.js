@@ -695,8 +695,8 @@ Og|오가네손|294|noble|7|50|80|1`;
     { id: 'electrode+', name: '(+)극 전극', formula: '흑연, 전원 +', fx: 'C', state: 'solid', cat: 'device', color: '#c84040', density: 2200, c: 710, k: 100, inert: true, electrode: 1, desc: '전원의 + 쪽에 연결된 흑연 전극(산화가 일어나는 곳). (−)극과 같은 전해질 용액에 닿아 있어야 전류가 흐릅니다. 닿아 있는 금속도 전극이 됩니다.' },
     { id: 'electrode-', name: '(−)극 전극', formula: '흑연, 전원 −', fx: 'C', state: 'solid', cat: 'device', color: '#4060c8', density: 2200, c: 710, k: 100, inert: true, electrode: 2, desc: '전원의 − 쪽에 연결된 흑연 전극(환원이 일어나는 곳). 금속 이온이 여기에 석출되거나 수소가 나옵니다.' },
     { id: 'wire', name: '도선', formula: '피복 구리선', fx: 'Cu', state: 'solid', cat: 'device', color: '#c06a30', density: 8900, c: 385, k: 50, inert: true, wire: true, grain: 3, desc: '겉을 감싼 구리선. 전기는 통하지만 용액과는 반응하지 않습니다. 금속·전극·전구를 이어 회로를 만듭니다.' },
-    { id: 'bulb', name: '전구', formula: '꼬마전구', fx: 'W', state: 'solid', cat: 'device', color: '#5a5a48', density: 2500, c: 800, k: 2, inert: true, load: true, grain: 2, desc: '회로에 전류가 흐르면 켜집니다. 전원의 (+)·(−)극 사이나, 서로 다른 두 금속으로 만든 화학 전지 사이에 이어 보세요.' },
-    { id: 'bulb:on', name: '켜진 전구', formula: '꼬마전구', fx: 'W', state: 'solid', color: '#fff2a0', density: 2500, c: 800, k: 2, inert: true, load: true, glow: [255, 240, 150], desc: '전류가 흘러 필라멘트가 빛납니다.' },
+    { id: 'bulb', name: '전구', formula: '꼬마전구', fx: 'W', state: 'solid', cat: 'device', color: '#5a5a48', density: 2500, c: 800, k: 2, inert: true, load: true, resist: 9, grain: 2, desc: '회로에 전류가 흐르면 켜집니다. 전원의 (+)·(−)극 사이나, 서로 다른 두 금속으로 만든 화학 전지 사이에 이어 보세요.' },
+    { id: 'bulb:on', name: '켜진 전구', formula: '꼬마전구', fx: 'W', state: 'solid', color: '#fff2a0', density: 2500, c: 800, k: 2, inert: true, load: true, resist: 9, glow: [255, 240, 150], desc: '전류가 흘러 필라멘트가 빛납니다.' },
     { id: 'lamp', name: '전등', formula: '가시광선', fx: 'W', state: 'solid', cat: 'device', color: '#fff4c8', density: 2500, c: 800, k: 1, inert: true, glow: [255, 244, 200], desc: '빛을 비춥니다. 옆(1칸 거리)에 있는 식물 잎은 광합성을 합니다.' },
     { id: 'uvlamp', name: '자외선 램프', formula: '자외선', fx: 'Hg', state: 'solid', cat: 'device', color: '#a070ff', density: 2500, c: 800, k: 1, inert: true, glow: [170, 110, 255], desc: '자외선을 비춥니다. 옆의 물질에 빛으로 일어나는 반응(광분해, 광화학 반응)을 일으킵니다.' },
     { id: 'pump', name: '진공 펌프', formula: '기체를 빼냄', fx: 'Fe', state: 'solid', cat: 'device', color: '#5a6a7a', density: 7000, c: 500, k: 20, inert: true, pump: true, desc: '닫힌 용기 벽의 일부를 이것으로 바꾸면(안쪽 기체에 닿게) 기체를 조금씩 빼내 압력을 낮춥니다. 압력이 낮으면 물이 상온에서 끓고, 얇은 캔은 찌그러집니다.' },
@@ -706,6 +706,9 @@ Og|오가네손|294|noble|7|50|80|1`;
     { id: 'dropper:off', name: '방울 꼭지(잠김)', formula: '뷰렛 꼭지', fx: 'Fe', state: 'solid', cat: 'device', color: '#a04040', density: 3000, c: 500, k: 5, inert: true, grain: 1, desc: '뷰렛·스포이트 끝의 꼭지. 켜기·끄기 도구로 누르면 열려 위의 액체를 한 방울씩 떨어뜨립니다.' },
     { id: 'dropper:on', name: '방울 꼭지(열림)', formula: '뷰렛 꼭지', fx: 'Fe', state: 'solid', cat: null, aliasOf: 'dropper:off', color: '#40a060', density: 3000, c: 500, k: 5, inert: true, grain: 1, desc: '위의 액체를 1초에 몇 방울씩 아래로 떨어뜨립니다. 다시 누르면 잠깁니다.' },
     { id: 'stirrer', name: '자석 교반기', formula: '회전 자석', fx: 'Fe', state: 'solid', cat: 'device', color: '#4a6a8a', density: 3000, c: 500, k: 5, inert: true, grain: 2, desc: '비커 바닥에 두면 그 위의 액체를 계속 저어 섞습니다. 적정처럼 고르게 섞여야 하는 실험에 씁니다.' },
+    { id: 'nichrome', name: '니크롬선(저항)', formula: 'Ni-Cr 합금', fx: 'Ni', state: 'solid', cat: 'device', color: '#8a8478', density: 8400, c: 450, k: 11, inert: true, load: true, resist: 0.25, grain: 2, desc: '전기 저항이 큰 금속선. 전류가 흐르면 줄열로 뜨거워져 빨갛게 빛납니다(토스터·전기난로). 길수록 저항이 커지고(R = ρL/A) 굵을수록 작아집니다.' },
+    { id: 'fuse', name: '퓨즈', formula: '녹는점이 낮은 합금', fx: 'Sn', state: 'solid', cat: 'device', color: '#c8c0a0', density: 7300, c: 200, k: 60, inert: true, wire: true, grain: 2, fuse: 0.08, up: { at: 230, to: 'fuse:blown', L: 0 }, desc: '회로에 이어 두는 녹기 쉬운 도선. 합선 등으로 전류가 너무 많이 흐르면 줄열로 녹아 끊어져 불을 막습니다.' },
+    { id: 'fuse:blown', name: '끊어진 퓨즈', formula: '녹아 끊어짐', fx: 'Sn', state: 'solid', cat: null, aliasOf: 'fuse', color: '#4a4436', density: 7300, c: 200, k: 1, inert: true, grain: 2, desc: '전류가 너무 많이 흘러 녹아 끊어진 퓨즈. 전기가 통하지 않습니다.' },
     { id: 'piston', name: '피스톤', formula: '금속 판', fx: 'Fe', state: 'solid', cat: 'device', color: '#7d8fa3', density: 7800, c: 500, k: 20, inert: true, strength: 500, grain: 2, desc: '밀폐 용기 안의 기체를 새지 않게 밀고 당기는 판. 측정 탭의 피스톤 도구로 넣고 빼면 기체의 양은 그대로 부피만 바뀝니다(보일 법칙).' },
     { id: 'can', name: '얇은 금속 벽(캔)', formula: '알루미늄 판', fx: 'Al', state: 'solid', cat: 'device', color: '#b8c0c8', density: 2700, c: 900, k: 200, inert: true, strength: 1, shatter: 'can:crushed', grain: 3, desc: '견디는 압력이 1기압 정도인 얇은 벽. 안의 압력이 많이 낮아지면 바깥 공기에 눌려 찌그러집니다.' },
     { id: 'can:crushed', name: '찌그러진 캔', formula: '알루미늄 조각', fx: 'Al', state: 'powder', color: '#8c949c', density: 2700, c: 900, k: 200, inert: true, desc: '대기압에 눌려 찌그러진 캔 조각.' },
@@ -2067,6 +2070,8 @@ Og|오가네손|294|noble|7|50|80|1`;
   const SOLID = 0, POWDER = 1, LIQUID = 2, GAS = 3;
   // 용해도 [20°C에서의 한도(기준 농도의 배수), 1°C마다 변하는 비율]. 질산칼륨·황산구리는 온도에 민감하고 소금은 거의 그대로다.
   // 수산화칼슘처럼 뜨거울수록 덜 녹는 것도 있다(음수).
+  // 표준 환원 전위(V). 화학 전지의 전압을 구하는 데 쓴다.
+  const E0 = { Li: -3.04, K: -2.93, Ba: -2.91, Sr: -2.89, Ca: -2.87, Na: -2.71, Mg: -2.37, Be: -1.85, Al: -1.66, Ti: -1.63, Mn: -1.18, Zn: -0.76, Cr: -0.74, Fe: -0.44, Cd: -0.40, Co: -0.28, Ni: -0.25, Sn: -0.14, Pb: -0.13, H: 0, Sb: 0.15, Bi: 0.31, Cu: 0.34, Ag: 0.80, Hg: 0.85, Pd: 0.95, Pt: 1.18, Au: 1.50 };
   const SOLUBILITY = { KNO3: [1.5, 0.06], CuSO4: [1.5, 0.04], NaCl: [3, 0.002], KCl: [2.5, 0.012], NH4Cl: [2.5, 0.02], 'Ca(OH)2': [1.2, -0.008], Li2CO3: [1.2, -0.006], Na2SO4: [2, 0.03], KMnO4: [1.5, 0.04], 'Pb(NO3)2': [2, 0.02], AgNO3: [4, 0.03], NaHCO3: [1.5, 0.015], Na2CO3: [2, 0.03], KI: [4, 0.01], NaOH: [5, 0.02] };
   const STATES = { solid: SOLID, powder: POWDER, liquid: LIQUID, gas: GAS };
   const EARTH_G = 9.81;
@@ -2113,7 +2118,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       up: [], down: [], decay: [], explicit: new Map(), cache: new Map(), reactive: new Uint8Array(n), base: new Uint16Array(n),
       fast: new Float32Array(n), thermal: new Float32Array(n), spont: new Float32Array(n), emitter: new Uint8Array(n),
       moder: new Uint8Array(n), absorb: new Float32Array(n), heat: new Float32Array(n), armor: new Uint8Array(n),
-      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), pump: new Uint8Array(n), pH0: new Float32Array(n).fill(NaN), solute: new Uint8Array(n), weak: new Uint8Array(n), crystal: new Int16Array(n).fill(-1), shock: new Float32Array(n), sat20: new Float32Array(n), satK: new Float32Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
+      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), pump: new Uint8Array(n), pH0: new Float32Array(n).fill(NaN), solute: new Uint8Array(n), weak: new Uint8Array(n), crystal: new Int16Array(n).fill(-1), shock: new Float32Array(n), resist: new Float32Array(n), fuse: new Float32Array(n), sat20: new Float32Array(n), satK: new Float32Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
     };
     materials.forEach((d, i) => {
       c.state[i] = STATES[d.state];
@@ -2133,6 +2138,8 @@ Og|오가네손|294|noble|7|50|80|1`;
       c.electrode[i] = d.electrode || 0;
       if (d.shatter) c.shatter[i] = need(d.shatter); // 폭발에 부서지면 되는 물질
       c.shock[i] = d.shock || 0; // 충격에 터지는 물질: 폭발 반지름
+      c.resist[i] = d.resist || (d.load ? 5 : 0); // 부하의 비저항(1칸 굵기, 1칸 길이당 Ω)
+      c.fuse[i] = d.fuse || 0; // 퓨즈 1칸의 저항(Ω)
       // 칸마다 밝기를 조금씩 달리하는 정도(질감): 액체는 매끈하게, 금속은 고르게, 가루와 바위는 거칠게.
       c.grain[i] = d.grain != null ? d.grain : d.state === 'liquid' ? 5 : d.state === 'gas' ? 7 : d.metal ? 7 : d.state === 'solid' ? 16 : 13;
       if (d.electrode) c.anyElectrode = true;
@@ -2233,12 +2240,16 @@ Og|오가네손|294|noble|7|50|80|1`;
       this.prompt = false; // 이번 세대가 빠른 중성자 연쇄인지
       this.boomBudget = 40;
       this.slowAvg = 0;
+      this.voltage = 6; // 전원 장치(+·−극)의 전압(V)
+      this.elec = null; // 마지막으로 잰 회로 값 {V, I, R, P}
+      this.bright = new Float32Array(size).fill(1); // 켜진 전구의 밝기(0~1.5)
       this.flyers = []; // 튀어 날아가는 칸(폭발 파편, 물보라). 떨어지면 다시 칸이 된다.
       this.fx = []; // 화면 효과 요청(섬광, 불티). 물리에는 영향이 없다.
       this.reset();
     }
 
     reset() {
+      this.elec = null; this.elecLog = []; if (this.bright) this.bright.fill(1);
       this.tick = 0; this.time = 0; this.fq = []; this.slowAvg = 0; this.pRegions = null; this.flyers = []; this.fx = [];
       this.bodies = []; this.selected = null; this.probe = null; this.nextBodyId = 1; this.valves = [];
       for (let i = 0; i < this.mat.length; i++) { this.setCell(i, this.AIR, this.ambient); this.gas[i] = 1; }
@@ -3373,6 +3384,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       flood(2, 2, this.cathodes);
       // 전구는 도체가 아니라 짐(부하)이다. 한쪽은 (+)극 쪽, 다른 쪽은 (−)극 쪽 도체에 닿으면 전류가 흘러 켜진다.
       const seen = new Uint8Array(size);
+      const loads = [];
       for (let i = 0; i < size; i++) {
         if (seen[i] || !d.load[mat[i]]) continue;
         const group = [], st = [i];
@@ -3383,13 +3395,20 @@ Og|오가네손|294|noble|7|50|80|1`;
           group.push(k);
           nb(k, (j) => { if (role[j] & 1) a = true; if (role[j] & 2) c = true; if (!seen[j] && d.load[mat[j]]) { seen[j] = 1; st.push(j); } });
         }
-        if (a && c) for (const k of group) this.lit.add(k);
+        if (a && c) { for (const k of group) this.lit.add(k); loads.push(this.loadResistance(group, role, nb)); }
       }
+      this.solveCircuit(loads);
       if (!this.anodes.length || !this.cathodes.length) return;
       if (this.anodes.some((i) => role[i] & 2)) { // 합선
         this.note('short', () => ({ type: 'reaction', id: 'short', name: '합선', kind: 'physical', eq: '(+)극 ─ 금속 ─ (−)극', note: '두 전극이 금속으로 바로 이어지면 전류가 용액을 지나지 않아 전기 분해가 일어나지 않습니다. 큰 전류가 흘러 도선이 뜨거워지고 불꽃이 튑니다.' }));
-        // 줄열: 합선된 도선이 달아오른다. 전극 근처에서 불꽃이 튄다.
-        for (let k = 0; k < role.length; k++) if ((role[k] & 3) === 3 && !this.data.electrode[mat[k]]) this.T[k] += 4;
+        // 줄열: 합선이면 전원의 내부 저항만 남아 큰 전류가 흐른다. 도선이 달아오르고 퓨즈가 있으면 녹아 끊어진다.
+        const I = this.voltage / 0.5;
+        this.elec = { V: this.voltage, I, R: 0, P: this.voltage * I, short: true };
+        for (let k = 0; k < role.length; k++) {
+          if (!(role[k] & 3) || this.data.electrode[mat[k]]) continue;
+          if (d.fuse[mat[k]]) this.T[k] += I * I * d.fuse[mat[k]] * 10; // 퓨즈: 저항이 커서 가장 먼저 뜨거워짐
+          else if ((role[k] & 3) === 3) this.T[k] += 4;
+        }
         const at = this.anodes[(Math.random() * this.anodes.length) | 0];
         if (this.fx.length < 200) this.fx.push({ type: 'spark', x: at % w, y: (at / w) | 0, hot: 2000 });
         return;
@@ -3401,6 +3420,50 @@ Og|오가네손|294|noble|7|50|80|1`;
         nb(i, (j) => { if (!(role[j] & 4) && this.isElectrolyte(mat[j])) { role[j] |= 4; stack.push(j); } });
       }
       this.circuit = this.anodes.some((i) => { let ok = false; nb(i, (j) => { if (role[j] & 4) ok = true; }); return ok; });
+    }
+
+    // 부하 덩어리의 저항: R = ρ·L/A. L은 (+)쪽에 닿은 칸에서 (−)쪽에 닿은 칸까지의 최단 거리, 굵기 A = 칸 수 / L.
+    loadResistance(group, role, nb) {
+      const d = this.data, mat = this.mat, inG = new Set(group), dist = new Map(), q = [];
+      for (const k of group) { let a = false; nb(k, (j) => { if (role[j] & 1) a = true; }); if (a) { dist.set(k, 1); q.push(k); } }
+      let L = group.length;
+      for (let h = 0; h < q.length; h++) {
+        const k = q[h]; let c = false;
+        nb(k, (j) => { if (role[j] & 2) c = true; });
+        if (c) { L = dist.get(k); break; }
+        nb(k, (j) => { if (inG.has(j) && !dist.has(j)) { dist.set(j, dist.get(k) + 1); q.push(j); } });
+      }
+      // 전구는 크기와 상관없이 정해진 저항(12 Ω)을 가진 부품이다. 니크롬선 같은 저항선만 길이·굵기로 계산한다.
+      const bulbs = group.filter((k) => d.defs[mat[k]].id === 'bulb' || d.defs[mat[k]].id === 'bulb:on').length;
+      const wire = group.length - bulbs;
+      let R = bulbs ? 12 : 0;
+      if (wire) { let rw = 0; for (const k of group) if (!(d.defs[mat[k]].id === 'bulb' || d.defs[mat[k]].id === 'bulb:on')) rw += d.resist[mat[k]]; rw /= wire; R += rw * L * L / Math.max(1, wire); }
+      return { cells: group, R: Math.max(0.05, R) };
+    }
+    // 옴의 법칙: 부하들은 병렬로 이어져 있다고 보고 합성 저항을 구한 뒤, 전원의 내부 저항(0.5 Ω)과 함께 전류를 구한다.
+    // 부하마다 전력 P = V²/R만큼 줄열을 받고, 전구는 전력에 따라 밝기가 달라진다.
+    solveCircuit(loads) {
+      const d = this.data, mat = this.mat, Rint = 0.5;
+      if (!loads.length) { this.elec = this.anodes.length && this.cathodes.length ? { V: this.voltage, I: 0, R: Infinity, P: 0 } : null; return; }
+      const G = loads.reduce((s, l) => s + 1 / l.R, 0), Rload = 1 / G;
+      const I = this.voltage / (Rint + Rload), Vt = this.voltage - I * Rint;
+      let P = 0;
+      const dtc = 20 * this.dt;
+      for (const l of loads) {
+        const p = Vt * Vt / l.R; P += p;
+        let bulb = false;
+        for (const k of l.cells) {
+          const m = mat[k];
+          if (d.defs[m].id === 'bulb' || d.defs[m].id === 'bulb:on') { bulb = true; continue; }
+          // 가는 선 한 칸은 실제로는 아주 가벼우므로(1 cm 칸 대신 가는 선) 열용량을 작게 본다.
+          this.T[k] += p * dtc / l.cells.length / (d.heatCap[m] * 1e-6 * 0.0015);
+        }
+        if (bulb) { const b = Math.min(1.5, p / 4); for (const k of l.cells) this.bright[k] = b; if (b < 0.05) for (const k of l.cells) this.lit.delete(k); }
+      }
+      // 퓨즈는 전류 전체가 지나간다: I²R 만큼 뜨거워진다.
+      for (const list of [this.anodes, this.cathodes]) for (const k of list) if (d.fuse[mat[k]]) this.T[k] += I * I * d.fuse[mat[k]] * 10;
+      this.elec = { V: this.voltage, I, R: Rload, P, Vt };
+      if (I > 0.01) this.note('ohm', () => ({ type: 'reaction', id: 'ohm', name: '옴의 법칙', kind: 'physical', eq: `I = V ÷ R = ${this.voltage} V ÷ ${(Rload + Rint).toFixed(1)} Ω = ${I.toFixed(2)} A`, note: '전압이 같으면 저항이 클수록 전류가 작습니다. 전구를 나란히(병렬) 이으면 합성 저항이 작아져 전류가 커지고, 니크롬선처럼 저항이 큰 선은 전류가 흐르며 뜨거워집니다(줄열 P = I²R).' }));
     }
 
     // 화학 전지: 도선이나 금속끼리 이어진 덩어리 안에 반응성이 다른 두 금속이 같은 전해질에 잠겨 있으면 전류가 흐른다.
@@ -3439,8 +3502,11 @@ Og|오가네손|294|noble|7|50|80|1`;
           const [aEl, anode] = metals[0], [cEl, cathode] = metals[metals.length - 1];
           const diff = rank(cEl) - rank(aEl);
           if (diff <= 0 || !SL.CHEM.METALS[aEl] || !SL.CHEM.METALS[aEl].cat) continue;
-          this.cells.push({ anode, cathode, rate: Math.min(3, 0.12 * diff), bulbs, aEl, cEl, ea: 0, ec: 0 });
-          for (const b of bulbs) this.lit.add(b);
+          // 전지 전압 = 두 금속의 표준 환원 전위 차. 레몬 전지(아연-구리)는 약 1.1 V라 전구가 희미하다.
+          const E = E0[cEl] != null && E0[aEl] != null ? E0[cEl] - E0[aEl] : 0.1 * diff;
+          this.cells.push({ anode, cathode, rate: Math.min(3, 0.12 * diff), bulbs, aEl, cEl, ea: 0, ec: 0, E });
+          for (const b of bulbs) { this.lit.add(b); this.bright[b] = Math.max(0.12, Math.min(1, E / 3)); }
+          if (!this.elec || !this.elec.I) this.elec = { V: E, I: bulbs.length ? E / 20 : 0, R: 20, P: bulbs.length ? E * E / 20 : 0, cell: `${aEl}-${cEl}` };
         }
       }
     }
@@ -3494,7 +3560,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       const d = this.data;
       if (!SL.CHEM || !SL.CHEM.electrolysis) return;
       if (this.tick % 20 === 1 || !this.lit) {
-        this.lit = new Set();
+        this.lit = new Set(); this.elec = null;
         if (d.anyElectrode) this.findCircuit(); else { this.role = null; this.circuit = false; }
         this.findGalvanic();
         this.updateBulbs();
@@ -3884,6 +3950,10 @@ Og|오가네손|294|noble|7|50|80|1`;
         const { ke, pe } = this.energyOf(b);
         b.log.push({ t: this.time - b.born, h: this.heightOf(b), v: b.vy, E: ke + pe });
         if (b.log.length > 1800) b.log.shift();
+      }
+      if (this.tick % 6 === 0) {
+        this.elecLog = this.elecLog || [];
+        if (this.elec || this.elecLog.length) { this.elecLog.push({ t: this.time, I: this.elec ? this.elec.I : 0, V: this.elec ? (this.elec.Vt != null ? this.elec.Vt : this.elec.V) : 0 }); if (this.elecLog.length > 1200) this.elecLog.shift(); }
       }
       if (this.probes && this.probes.length && this.tick % 6 === 0) {
         for (const p of this.probes) {
@@ -4521,6 +4591,24 @@ Og|오가네손|294|noble|7|50|80|1`;
       },
     },
     {
+      id: 'circuit', name: '옴의 법칙과 줄열', tab: 'physics', graph: 'I',
+      desc: '같은 전원(왼쪽 + 극, 오른쪽 − 극)에 위쪽 전구 두 개와 아래쪽 니크롬선이 모두 나란히(병렬) 이어져 있습니다. 측정 탭의 "전원 전압"을 올리면 전류가 커져(I = V/R) 전구가 밝아지고 니크롬선이 빨갛게 달아오릅니다(줄열 P = I²R). 전구 하나를 지우면 합성 저항이 커져 전류가 줄어듭니다. 니크롬선 위에 도선을 그어 (+)·(−)쪽을 바로 이으면(합선) 큰 전류가 흘러 퓨즈가 녹아 끊어집니다. 전류계 그래프로 확인하세요.',
+      setup(w) {
+        air(w);
+        w.rect('stone', 0, 146, 239, 149);
+        // 위: 전구 두 개 병렬
+        w.rect('electrode+', 20, 30, 22, 70, null, true); w.rect('electrode-', 218, 30, 220, 70, null, true);
+        w.rect('wire', 23, 40, 100, 41, null, true); w.rect('wire', 140, 40, 217, 41, null, true);
+        w.rect('wire', 98, 30, 99, 60, null, true); w.rect('wire', 141, 30, 142, 60, null, true);
+        w.rect('bulb', 100, 28, 140, 33, null, true); w.rect('bulb', 100, 56, 140, 61, null, true);
+        // 아래: 니크롬선과 퓨즈
+        w.rect('electrode+', 20, 95, 22, 135, null, true); w.rect('electrode-', 218, 95, 220, 135, null, true);
+        w.rect('wire', 23, 115, 70, 116, null, true); w.rect('fuse', 71, 115, 76, 116, null, true); w.rect('wire', 77, 115, 90, 116, null, true);
+        w.rect('nichrome', 91, 115, 150, 115, null, true); w.rect('wire', 151, 115, 217, 116, null, true);
+        w.voltage = 9;
+      },
+    },
+    {
       id: 'density', name: '밀도 기둥', tab: 'materials',
       desc: '일부러 무거운 글리세롤(1260 kg/m³)을 위에, 기름(900)을 아래에 넣었습니다. 밀도 순서대로 층이 나뉘는 과정을 보세요. 밀도 보기와 함께 쓰면 좋습니다. 소금물로 하면 가라앉으면서 물과 섞여 묽어지므로(농도) 층이 흐려집니다.',
       setup(w) {
@@ -4580,6 +4668,8 @@ Og|오가네손|294|noble|7|50|80|1`;
       explain: '소금물은 0°C보다 낮은 온도에서 언다(어는점 내림). 얼음이 녹으면서 주변의 열을 빼앗아 영하 10~20°C까지 내려갑니다. 아이스크림 기계와 도로의 염화칼슘에 쓰입니다.' },
     { id: 'p_lemon', scene: 'lemon', seconds: 10, q: '레몬즙(구연산)에 석회석(탄산칼슘)을 넣으면?', choices: ['아무 일도 없다', '거품이 난다', '색이 파랗게 변한다'], answer: 1,
       explain: '약한 산도 탄산염과 만나면 이산화탄소 거품을 내며 녹입니다. 주전자 물때를 구연산으로 닦는 원리입니다.' },
+    { id: 'p_joule', scene: 'circuit', seconds: 6, act: (w) => { w.voltage = 18; }, q: '니크롬선에 거는 전압을 두 배로 올리면, 같은 시간에 나는 열은?', choices: ['같다', '2배', '4배', '절반'], answer: 2,
+      explain: '저항이 같으면 전류도 2배가 되므로 전력 P = V × I = V²/R는 4배가 됩니다. 전기난로의 단을 올리면 훨씬 뜨거워지는 이유입니다. 측정 탭의 전류계에서 전력을 확인해 보세요.' },
   ];
 
   SL.CHALLENGES = [
@@ -4801,8 +4891,8 @@ Og|오가네손|294|noble|7|50|80|1`;
           if (sol[m] && cc[i] < 0.97) { const t = 1 - Math.pow(cc[i], 0.4); r += (wc[0] - r) * t; g += (wc[1] - g) * t; b += (wc[2] - b) * t; }
           const flame = defs[m].flame || defs[m].glow; // glow: 열 없이 빛만 내는 물질(화학 발광)
           if (flame) {
-            // 불꽃색을 중심으로 밝기만 일렁인다.
-            const f = 0.7 + Math.random() * 0.45;
+            // 불꽃색을 중심으로 밝기만 일렁인다. 전구는 흐르는 전력에 따라 밝기가 다르다.
+            const f = defs[m].glow && defs[m].load ? 0.25 + 0.75 * Math.min(1.2, W.bright[i]) : 0.7 + Math.random() * 0.45;
             r = flame[0] * f; g = flame[1] * f; b = flame[2] * f;
             gp[i] = rgba(r * 0.8, g * 0.8, b * 0.8); glow++;
             // 불꽃 위로 가끔 불티가 날린다.
@@ -5397,7 +5487,7 @@ Og|오가네손|294|noble|7|50|80|1`;
     panePhysics(pane) {
       const w = this.world;
       pane.innerHTML = `<h3>측정</h3>
-        <div class="chips">${[['v', '수직 속도'], ['h', '높이'], ['E', '역학적 에너지'], ['T', '온도계'], ['P', '압력계'], ['pH', 'pH계']].map(([k, n]) => `<button class="chip${this.graphMode === k ? ' on' : ''}" data-graph="${k}">${n}</button>`).join('')}</div>
+        <div class="chips">${[['v', '수직 속도'], ['h', '높이'], ['E', '역학적 에너지'], ['T', '온도계'], ['P', '압력계'], ['pH', 'pH계'], ['I', '전류계']].map(([k, n]) => `<button class="chip${this.graphMode === k ? ' on' : ''}" data-graph="${k}">${n}</button>`).join('')}</div>
         <div class="graph"><canvas class="plot"></canvas></div><div class="legend"></div><div class="stats"></div>
         <div class="chips" style="margin-top:6px"><button class="chip csv" title="지금 그래프의 측정값을 표 파일(CSV)로 저장">CSV로 저장</button><button class="chip clearprobes">온도계 모두 지우기</button></div>
         <h3>중력</h3><div class="chips">${GRAVITY.map(([n, g]) => `<button class="chip${Math.abs(w.g - g) < 0.005 ? ' on' : ''}" data-g="${g}">${n}</button>`).join('')}</div>
@@ -5406,6 +5496,7 @@ Og|오가네손|294|noble|7|50|80|1`;
         <div class="row"><label>열전달 가속 <input type="range" class="boost" min="1" max="1000" value="${w.heatBoost}"></label><span class="val bval">×${w.heatBoost}</span></div>
         <h3>압력·진공·장치</h3>
         <div class="chips">${PRESSURE_TOOLS.map(([k, n]) => `<button class="chip${this.tool.kind === k ? ' on' : ''}" data-ptool="${k}" title="${TOOL_HINT[k]}">${n}</button>`).join('')}</div>
+        <div class="row"><label>전원 전압 <input type="range" class="volt" min="1" max="24" step="0.5" value="${w.voltage}"></label><span class="val vval">${w.voltage} V</span></div>
         <div class="row"><label>용기 <select class="boxmat">${BOX_MATS.map(([k, n]) => `<option value="${k}" ${k === this.boxMat ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>
         <div class="row"><label><input type="checkbox" class="pview" ${this.renderer.mode === 'pressure' ? 'checked' : ''}> 압력 보기</label><button class="chip pgraph">압력계로 재기</button></div>
         <p class="hint">${this.tool.kind && TOOL_HINT[this.tool.kind] && PRESSURE_TOOLS.some(([k]) => k === this.tool.kind) ? '<b>' + TOOL_HINT[this.tool.kind] + '</b><br>' : ''}밀폐 용기를 만든 뒤 안에서 기체를 넣거나 빼고, 피스톤으로 부피를 바꿔 보세요. 압력은 PV = nRT를 따릅니다. 진공에 가까우면 물이 상온에서 끓고, 너무 높으면 용기가 터집니다. 온도계 도구로 용기 안을 누른 뒤 '압력계로 재기'를 누르면 그래프가 나옵니다.</p>
@@ -5431,6 +5522,7 @@ Og|오가네손|294|noble|7|50|80|1`;
       pane.querySelector('.vac').onchange = (e) => { w.vacuum = e.target.checked; };
       pane.querySelector('.boost').oninput = (e) => { w.setHeatBoost(+e.target.value); pane.querySelector('.bval').textContent = '×' + e.target.value; };
       pane.querySelector('.boxmat').onchange = (e) => { this.boxMat = e.target.value; };
+      pane.querySelector('.volt').oninput = (e) => { w.voltage = +e.target.value; pane.querySelector('.vval').textContent = w.voltage + ' V'; };
       pane.querySelector('.pview').onchange = (e) => this.setView(e.target.checked ? 'pressure' : 'normal');
       pane.querySelector('.balltype').onchange = (e) => { this.ballType = e.target.value; };
       pane.querySelector('.ballr').oninput = (e) => { this.ballR = e.target.value / 100; pane.querySelector('.rval').textContent = e.target.value + ' cm'; };
@@ -5859,6 +5951,12 @@ Og|오가네손|294|noble|7|50|80|1`;
     // 그래프 하나, 축 하나. 측정값은 실선, 이론값은 점선으로 구분한다.
     plotData() {
       const w = this.world, m = this.graphMode;
+      if (m === 'I') {
+        const log = w.elecLog || [];
+        if (!log.length) return { empty: '전원 장치(+·−극)나 화학 전지로 전구·니크롬선이 이어진 회로를 만들어 주세요.' };
+        const t0 = log[0].t;
+        return { unit: 'A', xs: log.map((s) => s.t - t0), ys: log.map((s) => s.I), label: '전류', more: [] };
+      }
       if (m === 'T' || m === 'P' || m === 'pH') {
         const ps = w.probes || [];
         if (!ps.length) return { empty: '온도계 도구로 측정할 곳을 눌러 주세요(최대 3곳). 압력은 밀폐 용기 안의 기체에서 잽니다.' };
@@ -5986,7 +6084,11 @@ Og|오가네손|294|noble|7|50|80|1`;
       if (!box) return;
       const stat = (n, v) => `<div class="stat"><small>${n}</small>${v}</div>`;
       let html = '';
-      if (this.graphMode === 'pH') {
+      if (this.graphMode === 'I') {
+        const e = w.elec;
+        html = e ? stat(e.cell ? '전지 전압(' + e.cell + ')' : '전원 전압', fmt(e.V, 2) + ' V') + stat('전류', fmt(e.I, 2) + ' A') +
+          stat('부하 저항', e.short ? '0 (합선!)' : isFinite(e.R) ? fmt(e.R, 2) + ' Ω' : '끊김') + stat('전력', fmt(e.P, 2) + ' W') : stat('회로', '없음');
+      } else if (this.graphMode === 'pH') {
         if (w.probe) {
           const pH = w.pHMeter(w.probe.x, w.probe.y), here = w.inspect(w.probe.x, w.probe.y);
           html = stat('현재 pH', pH == null ? '액체 없음' : fmt(pH, 2)) + stat('성질', pH == null ? '-' : pH < 6.5 ? '산성' : pH > 7.5 ? '염기성' : '중성') +
@@ -6035,7 +6137,7 @@ Og|오가네손|294|noble|7|50|80|1`;
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,effects?:boolean,sound?:boolean,materials?:string[],storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.21.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.22.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);

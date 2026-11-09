@@ -543,6 +543,24 @@
       },
     },
     {
+      id: 'circuit', name: '옴의 법칙과 줄열', tab: 'physics', graph: 'I',
+      desc: '같은 전원(왼쪽 + 극, 오른쪽 − 극)에 위쪽 전구 두 개와 아래쪽 니크롬선이 모두 나란히(병렬) 이어져 있습니다. 측정 탭의 "전원 전압"을 올리면 전류가 커져(I = V/R) 전구가 밝아지고 니크롬선이 빨갛게 달아오릅니다(줄열 P = I²R). 전구 하나를 지우면 합성 저항이 커져 전류가 줄어듭니다. 니크롬선 위에 도선을 그어 (+)·(−)쪽을 바로 이으면(합선) 큰 전류가 흘러 퓨즈가 녹아 끊어집니다. 전류계 그래프로 확인하세요.',
+      setup(w) {
+        air(w);
+        w.rect('stone', 0, 146, 239, 149);
+        // 위: 전구 두 개 병렬
+        w.rect('electrode+', 20, 30, 22, 70, null, true); w.rect('electrode-', 218, 30, 220, 70, null, true);
+        w.rect('wire', 23, 40, 100, 41, null, true); w.rect('wire', 140, 40, 217, 41, null, true);
+        w.rect('wire', 98, 30, 99, 60, null, true); w.rect('wire', 141, 30, 142, 60, null, true);
+        w.rect('bulb', 100, 28, 140, 33, null, true); w.rect('bulb', 100, 56, 140, 61, null, true);
+        // 아래: 니크롬선과 퓨즈
+        w.rect('electrode+', 20, 95, 22, 135, null, true); w.rect('electrode-', 218, 95, 220, 135, null, true);
+        w.rect('wire', 23, 115, 70, 116, null, true); w.rect('fuse', 71, 115, 76, 116, null, true); w.rect('wire', 77, 115, 90, 116, null, true);
+        w.rect('nichrome', 91, 115, 150, 115, null, true); w.rect('wire', 151, 115, 217, 116, null, true);
+        w.voltage = 9;
+      },
+    },
+    {
       id: 'density', name: '밀도 기둥', tab: 'materials',
       desc: '일부러 무거운 글리세롤(1260 kg/m³)을 위에, 기름(900)을 아래에 넣었습니다. 밀도 순서대로 층이 나뉘는 과정을 보세요. 밀도 보기와 함께 쓰면 좋습니다. 소금물로 하면 가라앉으면서 물과 섞여 묽어지므로(농도) 층이 흐려집니다.',
       setup(w) {
@@ -602,6 +620,8 @@
       explain: '소금물은 0°C보다 낮은 온도에서 언다(어는점 내림). 얼음이 녹으면서 주변의 열을 빼앗아 영하 10~20°C까지 내려갑니다. 아이스크림 기계와 도로의 염화칼슘에 쓰입니다.' },
     { id: 'p_lemon', scene: 'lemon', seconds: 10, q: '레몬즙(구연산)에 석회석(탄산칼슘)을 넣으면?', choices: ['아무 일도 없다', '거품이 난다', '색이 파랗게 변한다'], answer: 1,
       explain: '약한 산도 탄산염과 만나면 이산화탄소 거품을 내며 녹입니다. 주전자 물때를 구연산으로 닦는 원리입니다.' },
+    { id: 'p_joule', scene: 'circuit', seconds: 6, act: (w) => { w.voltage = 18; }, q: '니크롬선에 거는 전압을 두 배로 올리면, 같은 시간에 나는 열은?', choices: ['같다', '2배', '4배', '절반'], answer: 2,
+      explain: '저항이 같으면 전류도 2배가 되므로 전력 P = V × I = V²/R는 4배가 됩니다. 전기난로의 단을 올리면 훨씬 뜨거워지는 이유입니다. 측정 탭의 전류계에서 전력을 확인해 보세요.' },
   ];
 
   SL.CHALLENGES = [

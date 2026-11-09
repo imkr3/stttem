@@ -6,6 +6,8 @@
   const SOLID = 0, POWDER = 1, LIQUID = 2, GAS = 3;
   // 용해도 [20°C에서의 한도(기준 농도의 배수), 1°C마다 변하는 비율]. 질산칼륨·황산구리는 온도에 민감하고 소금은 거의 그대로다.
   // 수산화칼슘처럼 뜨거울수록 덜 녹는 것도 있다(음수).
+  // 표준 환원 전위(V). 화학 전지의 전압을 구하는 데 쓴다.
+  const E0 = { Li: -3.04, K: -2.93, Ba: -2.91, Sr: -2.89, Ca: -2.87, Na: -2.71, Mg: -2.37, Be: -1.85, Al: -1.66, Ti: -1.63, Mn: -1.18, Zn: -0.76, Cr: -0.74, Fe: -0.44, Cd: -0.40, Co: -0.28, Ni: -0.25, Sn: -0.14, Pb: -0.13, H: 0, Sb: 0.15, Bi: 0.31, Cu: 0.34, Ag: 0.80, Hg: 0.85, Pd: 0.95, Pt: 1.18, Au: 1.50 };
   const SOLUBILITY = { KNO3: [1.5, 0.06], CuSO4: [1.5, 0.04], NaCl: [3, 0.002], KCl: [2.5, 0.012], NH4Cl: [2.5, 0.02], 'Ca(OH)2': [1.2, -0.008], Li2CO3: [1.2, -0.006], Na2SO4: [2, 0.03], KMnO4: [1.5, 0.04], 'Pb(NO3)2': [2, 0.02], AgNO3: [4, 0.03], NaHCO3: [1.5, 0.015], Na2CO3: [2, 0.03], KI: [4, 0.01], NaOH: [5, 0.02] };
   const STATES = { solid: SOLID, powder: POWDER, liquid: LIQUID, gas: GAS };
   const EARTH_G = 9.81;
@@ -52,7 +54,7 @@
       up: [], down: [], decay: [], explicit: new Map(), cache: new Map(), reactive: new Uint8Array(n), base: new Uint16Array(n),
       fast: new Float32Array(n), thermal: new Float32Array(n), spont: new Float32Array(n), emitter: new Uint8Array(n),
       moder: new Uint8Array(n), absorb: new Float32Array(n), heat: new Float32Array(n), armor: new Uint8Array(n),
-      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), pump: new Uint8Array(n), pH0: new Float32Array(n).fill(NaN), solute: new Uint8Array(n), weak: new Uint8Array(n), crystal: new Int16Array(n).fill(-1), shock: new Float32Array(n), sat20: new Float32Array(n), satK: new Float32Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
+      electrode: new Uint8Array(n), conductor: new Uint8Array(n), shatter: new Int16Array(n).fill(-1), grain: new Uint8Array(n), load: new Uint8Array(n), strength: new Float32Array(n), pump: new Uint8Array(n), pH0: new Float32Array(n).fill(NaN), solute: new Uint8Array(n), weak: new Uint8Array(n), crystal: new Int16Array(n).fill(-1), shock: new Float32Array(n), resist: new Float32Array(n), fuse: new Float32Array(n), sat20: new Float32Array(n), satK: new Float32Array(n), elyte: new Int8Array(n).fill(-1), anyElectrode: false,
     };
     materials.forEach((d, i) => {
       c.state[i] = STATES[d.state];
@@ -72,6 +74,8 @@
       c.electrode[i] = d.electrode || 0;
       if (d.shatter) c.shatter[i] = need(d.shatter); // 폭발에 부서지면 되는 물질
       c.shock[i] = d.shock || 0; // 충격에 터지는 물질: 폭발 반지름
+      c.resist[i] = d.resist || (d.load ? 5 : 0); // 부하의 비저항(1칸 굵기, 1칸 길이당 Ω)
+      c.fuse[i] = d.fuse || 0; // 퓨즈 1칸의 저항(Ω)
       // 칸마다 밝기를 조금씩 달리하는 정도(질감): 액체는 매끈하게, 금속은 고르게, 가루와 바위는 거칠게.
       c.grain[i] = d.grain != null ? d.grain : d.state === 'liquid' ? 5 : d.state === 'gas' ? 7 : d.metal ? 7 : d.state === 'solid' ? 16 : 13;
       if (d.electrode) c.anyElectrode = true;
@@ -172,12 +176,16 @@
       this.prompt = false; // 이번 세대가 빠른 중성자 연쇄인지
       this.boomBudget = 40;
       this.slowAvg = 0;
+      this.voltage = 6; // 전원 장치(+·−극)의 전압(V)
+      this.elec = null; // 마지막으로 잰 회로 값 {V, I, R, P}
+      this.bright = new Float32Array(size).fill(1); // 켜진 전구의 밝기(0~1.5)
       this.flyers = []; // 튀어 날아가는 칸(폭발 파편, 물보라). 떨어지면 다시 칸이 된다.
       this.fx = []; // 화면 효과 요청(섬광, 불티). 물리에는 영향이 없다.
       this.reset();
     }
 
     reset() {
+      this.elec = null; this.elecLog = []; if (this.bright) this.bright.fill(1);
       this.tick = 0; this.time = 0; this.fq = []; this.slowAvg = 0; this.pRegions = null; this.flyers = []; this.fx = [];
       this.bodies = []; this.selected = null; this.probe = null; this.nextBodyId = 1; this.valves = [];
       for (let i = 0; i < this.mat.length; i++) { this.setCell(i, this.AIR, this.ambient); this.gas[i] = 1; }
@@ -1312,6 +1320,7 @@
       flood(2, 2, this.cathodes);
       // 전구는 도체가 아니라 짐(부하)이다. 한쪽은 (+)극 쪽, 다른 쪽은 (−)극 쪽 도체에 닿으면 전류가 흘러 켜진다.
       const seen = new Uint8Array(size);
+      const loads = [];
       for (let i = 0; i < size; i++) {
         if (seen[i] || !d.load[mat[i]]) continue;
         const group = [], st = [i];
@@ -1322,13 +1331,20 @@
           group.push(k);
           nb(k, (j) => { if (role[j] & 1) a = true; if (role[j] & 2) c = true; if (!seen[j] && d.load[mat[j]]) { seen[j] = 1; st.push(j); } });
         }
-        if (a && c) for (const k of group) this.lit.add(k);
+        if (a && c) { for (const k of group) this.lit.add(k); loads.push(this.loadResistance(group, role, nb)); }
       }
+      this.solveCircuit(loads);
       if (!this.anodes.length || !this.cathodes.length) return;
       if (this.anodes.some((i) => role[i] & 2)) { // 합선
         this.note('short', () => ({ type: 'reaction', id: 'short', name: '합선', kind: 'physical', eq: '(+)극 ─ 금속 ─ (−)극', note: '두 전극이 금속으로 바로 이어지면 전류가 용액을 지나지 않아 전기 분해가 일어나지 않습니다. 큰 전류가 흘러 도선이 뜨거워지고 불꽃이 튑니다.' }));
-        // 줄열: 합선된 도선이 달아오른다. 전극 근처에서 불꽃이 튄다.
-        for (let k = 0; k < role.length; k++) if ((role[k] & 3) === 3 && !this.data.electrode[mat[k]]) this.T[k] += 4;
+        // 줄열: 합선이면 전원의 내부 저항만 남아 큰 전류가 흐른다. 도선이 달아오르고 퓨즈가 있으면 녹아 끊어진다.
+        const I = this.voltage / 0.5;
+        this.elec = { V: this.voltage, I, R: 0, P: this.voltage * I, short: true };
+        for (let k = 0; k < role.length; k++) {
+          if (!(role[k] & 3) || this.data.electrode[mat[k]]) continue;
+          if (d.fuse[mat[k]]) this.T[k] += I * I * d.fuse[mat[k]] * 10; // 퓨즈: 저항이 커서 가장 먼저 뜨거워짐
+          else if ((role[k] & 3) === 3) this.T[k] += 4;
+        }
         const at = this.anodes[(Math.random() * this.anodes.length) | 0];
         if (this.fx.length < 200) this.fx.push({ type: 'spark', x: at % w, y: (at / w) | 0, hot: 2000 });
         return;
@@ -1340,6 +1356,50 @@
         nb(i, (j) => { if (!(role[j] & 4) && this.isElectrolyte(mat[j])) { role[j] |= 4; stack.push(j); } });
       }
       this.circuit = this.anodes.some((i) => { let ok = false; nb(i, (j) => { if (role[j] & 4) ok = true; }); return ok; });
+    }
+
+    // 부하 덩어리의 저항: R = ρ·L/A. L은 (+)쪽에 닿은 칸에서 (−)쪽에 닿은 칸까지의 최단 거리, 굵기 A = 칸 수 / L.
+    loadResistance(group, role, nb) {
+      const d = this.data, mat = this.mat, inG = new Set(group), dist = new Map(), q = [];
+      for (const k of group) { let a = false; nb(k, (j) => { if (role[j] & 1) a = true; }); if (a) { dist.set(k, 1); q.push(k); } }
+      let L = group.length;
+      for (let h = 0; h < q.length; h++) {
+        const k = q[h]; let c = false;
+        nb(k, (j) => { if (role[j] & 2) c = true; });
+        if (c) { L = dist.get(k); break; }
+        nb(k, (j) => { if (inG.has(j) && !dist.has(j)) { dist.set(j, dist.get(k) + 1); q.push(j); } });
+      }
+      // 전구는 크기와 상관없이 정해진 저항(12 Ω)을 가진 부품이다. 니크롬선 같은 저항선만 길이·굵기로 계산한다.
+      const bulbs = group.filter((k) => d.defs[mat[k]].id === 'bulb' || d.defs[mat[k]].id === 'bulb:on').length;
+      const wire = group.length - bulbs;
+      let R = bulbs ? 12 : 0;
+      if (wire) { let rw = 0; for (const k of group) if (!(d.defs[mat[k]].id === 'bulb' || d.defs[mat[k]].id === 'bulb:on')) rw += d.resist[mat[k]]; rw /= wire; R += rw * L * L / Math.max(1, wire); }
+      return { cells: group, R: Math.max(0.05, R) };
+    }
+    // 옴의 법칙: 부하들은 병렬로 이어져 있다고 보고 합성 저항을 구한 뒤, 전원의 내부 저항(0.5 Ω)과 함께 전류를 구한다.
+    // 부하마다 전력 P = V²/R만큼 줄열을 받고, 전구는 전력에 따라 밝기가 달라진다.
+    solveCircuit(loads) {
+      const d = this.data, mat = this.mat, Rint = 0.5;
+      if (!loads.length) { this.elec = this.anodes.length && this.cathodes.length ? { V: this.voltage, I: 0, R: Infinity, P: 0 } : null; return; }
+      const G = loads.reduce((s, l) => s + 1 / l.R, 0), Rload = 1 / G;
+      const I = this.voltage / (Rint + Rload), Vt = this.voltage - I * Rint;
+      let P = 0;
+      const dtc = 20 * this.dt;
+      for (const l of loads) {
+        const p = Vt * Vt / l.R; P += p;
+        let bulb = false;
+        for (const k of l.cells) {
+          const m = mat[k];
+          if (d.defs[m].id === 'bulb' || d.defs[m].id === 'bulb:on') { bulb = true; continue; }
+          // 가는 선 한 칸은 실제로는 아주 가벼우므로(1 cm 칸 대신 가는 선) 열용량을 작게 본다.
+          this.T[k] += p * dtc / l.cells.length / (d.heatCap[m] * 1e-6 * 0.0015);
+        }
+        if (bulb) { const b = Math.min(1.5, p / 4); for (const k of l.cells) this.bright[k] = b; if (b < 0.05) for (const k of l.cells) this.lit.delete(k); }
+      }
+      // 퓨즈는 전류 전체가 지나간다: I²R 만큼 뜨거워진다.
+      for (const list of [this.anodes, this.cathodes]) for (const k of list) if (d.fuse[mat[k]]) this.T[k] += I * I * d.fuse[mat[k]] * 10;
+      this.elec = { V: this.voltage, I, R: Rload, P, Vt };
+      if (I > 0.01) this.note('ohm', () => ({ type: 'reaction', id: 'ohm', name: '옴의 법칙', kind: 'physical', eq: `I = V ÷ R = ${this.voltage} V ÷ ${(Rload + Rint).toFixed(1)} Ω = ${I.toFixed(2)} A`, note: '전압이 같으면 저항이 클수록 전류가 작습니다. 전구를 나란히(병렬) 이으면 합성 저항이 작아져 전류가 커지고, 니크롬선처럼 저항이 큰 선은 전류가 흐르며 뜨거워집니다(줄열 P = I²R).' }));
     }
 
     // 화학 전지: 도선이나 금속끼리 이어진 덩어리 안에 반응성이 다른 두 금속이 같은 전해질에 잠겨 있으면 전류가 흐른다.
@@ -1378,8 +1438,11 @@
           const [aEl, anode] = metals[0], [cEl, cathode] = metals[metals.length - 1];
           const diff = rank(cEl) - rank(aEl);
           if (diff <= 0 || !SL.CHEM.METALS[aEl] || !SL.CHEM.METALS[aEl].cat) continue;
-          this.cells.push({ anode, cathode, rate: Math.min(3, 0.12 * diff), bulbs, aEl, cEl, ea: 0, ec: 0 });
-          for (const b of bulbs) this.lit.add(b);
+          // 전지 전압 = 두 금속의 표준 환원 전위 차. 레몬 전지(아연-구리)는 약 1.1 V라 전구가 희미하다.
+          const E = E0[cEl] != null && E0[aEl] != null ? E0[cEl] - E0[aEl] : 0.1 * diff;
+          this.cells.push({ anode, cathode, rate: Math.min(3, 0.12 * diff), bulbs, aEl, cEl, ea: 0, ec: 0, E });
+          for (const b of bulbs) { this.lit.add(b); this.bright[b] = Math.max(0.12, Math.min(1, E / 3)); }
+          if (!this.elec || !this.elec.I) this.elec = { V: E, I: bulbs.length ? E / 20 : 0, R: 20, P: bulbs.length ? E * E / 20 : 0, cell: `${aEl}-${cEl}` };
         }
       }
     }
@@ -1433,7 +1496,7 @@
       const d = this.data;
       if (!SL.CHEM || !SL.CHEM.electrolysis) return;
       if (this.tick % 20 === 1 || !this.lit) {
-        this.lit = new Set();
+        this.lit = new Set(); this.elec = null;
         if (d.anyElectrode) this.findCircuit(); else { this.role = null; this.circuit = false; }
         this.findGalvanic();
         this.updateBulbs();
@@ -1823,6 +1886,10 @@
         const { ke, pe } = this.energyOf(b);
         b.log.push({ t: this.time - b.born, h: this.heightOf(b), v: b.vy, E: ke + pe });
         if (b.log.length > 1800) b.log.shift();
+      }
+      if (this.tick % 6 === 0) {
+        this.elecLog = this.elecLog || [];
+        if (this.elec || this.elecLog.length) { this.elecLog.push({ t: this.time, I: this.elec ? this.elec.I : 0, V: this.elec ? (this.elec.Vt != null ? this.elec.Vt : this.elec.V) : 0 }); if (this.elecLog.length > 1200) this.elecLog.shift(); }
       }
       if (this.probes && this.probes.length && this.tick % 6 === 0) {
         for (const p of this.probes) {

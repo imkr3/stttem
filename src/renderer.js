@@ -188,8 +188,8 @@
           if (sol[m] && cc[i] < 0.97) { const t = 1 - Math.pow(cc[i], 0.4); r += (wc[0] - r) * t; g += (wc[1] - g) * t; b += (wc[2] - b) * t; }
           const flame = defs[m].flame || defs[m].glow; // glow: 열 없이 빛만 내는 물질(화학 발광)
           if (flame) {
-            // 불꽃색을 중심으로 밝기만 일렁인다.
-            const f = 0.7 + Math.random() * 0.45;
+            // 불꽃색을 중심으로 밝기만 일렁인다. 전구는 흐르는 전력에 따라 밝기가 다르다.
+            const f = defs[m].glow && defs[m].load ? 0.25 + 0.75 * Math.min(1.2, W.bright[i]) : 0.7 + Math.random() * 0.45;
             r = flame[0] * f; g = flame[1] * f; b = flame[2] * f;
             gp[i] = rgba(r * 0.8, g * 0.8, b * 0.8); glow++;
             // 불꽃 위로 가끔 불티가 날린다.

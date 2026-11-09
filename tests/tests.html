@@ -1014,6 +1014,30 @@ test('충격에 민감한 물질: 떨어뜨리면 터지고 모래에 흡수시�
   assert(!w.discovered.has('shock_boom'), '바닥에 가만히 둔 것이 터짐');
   return '높이 떨어진 니트로글리세린만 폭발';
 });
+test('옴의 법칙: 전압·저항과 전류, 병렬, 줄열, 퓨즈, 전지 전압', () => {
+  const mk = (V, load) => { const w = fresh(); w.rect('electrode+', 40, 90, 42, 110, null, true); w.rect('wire', 43, 90, 80, 91, null, true); load(w); w.rect('electrode-', 151, 90, 153, 110, null, true); w.voltage = V; run(w, 1); return w; };
+  const bulb1 = (w) => { w.rect('bulb', 81, 88, 85, 93, null, true); w.rect('wire', 86, 90, 150, 91, null, true); };
+  const a = mk(6, bulb1), b = mk(12, bulb1);
+  const Rt = a.elec.R + 0.5;
+  assert(Math.abs(a.elec.I - 6 / Rt) < 1e-6 && Math.abs(b.elec.I / a.elec.I - 2) < 0.01, `I 6V ${a.elec.I}, 12V ${b.elec.I}`);
+  // 병렬로 전구를 하나 더 달면 전류가 커진다
+  const c = mk(6, (w) => { bulb1(w); w.rect('wire', 79, 74, 80, 89, null, true); w.rect('bulb', 81, 74, 85, 79, null, true); w.rect('wire', 86, 74, 150, 75, null, true); w.rect('wire', 149, 76, 150, 89, null, true); });
+  assert(c.elec.I > a.elec.I * 1.5, `병렬 ${c.elec.I} vs ${a.elec.I}`);
+  // 니크롬선은 줄열로 달아오르고, 길면 저항이 커서 덜 뜨겁다
+  const nich = (len) => { const w = mk(12, (v) => { v.rect('nichrome', 81, 90, 80 + len, 90, null, true); v.rect('wire', 81 + len, 90, 150, 91, null, true); }); run(w, 5); return [w.elec.R, w.T[w.index(81 + (len >> 1), 90)]]; };
+  const [r30, t30] = nich(30), [r60, t60] = nich(60);
+  assert(Math.abs(r60 / r30 - 2) < 0.1 && t30 > 400 && t30 > t60, `R ${r30}/${r60}, T ${t30}/${t60}`);
+  // 합선되면 퓨즈가 끊어짐
+  const f = fresh(); f.rect('electrode+', 40, 90, 42, 110, null, true); f.rect('wire', 43, 90, 60, 91, null, true); f.rect('fuse', 61, 90, 64, 91, null, true); f.rect('wire', 65, 90, 150, 91, null, true); f.rect('electrode-', 151, 90, 153, 110, null, true);
+  run(f, 3);
+  assert(f.mat[f.index(62, 90)] === f.data.idOf['fuse:blown'], '퓨즈가 안 끊어짐');
+  // 레몬 전지(아연-구리)의 전압은 약 1.1 V
+  const g = fresh(); g.rect('glass', 60, 145, 180, 149, null, true); g.rect('A:citric', 63, 95, 177, 144); g.rect('Zn:s', 90, 85, 93, 140, 20, true); g.rect('Cu:s', 147, 85, 150, 140, 20, true);
+  g.rect('wire', 90, 60, 93, 84, 20, true); g.rect('wire', 147, 60, 150, 84, 20, true); g.rect('wire', 94, 60, 146, 62, 20, true); g.rect('bulb', 118, 60, 121, 62, 20, true); run(g, 1);
+  const E = g.cells && g.cells[0] && g.cells[0].E;
+  assert(Math.abs(E - 1.10) < 0.01, `전지 전압 ${E}`);
+  return `6 V → ${a.elec.I.toFixed(2)} A, 12 V → ${b.elec.I.toFixed(2)} A, 병렬 ${c.elec.I.toFixed(2)} A, 니크롬 30칸 ${r30.toFixed(1)} Ω ${t30.toFixed(0)}°C / 60칸 ${r60.toFixed(1)} Ω ${t60.toFixed(0)}°C, 퓨즈 끊김, 아연-구리 ${E.toFixed(2)} V`;
+});
 test('성능: 틱당 시간', () => {
   const out = [];
   for (const id of ['volcano', 'precip', 'furnace']) {

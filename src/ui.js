@@ -559,7 +559,7 @@
     panePhysics(pane) {
       const w = this.world;
       pane.innerHTML = `<h3>측정</h3>
-        <div class="chips">${[['v', '수직 속도'], ['h', '높이'], ['E', '역학적 에너지'], ['T', '온도계'], ['P', '압력계'], ['pH', 'pH계']].map(([k, n]) => `<button class="chip${this.graphMode === k ? ' on' : ''}" data-graph="${k}">${n}</button>`).join('')}</div>
+        <div class="chips">${[['v', '수직 속도'], ['h', '높이'], ['E', '역학적 에너지'], ['T', '온도계'], ['P', '압력계'], ['pH', 'pH계'], ['I', '전류계']].map(([k, n]) => `<button class="chip${this.graphMode === k ? ' on' : ''}" data-graph="${k}">${n}</button>`).join('')}</div>
         <div class="graph"><canvas class="plot"></canvas></div><div class="legend"></div><div class="stats"></div>
         <div class="chips" style="margin-top:6px"><button class="chip csv" title="지금 그래프의 측정값을 표 파일(CSV)로 저장">CSV로 저장</button><button class="chip clearprobes">온도계 모두 지우기</button></div>
         <h3>중력</h3><div class="chips">${GRAVITY.map(([n, g]) => `<button class="chip${Math.abs(w.g - g) < 0.005 ? ' on' : ''}" data-g="${g}">${n}</button>`).join('')}</div>
@@ -568,6 +568,7 @@
         <div class="row"><label>열전달 가속 <input type="range" class="boost" min="1" max="1000" value="${w.heatBoost}"></label><span class="val bval">×${w.heatBoost}</span></div>
         <h3>압력·진공·장치</h3>
         <div class="chips">${PRESSURE_TOOLS.map(([k, n]) => `<button class="chip${this.tool.kind === k ? ' on' : ''}" data-ptool="${k}" title="${TOOL_HINT[k]}">${n}</button>`).join('')}</div>
+        <div class="row"><label>전원 전압 <input type="range" class="volt" min="1" max="24" step="0.5" value="${w.voltage}"></label><span class="val vval">${w.voltage} V</span></div>
         <div class="row"><label>용기 <select class="boxmat">${BOX_MATS.map(([k, n]) => `<option value="${k}" ${k === this.boxMat ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>
         <div class="row"><label><input type="checkbox" class="pview" ${this.renderer.mode === 'pressure' ? 'checked' : ''}> 압력 보기</label><button class="chip pgraph">압력계로 재기</button></div>
         <p class="hint">${this.tool.kind && TOOL_HINT[this.tool.kind] && PRESSURE_TOOLS.some(([k]) => k === this.tool.kind) ? '<b>' + TOOL_HINT[this.tool.kind] + '</b><br>' : ''}밀폐 용기를 만든 뒤 안에서 기체를 넣거나 빼고, 피스톤으로 부피를 바꿔 보세요. 압력은 PV = nRT를 따릅니다. 진공에 가까우면 물이 상온에서 끓고, 너무 높으면 용기가 터집니다. 온도계 도구로 용기 안을 누른 뒤 '압력계로 재기'를 누르면 그래프가 나옵니다.</p>
@@ -593,6 +594,7 @@
       pane.querySelector('.vac').onchange = (e) => { w.vacuum = e.target.checked; };
       pane.querySelector('.boost').oninput = (e) => { w.setHeatBoost(+e.target.value); pane.querySelector('.bval').textContent = '×' + e.target.value; };
       pane.querySelector('.boxmat').onchange = (e) => { this.boxMat = e.target.value; };
+      pane.querySelector('.volt').oninput = (e) => { w.voltage = +e.target.value; pane.querySelector('.vval').textContent = w.voltage + ' V'; };
       pane.querySelector('.pview').onchange = (e) => this.setView(e.target.checked ? 'pressure' : 'normal');
       pane.querySelector('.balltype').onchange = (e) => { this.ballType = e.target.value; };
       pane.querySelector('.ballr').oninput = (e) => { this.ballR = e.target.value / 100; pane.querySelector('.rval').textContent = e.target.value + ' cm'; };
@@ -1021,6 +1023,12 @@
     // 그래프 하나, 축 하나. 측정값은 실선, 이론값은 점선으로 구분한다.
     plotData() {
       const w = this.world, m = this.graphMode;
+      if (m === 'I') {
+        const log = w.elecLog || [];
+        if (!log.length) return { empty: '전원 장치(+·−극)나 화학 전지로 전구·니크롬선이 이어진 회로를 만들어 주세요.' };
+        const t0 = log[0].t;
+        return { unit: 'A', xs: log.map((s) => s.t - t0), ys: log.map((s) => s.I), label: '전류', more: [] };
+      }
       if (m === 'T' || m === 'P' || m === 'pH') {
         const ps = w.probes || [];
         if (!ps.length) return { empty: '온도계 도구로 측정할 곳을 눌러 주세요(최대 3곳). 압력은 밀폐 용기 안의 기체에서 잽니다.' };
@@ -1148,7 +1156,11 @@
       if (!box) return;
       const stat = (n, v) => `<div class="stat"><small>${n}</small>${v}</div>`;
       let html = '';
-      if (this.graphMode === 'pH') {
+      if (this.graphMode === 'I') {
+        const e = w.elec;
+        html = e ? stat(e.cell ? '전지 전압(' + e.cell + ')' : '전원 전압', fmt(e.V, 2) + ' V') + stat('전류', fmt(e.I, 2) + ' A') +
+          stat('부하 저항', e.short ? '0 (합선!)' : isFinite(e.R) ? fmt(e.R, 2) + ' Ω' : '끊김') + stat('전력', fmt(e.P, 2) + ' W') : stat('회로', '없음');
+      } else if (this.graphMode === 'pH') {
         if (w.probe) {
           const pH = w.pHMeter(w.probe.x, w.probe.y), here = w.inspect(w.probe.x, w.probe.y);
           html = stat('현재 pH', pH == null ? '액체 없음' : fmt(pH, 2)) + stat('성질', pH == null ? '-' : pH < 6.5 ? '산성' : pH > 7.5 ? '염기성' : '중성') +
@@ -1197,7 +1209,7 @@
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,effects?:boolean,sound?:boolean,materials?:string[],storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.21.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.22.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);
