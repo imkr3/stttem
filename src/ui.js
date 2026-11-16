@@ -973,6 +973,13 @@
         ctx.setLineDash([]);
       }
       if (this.labels) this.drawLabels(ctx, cell);
+      // 전류계 그래프를 보고 있으면 각 부하(전구·저항선) 옆에 전류·전압을 적는다.
+      if (this.tab === 'physics' && this.graphMode === 'I' && w.loadInfo && w.loadInfo.length) {
+        ctx.save(); ctx.font = `600 ${Math.max(11, Math.min(14, cell * 2.6))}px system-ui,sans-serif`; ctx.textAlign = 'center';
+        ctx.lineWidth = 3; ctx.strokeStyle = '#000c'; ctx.fillStyle = '#ffe680';
+        for (const l of w.loadInfo) { const t = `${l.I.toFixed(2)} A · ${l.dV.toFixed(1)} V`, x = (l.x + 0.5) * cell, y = (l.y - 4) * cell; ctx.strokeText(t, x, y); ctx.fillText(t, x, y); }
+        ctx.restore();
+      }
       const p = this.pointer;
       if (p && this.tool.kind === 'ball') {
         const sx = (p.start.x + 0.5) * cell, sy = (p.start.y + 0.5) * cell;
@@ -1209,7 +1216,7 @@
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,effects?:boolean,sound?:boolean,materials?:string[],storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.22.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.23.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);

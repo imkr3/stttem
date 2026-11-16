@@ -3382,22 +3382,8 @@ Og|오가네손|294|noble|7|50|80|1`;
       };
       flood(1, 1, this.anodes);
       flood(2, 2, this.cathodes);
-      // 전구는 도체가 아니라 짐(부하)이다. 한쪽은 (+)극 쪽, 다른 쪽은 (−)극 쪽 도체에 닿으면 전류가 흘러 켜진다.
-      const seen = new Uint8Array(size);
-      const loads = [];
-      for (let i = 0; i < size; i++) {
-        if (seen[i] || !d.load[mat[i]]) continue;
-        const group = [], st = [i];
-        let a = false, c = false;
-        seen[i] = 1;
-        while (st.length) {
-          const k = st.pop();
-          group.push(k);
-          nb(k, (j) => { if (role[j] & 1) a = true; if (role[j] & 2) c = true; if (!seen[j] && d.load[mat[j]]) { seen[j] = 1; st.push(j); } });
-        }
-        if (a && c) { for (const k of group) this.lit.add(k); loads.push(this.loadResistance(group, role, nb)); }
-      }
-      this.solveCircuit(loads);
+      // 전구·니크롬선은 도체가 아니라 짐(부하)이다. 도선 덩어리(마디) 사이에 걸린 저항으로 보고 회로망 전체를 푼다(직렬·병렬 모두).
+      this.solveNetwork(nb);
       if (!this.anodes.length || !this.cathodes.length) return;
       if (this.anodes.some((i) => role[i] & 2)) { // 합선
         this.note('short', () => ({ type: 'reaction', id: 'short', name: '합선', kind: 'physical', eq: '(+)극 ─ 금속 ─ (−)극', note: '두 전극이 금속으로 바로 이어지면 전류가 용액을 지나지 않아 전기 분해가 일어나지 않습니다. 큰 전류가 흘러 도선이 뜨거워지고 불꽃이 튑니다.' }));
@@ -3423,13 +3409,13 @@ Og|오가네손|294|noble|7|50|80|1`;
     }
 
     // 부하 덩어리의 저항: R = ρ·L/A. L은 (+)쪽에 닿은 칸에서 (−)쪽에 닿은 칸까지의 최단 거리, 굵기 A = 칸 수 / L.
-    loadResistance(group, role, nb) {
+    loadResistance(group, isA, isB, nb) {
       const d = this.data, mat = this.mat, inG = new Set(group), dist = new Map(), q = [];
-      for (const k of group) { let a = false; nb(k, (j) => { if (role[j] & 1) a = true; }); if (a) { dist.set(k, 1); q.push(k); } }
+      for (const k of group) { let a = false; nb(k, (j) => { if (isA(j)) a = true; }); if (a) { dist.set(k, 1); q.push(k); } }
       let L = group.length;
       for (let h = 0; h < q.length; h++) {
         const k = q[h]; let c = false;
-        nb(k, (j) => { if (role[j] & 2) c = true; });
+        nb(k, (j) => { if (isB(j)) c = true; });
         if (c) { L = dist.get(k); break; }
         nb(k, (j) => { if (inG.has(j) && !dist.has(j)) { dist.set(j, dist.get(k) + 1); q.push(j); } });
       }
@@ -3440,30 +3426,93 @@ Og|오가네손|294|noble|7|50|80|1`;
       if (wire) { let rw = 0; for (const k of group) if (!(d.defs[mat[k]].id === 'bulb' || d.defs[mat[k]].id === 'bulb:on')) rw += d.resist[mat[k]]; rw /= wire; R += rw * L * L / Math.max(1, wire); }
       return { cells: group, R: Math.max(0.05, R) };
     }
-    // 옴의 법칙: 부하들은 병렬로 이어져 있다고 보고 합성 저항을 구한 뒤, 전원의 내부 저항(0.5 Ω)과 함께 전류를 구한다.
-    // 부하마다 전력 P = V²/R만큼 줄열을 받고, 전구는 전력에 따라 밝기가 달라진다.
-    solveCircuit(loads) {
-      const d = this.data, mat = this.mat, Rint = 0.5;
-      if (!loads.length) { this.elec = this.anodes.length && this.cathodes.length ? { V: this.voltage, I: 0, R: Infinity, P: 0 } : null; return; }
-      const G = loads.reduce((s, l) => s + 1 / l.R, 0), Rload = 1 / G;
-      const I = this.voltage / (Rint + Rload), Vt = this.voltage - I * Rint;
-      let P = 0;
-      const dtc = 20 * this.dt;
-      for (const l of loads) {
-        const p = Vt * Vt / l.R; P += p;
-        let bulb = false;
-        for (const k of l.cells) {
-          const m = mat[k];
-          if (d.defs[m].id === 'bulb' || d.defs[m].id === 'bulb:on') { bulb = true; continue; }
-          // 가는 선 한 칸은 실제로는 아주 가벼우므로(1 cm 칸 대신 가는 선) 열용량을 작게 본다.
-          this.T[k] += p * dtc / l.cells.length / (d.heatCap[m] * 1e-6 * 0.0015);
+    // 회로망 풀이(키르히호프 전류 법칙, 마디 전압법).
+    // 마디 = 도체(도선·금속·전극)로 이어진 덩어리. (+)극 마디는 내부 저항(0.5 Ω)을 거쳐 전원에, (−)극 마디는 0 V 기준.
+    // 부하 덩어리는 닿은 두 마디 사이의 저항. 각 마디로 들어오고 나가는 전류의 합이 0이라는 식을 가우스 소거로 푼다.
+    solveNetwork(nb) {
+      const d = this.data, mat = this.mat, size = mat.length, Rint = 0.5, Vs = this.voltage;
+      const cl = this.cl && this.cl.length === size ? this.cl.fill(0) : (this.cl = new Int32Array(size));
+      const isCond = (m) => d.conductor[m] || d.electrode[m];
+      const kind = [0]; // 덩어리별: 1 = (+)극 포함, 2 = (−)극 포함
+      let n = 0;
+      for (let i = 0; i < size; i++) {
+        if (cl[i] || !isCond(mat[i])) continue;
+        n++; kind.push(0);
+        const st = [i]; cl[i] = n;
+        while (st.length) {
+          const k = st.pop();
+          if (d.electrode[mat[k]]) kind[n] |= d.electrode[mat[k]];
+          nb(k, (j) => { if (!cl[j] && isCond(mat[j])) { cl[j] = n; st.push(j); } });
         }
-        if (bulb) { const b = Math.min(1.5, p / 4); for (const k of l.cells) this.bright[k] = b; if (b < 0.05) for (const k of l.cells) this.lit.delete(k); }
       }
-      // 퓨즈는 전류 전체가 지나간다: I²R 만큼 뜨거워진다.
-      for (const list of [this.anodes, this.cathodes]) for (const k of list) if (d.fuse[mat[k]]) this.T[k] += I * I * d.fuse[mat[k]] * 10;
-      this.elec = { V: this.voltage, I, R: Rload, P, Vt };
-      if (I > 0.01) this.note('ohm', () => ({ type: 'reaction', id: 'ohm', name: '옴의 법칙', kind: 'physical', eq: `I = V ÷ R = ${this.voltage} V ÷ ${(Rload + Rint).toFixed(1)} Ω = ${I.toFixed(2)} A`, note: '전압이 같으면 저항이 클수록 전류가 작습니다. 전구를 나란히(병렬) 이으면 합성 저항이 작아져 전류가 커지고, 니크롬선처럼 저항이 큰 선은 전류가 흐르며 뜨거워집니다(줄열 P = I²R).' }));
+      // 마디 번호: (−)극 = 0(기준), (+)극 = 1, 나머지 도선 덩어리 = 2, 3, …  (전극 덩어리가 여럿이어도 같은 전원의 같은 극)
+      const node = new Int32Array(n + 1).fill(-1);
+      let nn = 2;
+      for (let c = 1; c <= n; c++) node[c] = kind[c] & 2 ? 0 : kind[c] & 1 ? 1 : -1;
+      const nodeOf = (j) => (cl[j] ? node[cl[j]] : -1);
+      const edges = [], seen = new Uint8Array(size);
+      for (let i = 0; i < size; i++) {
+        if (seen[i] || !d.load[mat[i]]) continue;
+        const group = [], st = [i], touch = new Set();
+        seen[i] = 1;
+        while (st.length) {
+          const k = st.pop();
+          group.push(k);
+          nb(k, (j) => { if (cl[j]) touch.add(cl[j]); if (!seen[j] && d.load[mat[j]]) { seen[j] = 1; st.push(j); } });
+        }
+        if (touch.size < 2) continue;
+        const cs = [...touch].slice(0, 2);
+        for (const c of cs) if (node[c] < 0) node[c] = nn++;
+        const [u, v] = [node[cs[0]], node[cs[1]]];
+        if (u === v) continue;
+        const lr = this.loadResistance(group, (j) => cl[j] === cs[0], (j) => cl[j] === cs[1], nb);
+        edges.push({ cells: group, R: lr.R, u, v });
+      }
+      this.loadInfo = [];
+      const hasA = kind.some((k) => k & 1), hasC = kind.some((k) => k & 2);
+      if (!hasA || !hasC) { this.elec = null; return; }
+      if (!edges.length) { this.elec = { V: Vs, I: 0, R: Infinity, P: 0 }; return; }
+      // 마디 방정식 G·V = J (0번 마디는 기준이라 뺀다)
+      const N = nn - 1, G = Array.from({ length: N }, () => new Float64Array(N + 1));
+      const add = (a, b, g) => { if (a > 0) G[a - 1][a - 1] += g; if (b > 0) G[b - 1][b - 1] += g; if (a > 0 && b > 0) { G[a - 1][b - 1] -= g; G[b - 1][a - 1] -= g; } };
+      for (const e of edges) add(e.u, e.v, 1 / e.R);
+      G[0][0] += 1 / Rint; G[0][N] += Vs / Rint; // 전원: (+)극 마디로 들어오는 전류
+      for (let r = 0; r < N; r++) G[r][r] += 1e-9; // 떠 있는 마디가 있어도 풀리도록
+      for (let c = 0; c < N; c++) { // 가우스 소거
+        let p = c; for (let r = c + 1; r < N; r++) if (Math.abs(G[r][c]) > Math.abs(G[p][c])) p = r;
+        [G[c], G[p]] = [G[p], G[c]];
+        for (let r = 0; r < N; r++) { if (r === c) continue; const f = G[r][c] / G[c][c]; if (f) for (let k = c; k <= N; k++) G[r][k] -= f * G[c][k]; }
+      }
+      const V = new Float64Array(nn); for (let r = 0; r < N; r++) V[r + 1] = G[r][N] / G[r][r];
+      const Isrc = (Vs - V[1]) / Rint;
+      let P = 0;
+      const dtc = 20 * this.dt, through = new Float64Array(nn);
+      for (const e of edges) {
+        const I = (V[e.u] - V[e.v]) / e.R, p = I * I * e.R;
+        P += p; through[e.u] += Math.abs(I); through[e.v] += Math.abs(I);
+        let bulb = false, sx = 0, sy = 0;
+        for (const k of e.cells) {
+          const m = mat[k]; sx += k % this.w; sy += (k / this.w) | 0;
+          if (d.defs[m].id === 'bulb' || d.defs[m].id === 'bulb:on') { bulb = true; continue; }
+          this.T[k] += p * dtc / e.cells.length / (d.heatCap[m] * 1e-6 * 0.0015); // 줄열(가는 선)
+        }
+        const b = Math.min(1.5, p / 4);
+        if (bulb && b >= 0.05) for (const k of e.cells) { this.lit.add(k); this.bright[k] = b; }
+        this.loadInfo.push({ x: sx / e.cells.length, y: sy / e.cells.length, I: Math.abs(I), P: p, R: e.R, dV: Math.abs(V[e.u] - V[e.v]) });
+      }
+      // 퓨즈: 그 퓨즈가 속한 마디를 지나는 전류만큼 I²R로 뜨거워진다.
+      for (let i = 0; i < size; i++) {
+        if (!d.fuse[mat[i]] || !cl[i]) continue;
+        const nd = node[cl[i]], I = nd === 1 || nd === 0 ? Isrc : nd > 1 ? through[nd] / 2 : 0;
+        this.T[i] += I * I * d.fuse[mat[i]] * 10;
+      }
+      this.elec = { V: Vs, I: Isrc, R: Isrc > 1e-9 ? V[1] / Isrc : Infinity, P, Vt: V[1] };
+      if (Isrc > 0.01) this.note('ohm', () => ({ type: 'reaction', id: 'ohm', name: '옴의 법칙', kind: 'physical', eq: `I = V ÷ R = ${Vs} V ÷ ${(this.elec.R + Rint).toFixed(1)} Ω = ${Isrc.toFixed(2)} A`, note: '전압이 같으면 저항이 클수록 전류가 작습니다. 전구를 나란히(병렬) 이으면 합성 저항이 작아져 전체 전류가 커지고, 한 줄로(직렬) 이으면 커져 전류가 작아지고 전구가 어두워집니다. 저항선은 전류가 흐르며 뜨거워집니다(줄열 P = I²R).' }));
+      if (edges.length >= 2 && Isrc > 0.01) {
+        const series = edges.some((e) => e.u > 1 || e.v > 1);
+        const key = series ? 'series' : 'parallel';
+        this.note(key, () => ({ type: 'reaction', id: key, name: series ? '직렬 연결' : '병렬 연결', kind: 'physical', eq: series ? 'R = R₁ + R₂ (전류는 같고 전압이 나뉨)' : '1/R = 1/R₁ + 1/R₂ (전압은 같고 전류가 나뉨)', note: series ? '한 줄로 이으면 같은 전류가 모든 부하를 차례로 지나고, 전원 전압이 부하에 나뉘어 걸립니다. 하나가 끊기면 모두 꺼집니다.' : '나란히 이으면 부하마다 전원 전압이 그대로 걸리고, 전체 전류는 각 전류의 합입니다. 하나가 끊겨도 나머지는 켜져 있습니다(집 안의 전기 배선).' }));
+      }
     }
 
     // 화학 전지: 도선이나 금속끼리 이어진 덩어리 안에 반응성이 다른 두 금속이 같은 전해질에 잠겨 있으면 전류가 흐른다.
@@ -4609,6 +4658,24 @@ Og|오가네손|294|noble|7|50|80|1`;
       },
     },
     {
+      id: 'seriespar', name: '직렬과 병렬', tab: 'physics', graph: 'I',
+      desc: '위: 전구 두 개를 한 줄로(직렬) 이었습니다. 전류는 두 전구를 차례로 지나므로 같고, 전압이 반씩 나뉘어 어둡습니다. 아래: 전구 두 개를 나란히(병렬) 이었습니다. 전구마다 전원 전압이 그대로 걸려 밝고, 전체 전류는 두 배입니다. 지우개로 전구 하나를 지워 보세요. 직렬은 모두 꺼지고 병렬은 하나가 남습니다. 측정 탭(전류계)에서는 각 전구 옆에 전류와 전압이 보입니다.',
+      setup(w) {
+        air(w);
+        w.rect('stone', 0, 146, 239, 149);
+        // 위: 직렬
+        w.rect('electrode+', 20, 25, 22, 55, null, true); w.rect('electrode-', 218, 25, 220, 55, null, true);
+        w.rect('wire', 23, 40, 80, 41, null, true); w.rect('bulb', 81, 37, 90, 44, null, true); w.rect('wire', 91, 40, 150, 41, null, true);
+        w.rect('bulb', 151, 37, 160, 44, null, true); w.rect('wire', 161, 40, 217, 41, null, true);
+        // 아래: 병렬
+        w.rect('glass', 0, 70, 239, 71, null, true); // 두 회로를 떼어 놓는 칸막이(전기가 안 통함)
+        w.rect('electrode+', 20, 95, 22, 135, null, true); w.rect('electrode-', 218, 95, 220, 135, null, true);
+        w.rect('wire', 23, 115, 90, 116, null, true); w.rect('wire', 89, 95, 90, 135, null, true); w.rect('wire', 150, 95, 151, 135, null, true); w.rect('wire', 151, 115, 217, 116, null, true);
+        w.rect('bulb', 91, 93, 149, 98, null, true); w.rect('bulb', 91, 132, 149, 137, null, true);
+        w.voltage = 6;
+      },
+    },
+    {
       id: 'density', name: '밀도 기둥', tab: 'materials',
       desc: '일부러 무거운 글리세롤(1260 kg/m³)을 위에, 기름(900)을 아래에 넣었습니다. 밀도 순서대로 층이 나뉘는 과정을 보세요. 밀도 보기와 함께 쓰면 좋습니다. 소금물로 하면 가라앉으면서 물과 섞여 묽어지므로(농도) 층이 흐려집니다.',
       setup(w) {
@@ -4668,6 +4735,8 @@ Og|오가네손|294|noble|7|50|80|1`;
       explain: '소금물은 0°C보다 낮은 온도에서 언다(어는점 내림). 얼음이 녹으면서 주변의 열을 빼앗아 영하 10~20°C까지 내려갑니다. 아이스크림 기계와 도로의 염화칼슘에 쓰입니다.' },
     { id: 'p_lemon', scene: 'lemon', seconds: 10, q: '레몬즙(구연산)에 석회석(탄산칼슘)을 넣으면?', choices: ['아무 일도 없다', '거품이 난다', '색이 파랗게 변한다'], answer: 1,
       explain: '약한 산도 탄산염과 만나면 이산화탄소 거품을 내며 녹입니다. 주전자 물때를 구연산으로 닦는 원리입니다.' },
+    { id: 'p_series', scene: 'seriespar', seconds: 3, act: (w) => { w.rect('air', 151, 37, 160, 44); w.rect('air', 91, 93, 149, 98); }, q: '직렬로 이은 전구 하나와 병렬로 이은 전구 하나를 각각 빼면, 남은 전구는?', choices: ['둘 다 계속 켜져 있다', '직렬 쪽만 꺼진다', '병렬 쪽만 꺼진다', '둘 다 꺼진다'], answer: 1,
+      explain: '직렬은 전류가 지나는 길이 하나라 한 곳이 끊기면 모두 꺼집니다. 병렬은 길이 따로 있어 하나를 빼도 나머지는 그대로 켜져 있습니다. 집 안의 전기 배선이 병렬인 이유입니다.' },
     { id: 'p_joule', scene: 'circuit', seconds: 6, act: (w) => { w.voltage = 18; }, q: '니크롬선에 거는 전압을 두 배로 올리면, 같은 시간에 나는 열은?', choices: ['같다', '2배', '4배', '절반'], answer: 2,
       explain: '저항이 같으면 전류도 2배가 되므로 전력 P = V × I = V²/R는 4배가 됩니다. 전기난로의 단을 올리면 훨씬 뜨거워지는 이유입니다. 측정 탭의 전류계에서 전력을 확인해 보세요.' },
   ];
@@ -5901,6 +5970,13 @@ Og|오가네손|294|noble|7|50|80|1`;
         ctx.setLineDash([]);
       }
       if (this.labels) this.drawLabels(ctx, cell);
+      // 전류계 그래프를 보고 있으면 각 부하(전구·저항선) 옆에 전류·전압을 적는다.
+      if (this.tab === 'physics' && this.graphMode === 'I' && w.loadInfo && w.loadInfo.length) {
+        ctx.save(); ctx.font = `600 ${Math.max(11, Math.min(14, cell * 2.6))}px system-ui,sans-serif`; ctx.textAlign = 'center';
+        ctx.lineWidth = 3; ctx.strokeStyle = '#000c'; ctx.fillStyle = '#ffe680';
+        for (const l of w.loadInfo) { const t = `${l.I.toFixed(2)} A · ${l.dV.toFixed(1)} V`, x = (l.x + 0.5) * cell, y = (l.y - 4) * cell; ctx.strokeText(t, x, y); ctx.fillText(t, x, y); }
+        ctx.restore();
+      }
       const p = this.pointer;
       if (p && this.tool.kind === 'ball') {
         const sx = (p.start.x + 0.5) * cell, sy = (p.start.y + 0.5) * cell;
@@ -6137,7 +6213,7 @@ Og|오가네손|294|noble|7|50|80|1`;
    * @param {HTMLElement} el 넣을 요소 (높이가 있어야 함)
    * @param {{scene?:string,width?:number,height?:number,effects?:boolean,sound?:boolean,materials?:string[],storage?:{load:Function,save:Function}}} [options]
    */
-  SL.version = '0.22.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
+  SL.version = '0.23.0'; // 저장 데이터·공개 API가 바뀌면 올린다. 사이트에서 호환성을 확인할 때 쓴다.
 
   SL.create = function create(el, options) {
     const opts = Object.assign({ width: 240, height: 150 }, options);

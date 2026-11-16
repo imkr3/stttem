@@ -1318,22 +1318,8 @@
       };
       flood(1, 1, this.anodes);
       flood(2, 2, this.cathodes);
-      // 전구는 도체가 아니라 짐(부하)이다. 한쪽은 (+)극 쪽, 다른 쪽은 (−)극 쪽 도체에 닿으면 전류가 흘러 켜진다.
-      const seen = new Uint8Array(size);
-      const loads = [];
-      for (let i = 0; i < size; i++) {
-        if (seen[i] || !d.load[mat[i]]) continue;
-        const group = [], st = [i];
-        let a = false, c = false;
-        seen[i] = 1;
-        while (st.length) {
-          const k = st.pop();
-          group.push(k);
-          nb(k, (j) => { if (role[j] & 1) a = true; if (role[j] & 2) c = true; if (!seen[j] && d.load[mat[j]]) { seen[j] = 1; st.push(j); } });
-        }
-        if (a && c) { for (const k of group) this.lit.add(k); loads.push(this.loadResistance(group, role, nb)); }
-      }
-      this.solveCircuit(loads);
+      // 전구·니크롬선은 도체가 아니라 짐(부하)이다. 도선 덩어리(마디) 사이에 걸린 저항으로 보고 회로망 전체를 푼다(직렬·병렬 모두).
+      this.solveNetwork(nb);
       if (!this.anodes.length || !this.cathodes.length) return;
       if (this.anodes.some((i) => role[i] & 2)) { // 합선
         this.note('short', () => ({ type: 'reaction', id: 'short', name: '합선', kind: 'physical', eq: '(+)극 ─ 금속 ─ (−)극', note: '두 전극이 금속으로 바로 이어지면 전류가 용액을 지나지 않아 전기 분해가 일어나지 않습니다. 큰 전류가 흘러 도선이 뜨거워지고 불꽃이 튑니다.' }));
@@ -1359,13 +1345,13 @@
     }
 
     // 부하 덩어리의 저항: R = ρ·L/A. L은 (+)쪽에 닿은 칸에서 (−)쪽에 닿은 칸까지의 최단 거리, 굵기 A = 칸 수 / L.
-    loadResistance(group, role, nb) {
+    loadResistance(group, isA, isB, nb) {
       const d = this.data, mat = this.mat, inG = new Set(group), dist = new Map(), q = [];
-      for (const k of group) { let a = false; nb(k, (j) => { if (role[j] & 1) a = true; }); if (a) { dist.set(k, 1); q.push(k); } }
+      for (const k of group) { let a = false; nb(k, (j) => { if (isA(j)) a = true; }); if (a) { dist.set(k, 1); q.push(k); } }
       let L = group.length;
       for (let h = 0; h < q.length; h++) {
         const k = q[h]; let c = false;
-        nb(k, (j) => { if (role[j] & 2) c = true; });
+        nb(k, (j) => { if (isB(j)) c = true; });
         if (c) { L = dist.get(k); break; }
         nb(k, (j) => { if (inG.has(j) && !dist.has(j)) { dist.set(j, dist.get(k) + 1); q.push(j); } });
       }
@@ -1376,30 +1362,93 @@
       if (wire) { let rw = 0; for (const k of group) if (!(d.defs[mat[k]].id === 'bulb' || d.defs[mat[k]].id === 'bulb:on')) rw += d.resist[mat[k]]; rw /= wire; R += rw * L * L / Math.max(1, wire); }
       return { cells: group, R: Math.max(0.05, R) };
     }
-    // 옴의 법칙: 부하들은 병렬로 이어져 있다고 보고 합성 저항을 구한 뒤, 전원의 내부 저항(0.5 Ω)과 함께 전류를 구한다.
-    // 부하마다 전력 P = V²/R만큼 줄열을 받고, 전구는 전력에 따라 밝기가 달라진다.
-    solveCircuit(loads) {
-      const d = this.data, mat = this.mat, Rint = 0.5;
-      if (!loads.length) { this.elec = this.anodes.length && this.cathodes.length ? { V: this.voltage, I: 0, R: Infinity, P: 0 } : null; return; }
-      const G = loads.reduce((s, l) => s + 1 / l.R, 0), Rload = 1 / G;
-      const I = this.voltage / (Rint + Rload), Vt = this.voltage - I * Rint;
-      let P = 0;
-      const dtc = 20 * this.dt;
-      for (const l of loads) {
-        const p = Vt * Vt / l.R; P += p;
-        let bulb = false;
-        for (const k of l.cells) {
-          const m = mat[k];
-          if (d.defs[m].id === 'bulb' || d.defs[m].id === 'bulb:on') { bulb = true; continue; }
-          // 가는 선 한 칸은 실제로는 아주 가벼우므로(1 cm 칸 대신 가는 선) 열용량을 작게 본다.
-          this.T[k] += p * dtc / l.cells.length / (d.heatCap[m] * 1e-6 * 0.0015);
+    // 회로망 풀이(키르히호프 전류 법칙, 마디 전압법).
+    // 마디 = 도체(도선·금속·전극)로 이어진 덩어리. (+)극 마디는 내부 저항(0.5 Ω)을 거쳐 전원에, (−)극 마디는 0 V 기준.
+    // 부하 덩어리는 닿은 두 마디 사이의 저항. 각 마디로 들어오고 나가는 전류의 합이 0이라는 식을 가우스 소거로 푼다.
+    solveNetwork(nb) {
+      const d = this.data, mat = this.mat, size = mat.length, Rint = 0.5, Vs = this.voltage;
+      const cl = this.cl && this.cl.length === size ? this.cl.fill(0) : (this.cl = new Int32Array(size));
+      const isCond = (m) => d.conductor[m] || d.electrode[m];
+      const kind = [0]; // 덩어리별: 1 = (+)극 포함, 2 = (−)극 포함
+      let n = 0;
+      for (let i = 0; i < size; i++) {
+        if (cl[i] || !isCond(mat[i])) continue;
+        n++; kind.push(0);
+        const st = [i]; cl[i] = n;
+        while (st.length) {
+          const k = st.pop();
+          if (d.electrode[mat[k]]) kind[n] |= d.electrode[mat[k]];
+          nb(k, (j) => { if (!cl[j] && isCond(mat[j])) { cl[j] = n; st.push(j); } });
         }
-        if (bulb) { const b = Math.min(1.5, p / 4); for (const k of l.cells) this.bright[k] = b; if (b < 0.05) for (const k of l.cells) this.lit.delete(k); }
       }
-      // 퓨즈는 전류 전체가 지나간다: I²R 만큼 뜨거워진다.
-      for (const list of [this.anodes, this.cathodes]) for (const k of list) if (d.fuse[mat[k]]) this.T[k] += I * I * d.fuse[mat[k]] * 10;
-      this.elec = { V: this.voltage, I, R: Rload, P, Vt };
-      if (I > 0.01) this.note('ohm', () => ({ type: 'reaction', id: 'ohm', name: '옴의 법칙', kind: 'physical', eq: `I = V ÷ R = ${this.voltage} V ÷ ${(Rload + Rint).toFixed(1)} Ω = ${I.toFixed(2)} A`, note: '전압이 같으면 저항이 클수록 전류가 작습니다. 전구를 나란히(병렬) 이으면 합성 저항이 작아져 전류가 커지고, 니크롬선처럼 저항이 큰 선은 전류가 흐르며 뜨거워집니다(줄열 P = I²R).' }));
+      // 마디 번호: (−)극 = 0(기준), (+)극 = 1, 나머지 도선 덩어리 = 2, 3, …  (전극 덩어리가 여럿이어도 같은 전원의 같은 극)
+      const node = new Int32Array(n + 1).fill(-1);
+      let nn = 2;
+      for (let c = 1; c <= n; c++) node[c] = kind[c] & 2 ? 0 : kind[c] & 1 ? 1 : -1;
+      const nodeOf = (j) => (cl[j] ? node[cl[j]] : -1);
+      const edges = [], seen = new Uint8Array(size);
+      for (let i = 0; i < size; i++) {
+        if (seen[i] || !d.load[mat[i]]) continue;
+        const group = [], st = [i], touch = new Set();
+        seen[i] = 1;
+        while (st.length) {
+          const k = st.pop();
+          group.push(k);
+          nb(k, (j) => { if (cl[j]) touch.add(cl[j]); if (!seen[j] && d.load[mat[j]]) { seen[j] = 1; st.push(j); } });
+        }
+        if (touch.size < 2) continue;
+        const cs = [...touch].slice(0, 2);
+        for (const c of cs) if (node[c] < 0) node[c] = nn++;
+        const [u, v] = [node[cs[0]], node[cs[1]]];
+        if (u === v) continue;
+        const lr = this.loadResistance(group, (j) => cl[j] === cs[0], (j) => cl[j] === cs[1], nb);
+        edges.push({ cells: group, R: lr.R, u, v });
+      }
+      this.loadInfo = [];
+      const hasA = kind.some((k) => k & 1), hasC = kind.some((k) => k & 2);
+      if (!hasA || !hasC) { this.elec = null; return; }
+      if (!edges.length) { this.elec = { V: Vs, I: 0, R: Infinity, P: 0 }; return; }
+      // 마디 방정식 G·V = J (0번 마디는 기준이라 뺀다)
+      const N = nn - 1, G = Array.from({ length: N }, () => new Float64Array(N + 1));
+      const add = (a, b, g) => { if (a > 0) G[a - 1][a - 1] += g; if (b > 0) G[b - 1][b - 1] += g; if (a > 0 && b > 0) { G[a - 1][b - 1] -= g; G[b - 1][a - 1] -= g; } };
+      for (const e of edges) add(e.u, e.v, 1 / e.R);
+      G[0][0] += 1 / Rint; G[0][N] += Vs / Rint; // 전원: (+)극 마디로 들어오는 전류
+      for (let r = 0; r < N; r++) G[r][r] += 1e-9; // 떠 있는 마디가 있어도 풀리도록
+      for (let c = 0; c < N; c++) { // 가우스 소거
+        let p = c; for (let r = c + 1; r < N; r++) if (Math.abs(G[r][c]) > Math.abs(G[p][c])) p = r;
+        [G[c], G[p]] = [G[p], G[c]];
+        for (let r = 0; r < N; r++) { if (r === c) continue; const f = G[r][c] / G[c][c]; if (f) for (let k = c; k <= N; k++) G[r][k] -= f * G[c][k]; }
+      }
+      const V = new Float64Array(nn); for (let r = 0; r < N; r++) V[r + 1] = G[r][N] / G[r][r];
+      const Isrc = (Vs - V[1]) / Rint;
+      let P = 0;
+      const dtc = 20 * this.dt, through = new Float64Array(nn);
+      for (const e of edges) {
+        const I = (V[e.u] - V[e.v]) / e.R, p = I * I * e.R;
+        P += p; through[e.u] += Math.abs(I); through[e.v] += Math.abs(I);
+        let bulb = false, sx = 0, sy = 0;
+        for (const k of e.cells) {
+          const m = mat[k]; sx += k % this.w; sy += (k / this.w) | 0;
+          if (d.defs[m].id === 'bulb' || d.defs[m].id === 'bulb:on') { bulb = true; continue; }
+          this.T[k] += p * dtc / e.cells.length / (d.heatCap[m] * 1e-6 * 0.0015); // 줄열(가는 선)
+        }
+        const b = Math.min(1.5, p / 4);
+        if (bulb && b >= 0.05) for (const k of e.cells) { this.lit.add(k); this.bright[k] = b; }
+        this.loadInfo.push({ x: sx / e.cells.length, y: sy / e.cells.length, I: Math.abs(I), P: p, R: e.R, dV: Math.abs(V[e.u] - V[e.v]) });
+      }
+      // 퓨즈: 그 퓨즈가 속한 마디를 지나는 전류만큼 I²R로 뜨거워진다.
+      for (let i = 0; i < size; i++) {
+        if (!d.fuse[mat[i]] || !cl[i]) continue;
+        const nd = node[cl[i]], I = nd === 1 || nd === 0 ? Isrc : nd > 1 ? through[nd] / 2 : 0;
+        this.T[i] += I * I * d.fuse[mat[i]] * 10;
+      }
+      this.elec = { V: Vs, I: Isrc, R: Isrc > 1e-9 ? V[1] / Isrc : Infinity, P, Vt: V[1] };
+      if (Isrc > 0.01) this.note('ohm', () => ({ type: 'reaction', id: 'ohm', name: '옴의 법칙', kind: 'physical', eq: `I = V ÷ R = ${Vs} V ÷ ${(this.elec.R + Rint).toFixed(1)} Ω = ${Isrc.toFixed(2)} A`, note: '전압이 같으면 저항이 클수록 전류가 작습니다. 전구를 나란히(병렬) 이으면 합성 저항이 작아져 전체 전류가 커지고, 한 줄로(직렬) 이으면 커져 전류가 작아지고 전구가 어두워집니다. 저항선은 전류가 흐르며 뜨거워집니다(줄열 P = I²R).' }));
+      if (edges.length >= 2 && Isrc > 0.01) {
+        const series = edges.some((e) => e.u > 1 || e.v > 1);
+        const key = series ? 'series' : 'parallel';
+        this.note(key, () => ({ type: 'reaction', id: key, name: series ? '직렬 연결' : '병렬 연결', kind: 'physical', eq: series ? 'R = R₁ + R₂ (전류는 같고 전압이 나뉨)' : '1/R = 1/R₁ + 1/R₂ (전압은 같고 전류가 나뉨)', note: series ? '한 줄로 이으면 같은 전류가 모든 부하를 차례로 지나고, 전원 전압이 부하에 나뉘어 걸립니다. 하나가 끊기면 모두 꺼집니다.' : '나란히 이으면 부하마다 전원 전압이 그대로 걸리고, 전체 전류는 각 전류의 합입니다. 하나가 끊겨도 나머지는 켜져 있습니다(집 안의 전기 배선).' }));
+      }
     }
 
     // 화학 전지: 도선이나 금속끼리 이어진 덩어리 안에 반응성이 다른 두 금속이 같은 전해질에 잠겨 있으면 전류가 흐른다.
